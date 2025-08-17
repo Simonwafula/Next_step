@@ -1,0 +1,11 @@
+career_lmi:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: localhost
+      user: postgres
+      password: postgres
+      port: 5432
+      dbname: career_lmi
+      schema: public

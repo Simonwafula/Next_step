@@ -1,0 +1,40 @@
+default:
+  db_path: "db/jobs.sqlite3"
+  table_name: "jobs_data"
+
+sites:
+  brighter_monday:
+    base_url: "https://www.brightermonday.co.ke"
+    listing_path: "/jobs?page={page}"
+    listing_selector: "a.relative.mb-3.text-lg.font-medium.break-words"
+    title_attribute: "title"
+    content_selector: "article.job__details"
+    pagination_selector: "ul.pagination a[href*='?page=']"
+  careerjet:
+    base_url: "https://www.careerjet.co.ke"
+    listing_path: "/jobs?l=Kenya&p={page}"
+    listing_selector: "h2 a"
+    title_attribute: "title"
+    content_selector: "article#jobs"
+    pagination_selector: "div.pagination a[href*='&p=']"
+  jobwebkenya:
+    base_url: "https://www.jobwebkenya.com"
+    listing_path: "/jobs/page/{page}"
+    listing_selector: "li.job a"
+    title_attribute: null       # use .text instead
+    content_selector: "div.section.single"
+    pagination_selector: "ul.pagination li a[href*='/jobs/page/']"
+  myjobmag:
+    base_url: "https://www.myjobmag.co.ke"
+    listing_path: "/jobs/page/{page}"
+    listing_selector: "li.mag-b a"
+    title_attribute: null
+    content_selector: "li#printable"
+    pagination_selector: "ul.pagination li a[href*='/jobs/page/']"
+  opensareer:
+    base_url: "https://opensareer.com"
+    listing_path: "/jobs?page={page}"
+    listing_selector: "div.job-item a, .job-listing a"
+    title_attribute: "title"
+    content_selector: "div.job-details, article.job-content"
+    pagination_selector: "div.pagination a[href*='page='], ul.pagination a[href*='page=']"

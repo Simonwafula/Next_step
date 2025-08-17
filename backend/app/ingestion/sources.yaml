@@ -1,0 +1,16 @@
+# Example configuration for ingestion sources. Extend as needed.
+sources:
+  - name: Example Co (Greenhouse)
+    type: greenhouse
+    board_token: exampleco
+    org: Example Co
+
+  - name: Cool Startup (Lever)
+    type: lever
+    board_token: cool-startup
+    org: Cool Startup
+
+  - name: NGO Jobs Feed
+    type: rss
+    url: https://example.org/jobs/feed
+    org: Example NGO

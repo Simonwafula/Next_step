@@ -1,0 +1,13 @@
+name: 'career_lmi'
+version: '1.0.0'
+config-version: 2
+
+profile: 'career_lmi'
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_packages"]
+
+models:
+  career_lmi:
+    +materialized: view

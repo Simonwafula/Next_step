@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Search - Find Your Next Opportunity</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">
+                    <h1><i class="fas fa-briefcase"></i> CareerSearch</h1>
+                </div>
+                <nav class="nav">
+                    <a href="#" class="nav-link active" data-section="search">Search</a>
+                    <a href="#" class="nav-link" data-section="insights">Market Insights</a>
+                    <a href="#" class="nav-link" data-section="career-tools">Career Tools</a>
+                    <a href="#" class="nav-link" data-section="premium">Premium</a>
+                </nav>
+                <div class="user-actions">
+                    <button class="btn-secondary" id="loginBtn">Login</button>
+                    <button class="btn-primary" id="signupBtn">Sign Up</button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main">
+        <!-- Search Section -->
+        <section id="search-section" class="section active">
+            <div class="search-hero">
+                <div class="container">
+                    <div class="search-hero-content">
+                        <h2>Find Your Perfect Career Match</h2>
+                        <p>Search thousands of jobs, get career insights, and discover your next opportunity</p>
+                        
+                        <div class="search-container">
+                            <div class="search-box">
+                                <div class="search-input-group">
+                                    <i class="fas fa-search search-icon"></i>
+                                    <input type="text" id="searchInput" placeholder="Search jobs, companies, or try 'I studied economics'..." autocomplete="off">
+                                    <button class="search-btn" id="searchBtn">
+                                        <i class="fas fa-search"></i>
+                                    </button>
+                                </div>
+                                <div class="search-filters">
+                                    <select id="locationFilter" class="filter-select">
+                                        <option value="">All Locations</option>
+                                        <option value="nairobi">Nairobi</option>
+                                        <option value="mombasa">Mombasa</option>
+                                        <option value="kisumu">Kisumu</option>
+                                        <option value="nakuru">Nakuru</option>
+                                        <option value="remote">Remote</option>
+                                    </select>
+                                    <select id="seniorityFilter" class="filter-select">
+                                        <option value="">All Levels</option>
+                                        <option value="entry">Entry Level</option>
+                                        <option value="mid">Mid Level</option>
+                                        <option value="senior">Senior Level</option>
+                                        <option value="executive">Executive</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="quick-searches">
+                            <span>Popular searches:</span>
+                            <button class="quick-search-btn" data-query="data analyst">Data Analyst</button>
+                            <button class="quick-search-btn" data-query="software engineer">Software Engineer</button>
+                            <button class="quick-search-btn" data-query="marketing manager">Marketing Manager</button>
+                            <button class="quick-search-btn" data-query="I studied business">Business Graduate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search Results -->
+            <div class="search-results" id="searchResults" style="display: none;">
+                <div class="container">
+                    <div class="results-header">
+                        <h3 id="resultsTitle">Search Results</h3>
+                        <div class="results-meta">
+                            <span id="resultsCount">0 jobs found</span>
+                            <div class="sort-options">
+                                <select id="sortBy">
+                                    <option value="relevance">Most Relevant</option>
+                                    <option value="date">Most Recent</option>
+                                    <option value="salary">Highest Salary</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="results-content">
+                        <div class="results-list" id="resultsList">
+                            <!-- Results will be populated here -->
+                        </div>
+                        <div class="results-sidebar">
+                            <div class="sidebar-widget">
+                                <h4>Career Insights</h4>
+                                <div id="careerInsights">
+                                    <!-- Career insights will be populated here -->
+                                </div>
+                            </div>
+                            <div class="sidebar-widget">
+                                <h4>Salary Insights</h4>
+                                <div id="salaryInsights">
+                                    <!-- Salary insights will be populated here -->
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Market Insights Section -->
+        <section id="insights-section" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Market Insights</h2>
+                    <p>Stay informed about the job market trends and opportunities</p>
+                </div>
+                
+                <div class="insights-grid">
+                    <div class="insight-card">
+                        <h3>Weekly Market Overview</h3>
+                        <div id="weeklyInsights" class="insight-content">
+                            <!-- Weekly insights will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <h3>Trending Skills</h3>
+                        <div id="trendingSkills" class="insight-content">
+                            <!-- Trending skills will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <h3>Top Hiring Companies</h3>
+                        <div id="topCompanies" class="insight-content">
+                            <!-- Top companies will be loaded here -->
+                        </div>
+                    </div>
+                    
+                    <div class="insight-card">
+                        <h3>Career Transitions</h3>
+                        <div id="careerTransitions" class="insight-content">
+                            <!-- Career transitions will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Career Tools Section -->
+        <section id="career-tools-section" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Career Tools</h2>
+                    <p>Professional tools to help you succeed in your career journey</p>
+                </div>
+                
+                <div class="tools-grid">
+                    <div class="tool-card">
+                        <div class="tool-icon">
+                            <i class="fas fa-file-alt"></i>
+                        </div>
+                        <h3>CV Builder</h3>
+                        <p>Create a professional CV tailored to your target role</p>
+                        <button class="btn-primary tool-btn" data-tool="cv-builder">Start Building</button>
+                    </div>
+                    
+                    <div class="tool-card">
+                        <div class="tool-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <h3>Cover Letter Generator</h3>
+                        <p>Generate personalized cover letters for specific job applications</p>
+                        <button class="btn-primary tool-btn" data-tool="cover-letter">Generate Letter</button>
+                    </div>
+                    
+                    <div class="tool-card">
+                        <div class="tool-icon">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <h3>Why Work With Statement</h3>
+                        <p>Craft compelling statements about why companies should hire you</p>
+                        <button class="btn-primary tool-btn" data-tool="why-work-with">Create Statement</button>
+                    </div>
+                    
+                    <div class="tool-card">
+                        <div class="tool-icon">
+                            <i class="fas fa-route"></i>
+                        </div>
+                        <h3>Career Path Advisor</h3>
+                        <p>Get personalized career transition recommendations</p>
+                        <button class="btn-primary tool-btn" data-tool="career-advisor">Get Advice</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Premium Section -->
+        <section id="premium-section" class="section">
+            <div class="container">
+                <div class="section-header">
+                    <h2>Premium Features</h2>
+                    <p>Unlock advanced features for your career success</p>
+                </div>
+                
+                <div class="pricing-grid">
+                    <div class="pricing-card">
+                        <div class="pricing-header">
+                            <h3>Basic</h3>
+                            <div class="price">Free</div>
+                        </div>
+                        <ul class="features-list">
+                            <li><i class="fas fa-check"></i> Job search</li>
+                            <li><i class="fas fa-check"></i> Basic market insights</li>
+                            <li><i class="fas fa-check"></i> Career path suggestions</li>
+                            <li><i class="fas fa-check"></i> WhatsApp notifications</li>
+                        </ul>
+                        <button class="btn-secondary">Current Plan</button>
+                    </div>
+                    
+                    <div class="pricing-card featured">
+                        <div class="pricing-header">
+                            <h3>Professional</h3>
+                            <div class="price">KSh 2,500<span>/month</span></div>
+                        </div>
+                        <ul class="features-list">
+                            <li><i class="fas fa-check"></i> Everything in Basic</li>
+                            <li><i class="fas fa-check"></i> AI-powered CV optimization</li>
+                            <li><i class="fas fa-check"></i> Personalized cover letters</li>
+                            <li><i class="fas fa-check"></i> Advanced career coaching</li>
+                            <li><i class="fas fa-check"></i> Priority job alerts</li>
+                            <li><i class="fas fa-check"></i> Salary negotiation tips</li>
+                        </ul>
+                        <button class="btn-primary">Upgrade Now</button>
+                    </div>
+                    
+                    <div class="pricing-card">
+                        <div class="pricing-header">
+                            <h3>Enterprise</h3>
+                            <div class="price">KSh 5,000<span>/month</span></div>
+                        </div>
+                        <ul class="features-list">
+                            <li><i class="fas fa-check"></i> Everything in Professional</li>
+                            <li><i class="fas fa-check"></i> 1-on-1 career coaching</li>
+                            <li><i class="fas fa-check"></i> Interview preparation</li>
+                            <li><i class="fas fa-check"></i> LinkedIn profile optimization</li>
+                            <li><i class="fas fa-check"></i> Direct recruiter connections</li>
+                            <li><i class="fas fa-check"></i> Custom job alerts</li>
+                        </ul>
+                        <button class="btn-primary">Contact Sales</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Modals -->
+    <div id="loginModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Login to Your Account</h2>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="loginEmail">Email</label>
+                    <input type="email" id="loginEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="loginPassword">Password</label>
+                    <input type="password" id="loginPassword" required>
+                </div>
+                <button type="submit" class="btn-primary">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="signupModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Create Your Account</h2>
+            <form id="signupForm">
+                <div class="form-group">
+                    <label for="signupName">Full Name</label>
+                    <input type="text" id="signupName" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupEmail">Email</label>
+                    <input type="email" id="signupEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPassword">Password</label>
+                    <input type="password" id="signupPassword" required>
+                </div>
+                <div class="form-group">
+                    <label for="signupPhone">Phone Number (for WhatsApp notifications)</label>
+                    <input type="tel" id="signupPhone" placeholder="+254...">
+                </div>
+                <button type="submit" class="btn-primary">Sign Up</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Tool Modals -->
+    <div id="toolModal" class="modal">
+        <div class="modal-content large">
+            <span class="close">&times;</span>
+            <div id="toolContent">
+                <!-- Tool content will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Container -->
+    <div id="notifications" class="notifications-container"></div>
+
+    <!-- Scripts -->
+    <script src="js/config.js"></script>
+    <script src="js/api.js"></script>
+    <script src="js/search.js"></script>
+    <script src="js/insights.js"></script>
+    <script src="js/tools.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
