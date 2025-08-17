@@ -9,26 +9,53 @@ from ..services.lmi import (
     get_attachment_companies, get_trending_skills
 )
 from ..services.scraper_service import scraper_service
+from ..services.auth_service import get_current_user_optional
 from ..normalization.titles import get_careers_for_degree, normalize_title
 from ..ingestion.runner import run_all_sources
+from .auth_routes import router as auth_router
+from .user_routes import router as user_router
 
 api_router = APIRouter()
+
+# Include authentication and user management routes
+api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
+api_router.include_router(user_router, prefix="/users", tags=["user-management"])
 
 # Enhanced Job Search & Title Translation
 @api_router.get("/search", response_model=list[dict])
 def search(q: str = Query("", description="Search query, job title, or 'I studied [degree]'"),
            location: str | None = Query(None, description="Location filter"),
            seniority: str | None = Query(None, description="Seniority level"),
-           db: Session = Depends(get_db)):
+           personalized: bool = Query(False, description="Enable personalized results"),
+           db: Session = Depends(get_db),
+           current_user = Depends(get_current_user_optional)):
     """
     Enhanced job search with semantic matching and degree-to-career translation.
+    Now supports personalized results for authenticated users.
     
     Examples:
     - "data analyst jobs Nairobi"
     - "I studied economics"
     - "statistician jobs"
     """
-    results = search_jobs(db, q=q, location=location, seniority=seniority)
+    # Enhanced search with optional personalization
+    results = search_jobs(
+        db, 
+        q=q, 
+        location=location, 
+        seniority=seniority,
+        user=current_user if personalized and current_user else None
+    )
+    
+    # Add personalization metadata if user is authenticated
+    if current_user and personalized:
+        return {
+            "results": results,
+            "personalized": True,
+            "user_profile_used": bool(current_user.profile),
+            "total": len(results)
+        }
+    
     return results
 
 @api_router.get("/translate-title")

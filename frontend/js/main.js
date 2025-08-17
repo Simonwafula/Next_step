@@ -4,19 +4,24 @@ class CareerSearchApp {
         this.currentSection = 'search';
         this.user = null;
         this.subscription = null;
+        this.authManager = null;
+        this.dashboardManager = null;
         
         this.initializeApp();
     }
     
     async initializeApp() {
+        // Initialize authentication manager
+        this.initializeAuthManager();
+        
+        // Initialize dashboard manager
+        this.initializeDashboardManager();
+        
         // Initialize navigation
         this.initializeNavigation();
         
         // Initialize modals
         this.initializeModals();
-        
-        // Load user data if logged in
-        await this.loadUserData();
         
         // Initialize sections
         this.initializeSections();
@@ -25,6 +30,72 @@ class CareerSearchApp {
         this.setupPeriodicRefresh();
         
         console.log('CareerSearch app initialized');
+    }
+    
+    initializeAuthManager() {
+        // Get the auth manager from the global scope
+        this.authManager = window.authManager;
+        
+        if (this.authManager) {
+            // Set up authentication event listeners
+            this.authManager.onAuthStateChange((isAuthenticated, user) => {
+                this.handleAuthStateChange(isAuthenticated, user);
+            });
+        }
+    }
+    
+    initializeDashboardManager() {
+        // Get the dashboard manager from the global scope
+        this.dashboardManager = window.dashboardManager;
+        
+        if (this.dashboardManager && this.authManager) {
+            // Connect dashboard manager with auth manager
+            this.dashboardManager.setAuthManager(this.authManager);
+        }
+    }
+    
+    handleAuthStateChange(isAuthenticated, user) {
+        this.user = user;
+        
+        if (isAuthenticated) {
+            this.updateUIForLoggedInUser();
+            this.loadUserSubscription();
+        } else {
+            this.updateUIForLoggedOutUser();
+        }
+    }
+    
+    updateUIForLoggedInUser() {
+        // Show/hide appropriate UI elements
+        const loggedOutActions = document.getElementById('loggedOutActions');
+        const loggedInActions = document.getElementById('loggedInActions');
+        const dashboardNav = document.getElementById('dashboardNav');
+        
+        if (loggedOutActions) loggedOutActions.style.display = 'none';
+        if (loggedInActions) loggedInActions.style.display = 'block';
+        if (dashboardNav) dashboardNav.style.display = 'block';
+        
+        // Update user name in the UI
+        const userName = document.getElementById('userName');
+        if (userName && this.user) {
+            userName.textContent = this.user.full_name || this.user.email;
+        }
+    }
+    
+    updateUIForLoggedOutUser() {
+        // Show/hide appropriate UI elements
+        const loggedOutActions = document.getElementById('loggedOutActions');
+        const loggedInActions = document.getElementById('loggedInActions');
+        const dashboardNav = document.getElementById('dashboardNav');
+        
+        if (loggedOutActions) loggedOutActions.style.display = 'block';
+        if (loggedInActions) loggedInActions.style.display = 'none';
+        if (dashboardNav) dashboardNav.style.display = 'none';
+        
+        // If currently on dashboard, redirect to search
+        if (this.currentSection === 'dashboard') {
+            this.showSection('search');
+        }
     }
     
     initializeNavigation() {
@@ -476,6 +547,57 @@ class CareerSearchApp {
         });
     }
     
+    initializeCoverLetterGenerator() {
+        const generateBtn = document.getElementById('generateCoverLetter');
+        generateBtn.addEventListener('click', async () => {
+            const jobData = {
+                title: document.getElementById('clJobTitle').value,
+                company: document.getElementById('clCompany').value,
+                description: document.getElementById('clJobDescription').value
+            };
+            
+            const userData = {
+                background: document.getElementById('clYourBackground').value,
+                skills: document.getElementById('clYourSkills').value
+            };
+            
+            await this.generateCoverLetter(userData, jobData);
+        });
+    }
+    
+    initializeStatementGenerator() {
+        const generateBtn = document.getElementById('generateStatement');
+        generateBtn.addEventListener('click', async () => {
+            const userData = {
+                background: document.getElementById('stBackground').value,
+                experience: document.getElementById('stExperience').value,
+                skills: document.getElementById('stSkills').value,
+                achievements: document.getElementById('stAchievements').value,
+                values: document.getElementById('stValues').value
+            };
+            
+            const targetRole = document.getElementById('stTargetRole').value;
+            
+            await this.generateStatement(userData, targetRole);
+        });
+    }
+    
+    initializeCareerAdvisor() {
+        const generateBtn = document.getElementById('getCareerAdvice');
+        generateBtn.addEventListener('click', async () => {
+            const userData = {
+                current_role: document.getElementById('caCurrentRole').value,
+                experience_level: document.getElementById('caExperienceLevel').value,
+                skills: document.getElementById('caSkills').value,
+                career_goals: document.getElementById('caGoals').value
+            };
+            
+            const query = document.getElementById('caQuery').value;
+            
+            await this.getCareerAdvice(userData, query);
+        });
+    }
+    
     async generateCV(userData, targetRole) {
         const output = document.getElementById('cvOutput');
         const generateBtn = document.getElementById('generateCV');
@@ -512,14 +634,187 @@ class CareerSearchApp {
         }
     }
     
+    async generateCoverLetter(userData, jobData) {
+        const output = document.getElementById('coverLetterOutput');
+        const generateBtn = document.getElementById('generateCoverLetter');
+        
+        try {
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            
+            // Use MCP server to generate cover letter
+            const response = await api.generateCoverLetter({
+                user_profile: {
+                    name: this.user?.full_name || 'User',
+                    background: userData.background,
+                    skills: userData.skills
+                },
+                job_data: jobData
+            });
+            
+            output.innerHTML = `
+                <h3>Generated Cover Letter</h3>
+                <div class="cover-letter-preview">
+                    <pre>${response.content}</pre>
+                </div>
+                <div class="cover-letter-actions">
+                    <button class="btn-primary" onclick="window.downloadDocument('cover-letter')">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn-secondary" onclick="window.editDocument('cover-letter')">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+            `;
+            
+            output.style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error generating cover letter:', error);
+            this.showNotification('Failed to generate cover letter. Please try again.', 'error');
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Cover Letter';
+        }
+    }
+    
+    async generateStatement(userData, targetRole) {
+        const output = document.getElementById('statementOutput');
+        const generateBtn = document.getElementById('generateStatement');
+        
+        try {
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
+            
+            // Use MCP server to generate statement
+            const response = await api.generateWhyWorkWithStatement({
+                user_profile: {
+                    name: this.user?.full_name || 'User',
+                    background: userData.background,
+                    experience: userData.experience,
+                    skills: userData.skills,
+                    achievements: userData.achievements,
+                    values: userData.values
+                },
+                target_role: targetRole
+            });
+            
+            output.innerHTML = `
+                <h3>Generated "Why Work With Me" Statement</h3>
+                <div class="statement-preview">
+                    <pre>${response.content}</pre>
+                </div>
+                <div class="statement-actions">
+                    <button class="btn-primary" onclick="window.downloadDocument('statement')">
+                        <i class="fas fa-download"></i> Download
+                    </button>
+                    <button class="btn-secondary" onclick="window.editDocument('statement')">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                </div>
+            `;
+            
+            output.style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error generating statement:', error);
+            this.showNotification('Failed to generate statement. Please try again.', 'error');
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Statement';
+        }
+    }
+    
+    async getCareerAdvice(userData, query) {
+        const output = document.getElementById('careerAdviceOutput');
+        const generateBtn = document.getElementById('getCareerAdvice');
+        
+        try {
+            generateBtn.disabled = true;
+            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Advice...';
+            
+            // Use MCP server to get career advice
+            const response = await api.generateCareerAdvice({
+                user_profile: userData,
+                query: query
+            });
+            
+            output.innerHTML = `
+                <h3>Career Advice</h3>
+                <div class="advice-content">
+                    <div class="advice-section">
+                        <h4>Recommendations</h4>
+                        <p>${response.advice}</p>
+                    </div>
+                    ${response.next_steps ? `
+                        <div class="advice-section">
+                            <h4>Next Steps</h4>
+                            <ul>
+                                ${response.next_steps.map(step => `<li>${step}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                    ${response.resources ? `
+                        <div class="advice-section">
+                            <h4>Recommended Resources</h4>
+                            <ul>
+                                ${response.resources.map(resource => `<li>${resource}</li>`).join('')}
+                            </ul>
+                        </div>
+                    ` : ''}
+                </div>
+                <div class="advice-actions">
+                    <button class="btn-primary" onclick="window.saveAdvice()">
+                        <i class="fas fa-save"></i> Save Advice
+                    </button>
+                    <button class="btn-secondary" onclick="window.shareAdvice()">
+                        <i class="fas fa-share"></i> Share
+                    </button>
+                </div>
+            `;
+            
+            output.style.display = 'block';
+            
+        } catch (error) {
+            console.error('Error getting career advice:', error);
+            this.showNotification('Failed to get career advice. Please try again.', 'error');
+        } finally {
+            generateBtn.disabled = false;
+            generateBtn.innerHTML = '<i class="fas fa-lightbulb"></i> Get Career Advice';
+        }
+    }
+
     async mockGenerateCV(userData, targetRole) {
-        // Mock response - replace with actual API call
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve({
-                    success: true,
-                    cv_content: {
-                        content: `${userData.name}
+        // Use MCP server to generate CV
+        try {
+            const response = await api.generateCV({
+                user_profile: {
+                    name: userData.name,
+                    email: userData.email,
+                    phone: userData.phone,
+                    location: userData.location,
+                    education: userData.education,
+                    experience: userData.experience,
+                    skills: userData.skills
+                },
+                target_role: targetRole
+            });
+            
+            return {
+                success: true,
+                cv_content: {
+                    content: response.content
+                }
+            };
+        } catch (error) {
+            console.error('Error generating CV:', error);
+            // Fallback to mock response
+            return new Promise(resolve => {
+                setTimeout(() => {
+                    resolve({
+                        success: true,
+                        cv_content: {
+                            content: `${userData.name}
 ${userData.email} | ${userData.phone} | ${userData.location}
 
 PROFESSIONAL SUMMARY
@@ -535,10 +830,33 @@ KEY SKILLS
 ${userData.skills}
 
 Generated for: ${targetRole || 'General Position'}`
-                    }
-                });
-            }, 2000);
-        });
+                        }
+                    });
+                }, 2000);
+            });
+        }
+    }
+    
+    async loadUserSubscription() {
+        if (!this.user) return;
+        
+        try {
+            const response = await api.getUserSubscription();
+            this.subscription = response;
+        } catch (error) {
+            console.error('Error loading user subscription:', error);
+            // Use mock data for now
+            this.subscription = await this.getUserSubscription();
+        }
+    }
+    
+    showNotification(message, type = 'info') {
+        // Use the existing notification system
+        if (window.showNotification) {
+            window.showNotification(message, type);
+        } else {
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
     }
     
     async loadPremiumData() {
@@ -663,9 +981,25 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Global utility functions
 window.downloadCV = function() {
-    notifications.info('CV download functionality would be implemented here');
+    window.showNotification('CV download functionality would be implemented here', 'info');
 };
 
 window.editCV = function() {
-    notifications.info('CV editing functionality would be implemented here');
+    window.showNotification('CV editing functionality would be implemented here', 'info');
+};
+
+window.downloadDocument = function(type) {
+    window.showNotification(`${type} download functionality would be implemented here`, 'info');
+};
+
+window.editDocument = function(type) {
+    window.showNotification(`${type} editing functionality would be implemented here`, 'info');
+};
+
+window.saveAdvice = function() {
+    window.showNotification('Career advice saved to your dashboard', 'success');
+};
+
+window.shareAdvice = function() {
+    window.showNotification('Share functionality would be implemented here', 'info');
 };

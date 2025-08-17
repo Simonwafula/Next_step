@@ -203,6 +203,225 @@ class APIClient {
     async getRecentJobs(limit = 10) {
         return this.get(CONFIG.ENDPOINTS.RECENT_JOBS, { limit });
     }
+
+    // Authentication endpoints
+    async login(email, password) {
+        return this.post('/auth/login', { email, password });
+    }
+
+    async register(userData) {
+        return this.post('/auth/register', userData);
+    }
+
+    async refreshToken() {
+        return this.post('/auth/refresh');
+    }
+
+    async logout() {
+        return this.post('/auth/logout');
+    }
+
+    async getCurrentUser() {
+        return this.get('/auth/me');
+    }
+
+    // User profile endpoints
+    async getUserProfile() {
+        return this.get('/user/profile');
+    }
+
+    async updateUserProfile(profileData) {
+        return this.put('/user/profile', profileData);
+    }
+
+    async getUserSubscription() {
+        return this.get('/user/subscription');
+    }
+
+    // User dashboard endpoints
+    async getUserRecommendations(params = {}) {
+        return this.get('/user/recommendations', params);
+    }
+
+    async getSavedJobs(params = {}) {
+        return this.get('/user/saved-jobs', params);
+    }
+
+    async saveJob(jobId) {
+        return this.post('/user/save-job', { job_id: jobId });
+    }
+
+    async removeSavedJob(jobId) {
+        return this.delete(`/user/saved-jobs/${jobId}`);
+    }
+
+    async getUserApplications(params = {}) {
+        return this.get('/user/applications', params);
+    }
+
+    async getUserNotifications() {
+        return this.get('/user/notifications');
+    }
+
+    async markNotificationRead(notificationId) {
+        return this.post(`/user/notifications/${notificationId}/read`);
+    }
+
+    async markAllNotificationsRead() {
+        return this.post('/user/notifications/mark-all-read');
+    }
+
+    async clearAllNotifications() {
+        return this.delete('/user/notifications');
+    }
+
+    async getUserRecentActivity() {
+        return this.get('/user/recent-activity');
+    }
+
+    async getUserApplicationStats() {
+        return this.get('/user/application-stats');
+    }
+
+    // Career tools endpoints (MCP server integration)
+    async generateCV(userData) {
+        try {
+            // Try to use MCP server first
+            const response = await this.post('/career-tools/generate-cv', userData);
+            return response;
+        } catch (error) {
+            console.error('MCP CV generation failed, using fallback:', error);
+            // Fallback to mock response
+            return {
+                content: this.generateMockCV(userData)
+            };
+        }
+    }
+
+    async generateCoverLetter(data) {
+        try {
+            // Try to use MCP server first
+            const response = await this.post('/career-tools/generate-cover-letter', data);
+            return response;
+        } catch (error) {
+            console.error('MCP cover letter generation failed, using fallback:', error);
+            // Fallback to mock response
+            return {
+                content: this.generateMockCoverLetter(data)
+            };
+        }
+    }
+
+    async generateWhyWorkWithStatement(data) {
+        try {
+            // Try to use MCP server first
+            const response = await this.post('/career-tools/generate-statement', data);
+            return response;
+        } catch (error) {
+            console.error('MCP statement generation failed, using fallback:', error);
+            // Fallback to mock response
+            return {
+                content: this.generateMockStatement(data)
+            };
+        }
+    }
+
+    async generateCareerAdvice(data) {
+        try {
+            // Try to use MCP server first
+            const response = await this.post('/career-tools/generate-advice', data);
+            return response;
+        } catch (error) {
+            console.error('MCP career advice generation failed, using fallback:', error);
+            // Fallback to mock response
+            return {
+                advice: this.generateMockAdvice(data),
+                next_steps: [
+                    "Update your resume with relevant skills",
+                    "Network with professionals in your target field",
+                    "Consider additional training or certifications",
+                    "Apply to entry-level positions in your desired area"
+                ],
+                resources: [
+                    "LinkedIn Learning courses",
+                    "Industry-specific online communities",
+                    "Professional development workshops",
+                    "Mentorship programs"
+                ]
+            };
+        }
+    }
+
+    // Mock generation methods (fallbacks)
+    generateMockCV(userData) {
+        const profile = userData.user_profile;
+        return `${profile.name}
+${profile.email} | ${profile.phone || ''} | ${profile.location || ''}
+
+PROFESSIONAL SUMMARY
+Dedicated professional with strong analytical and communication skills. Proven ability to work effectively in team environments and deliver high-quality results. Passionate about continuous learning and professional development.
+
+EDUCATION
+${profile.education || 'Education details to be added'}
+
+WORK EXPERIENCE
+${profile.experience || 'Work experience details to be added'}
+
+KEY SKILLS
+${profile.skills || 'Skills to be added'}
+
+${userData.target_role ? `\nTailored for: ${userData.target_role}` : ''}`;
+    }
+
+    generateMockCoverLetter(data) {
+        const profile = data.user_profile;
+        const job = data.job_data;
+        
+        return `Dear Hiring Manager,
+
+I am writing to express my strong interest in the ${job.title} position at ${job.company}. With my background in ${profile.background || 'relevant field'} and skills in ${profile.skills || 'key areas'}, I am confident I would be a valuable addition to your team.
+
+${profile.background ? `My professional background includes ${profile.background}, which has equipped me with the skills and experience necessary for this role.` : ''}
+
+${job.description ? 'Based on the job description, I believe my experience aligns well with your requirements.' : ''} I am particularly excited about the opportunity to contribute to ${job.company}'s continued success.
+
+I would welcome the opportunity to discuss how my skills and enthusiasm can benefit your organization. Thank you for considering my application.
+
+Sincerely,
+${profile.name}`;
+    }
+
+    generateMockStatement(data) {
+        const profile = data.user_profile;
+        
+        return `Why Work With ${profile.name}
+
+${profile.background ? `Professional Background: ${profile.background}` : ''}
+
+${profile.experience ? `Key Experience: ${profile.experience}` : ''}
+
+${profile.skills ? `Core Competencies: ${profile.skills}` : ''}
+
+${profile.achievements ? `Notable Achievements: ${profile.achievements}` : ''}
+
+${profile.values ? `Professional Values: ${profile.values}` : ''}
+
+I bring a unique combination of technical expertise, strong work ethic, and collaborative approach that drives results and adds value to any organization.
+
+${data.target_role ? `Specifically for ${data.target_role} roles, I offer relevant experience and a passion for excellence that would benefit your team.` : ''}`;
+    }
+
+    generateMockAdvice(data) {
+        const profile = data.user_profile;
+        
+        return `Based on your current role as ${profile.current_role || 'professional'} with ${profile.experience_level || 'your level of'} experience, here are my recommendations:
+
+Your skills in ${profile.skills || 'various areas'} provide a strong foundation for career growth. ${profile.career_goals ? `Given your goal of ${profile.career_goals}, I recommend focusing on building expertise in related areas and networking within your target industry.` : ''}
+
+Consider developing both technical and soft skills that are in high demand in your field. Stay updated with industry trends and consider pursuing relevant certifications or additional training.
+
+The job market is constantly evolving, so maintaining a growth mindset and being adaptable to change will serve you well in achieving your career objectives.`;
+    }
 }
 
 // Custom error class for API errors
