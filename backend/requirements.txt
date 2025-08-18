@@ -72,6 +72,9 @@ google-auth-oauthlib==1.0.0
 exchangelib==5.0.3
 
 # ATS Integration
-greenhouse-api==1.0.0
-lever-api==1.0.0
-workday-api==1.0.0
+# The following unofficial/placeholder packages are not available on PyPI and
+# caused installation failures. Use the provider HTTP APIs (via httpx) or
+# replace these with maintained client packages if you have specific ones.
+# greenhouse-api==1.0.0
+# lever-api==1.0.0
+# workday-api==1.0.0
