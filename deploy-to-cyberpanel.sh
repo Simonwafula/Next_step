@@ -48,10 +48,17 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
-# Check if running as root
+# Check if running as root. For safety we disallow root unless ALLOW_ROOT=1 is set.
 if [[ $EUID -eq 0 ]]; then
-   print_error "This script should not be run as root for security reasons"
-   exit 1
+    if [[ "$ALLOW_ROOT" == "1" ]]; then
+        print_warning "Running as root because ALLOW_ROOT=1 was set. Proceeding with caution."
+    else
+        print_error "This script should not be run as root for security reasons."
+        echo
+        echo "If you understand the risks and still want to run as root, re-run with the environment variable set:"
+        echo "  ALLOW_ROOT=1 ./deploy-to-cyberpanel.sh <domain_user>"
+        exit 1
+    fi
 fi
 
 # Check if we're in the correct directory
