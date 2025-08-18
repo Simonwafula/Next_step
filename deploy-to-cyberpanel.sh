@@ -133,10 +133,13 @@ if ! command -v redis-cli &> /dev/null; then
     sudo systemctl start redis-server
 fi
 
-# Check if Python 3.9+ is available
-python_version=$(python3 --version 2>&1 | awk '{print $2}' | cut -d. -f1,2)
-if (( $(echo "$python_version < 3.9" | bc -l) )); then
-    print_error "Python 3.9+ is required. Current version: $python_version"
+# Check if Python 3.9+ is available (robust integer compare)
+python_version_full=$(python3 --version 2>&1 | awk '{print $2}')
+IFS=. read -r PY_MAJOR PY_MINOR _ <<< "$python_version_full"
+PY_MAJOR=${PY_MAJOR:-0}
+PY_MINOR=${PY_MINOR:-0}
+if (( PY_MAJOR < 3 || (PY_MAJOR == 3 && PY_MINOR < 9) )); then
+    print_error "Python 3.9+ is required. Current version: $python_version_full"
     exit 1
 fi
 
