@@ -57,14 +57,57 @@ done
 # If provided DOMAIN_USER doesn't exist, try to auto-detect from owner of public_html
 if ! id "$DOMAIN_USER" &>/dev/null; then
     if [[ -n "$PUBLIC_HTML_DIR" ]]; then
-        # detect owner (use stat -c on Linux; fallback to ls)
-        OWNER=$(stat -c '%U' "$PUBLIC_HTML_DIR" 2>/dev/null || ls -ld "$PUBLIC_HTML_DIR" | awk '{print $3}')
-        if [[ -n "$OWNER" ]] && id "$OWNER" &>/dev/null; then
-            print_status "Detected user '$OWNER' as owner of $PUBLIC_HTML_DIR; switching DOMAIN_USER to '$OWNER'"
-            DOMAIN_USER="$OWNER"
-            APP_DIR="$PUBLIC_HTML_DIR"
+        # Prefer to find actual project root (a dir containing backend/app/main.py)
+        dir="$PWD"
+        PROJECT_ROOT=""
+        while [[ "$dir" != "/" && "$dir" != "" ]]; do
+            if [[ -f "$dir/backend/app/main.py" ]]; then
+                PROJECT_ROOT="$dir"
+                break
+            fi
+            # stop if we've walked out of the public_html tree
+            if [[ "${dir#${PUBLIC_HTML_DIR}}" == "$dir" ]]; then
+                dir=$(dirname "$dir")
+            else
+                dir=$(dirname "$dir")
+            fi
+        done
+
+        # If we found a project root inside public_html, use it
+        if [[ -n "$PROJECT_ROOT" ]]; then
+            OWNER=$(stat -c '%U' "$PROJECT_ROOT" 2>/dev/null || ls -ld "$PROJECT_ROOT" | awk '{print $3}')
+            if [[ -n "$OWNER" ]] && id "$OWNER" &>/dev/null; then
+                print_status "Detected user '$OWNER' as owner of $PROJECT_ROOT; switching DOMAIN_USER to '$OWNER'"
+                DOMAIN_USER="$OWNER"
+                APP_DIR="$PROJECT_ROOT"
+            else
+                print_warning "Owner detection for $PROJECT_ROOT failed or owner user does not exist. Falling back to public_html owner."
+                OWNER=$(stat -c '%U' "$PUBLIC_HTML_DIR" 2>/dev/null || ls -ld "$PUBLIC_HTML_DIR" | awk '{print $3}')
+                if [[ -n "$OWNER" ]] && id "$OWNER" &>/dev/null; then
+                    DOMAIN_USER="$OWNER"
+                    APP_DIR="$PUBLIC_HTML_DIR"
+                fi
+            fi
         else
-            print_warning "Provided user '$DOMAIN_USER' not found and owner detection failed or owner user does not exist."
+            # Fallback: try public_html/<repo-dir-name>
+            CAND="$PUBLIC_HTML_DIR/$(basename "$PWD")"
+            if [[ -d "$CAND" && -d "$CAND/backend" ]]; then
+                OWNER=$(stat -c '%U' "$CAND" 2>/dev/null || ls -ld "$CAND" | awk '{print $3}')
+                if [[ -n "$OWNER" ]] && id "$OWNER" &>/dev/null; then
+                    print_status "Detected project folder $CAND and owner '$OWNER'; switching DOMAIN_USER to '$OWNER'"
+                    DOMAIN_USER="$OWNER"
+                    APP_DIR="$CAND"
+                fi
+            else
+                OWNER=$(stat -c '%U' "$PUBLIC_HTML_DIR" 2>/dev/null || ls -ld "$PUBLIC_HTML_DIR" | awk '{print $3}')
+                if [[ -n "$OWNER" ]] && id "$OWNER" &>/dev/null; then
+                    print_status "Detected user '$OWNER' as owner of $PUBLIC_HTML_DIR; switching DOMAIN_USER to '$OWNER'"
+                    DOMAIN_USER="$OWNER"
+                    APP_DIR="$PUBLIC_HTML_DIR"
+                else
+                    print_warning "Provided user '$DOMAIN_USER' not found and owner detection failed."
+                fi
+            fi
         fi
     else
         print_warning "Provided user '$DOMAIN_USER' not found and no ancestor public_html directory was found to auto-detect owner."
