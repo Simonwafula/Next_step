@@ -2,13 +2,30 @@
 
 # NextStep Career Platform - CyberPanel Deployment Script
 # This script deploys the application to a VPS with CyberPanel already configured
+# 
+# CyberPanel Configuration Notes:
+# - Uses /home/domain-name/public_html instead of /var/www/html
+# - Services run under domain user (nextstep.co.ke) instead of www-data
+# - Assumes domain user exists and has proper permissions
 
 set -e  # Exit on any error
 
 echo "🚀 Starting NextStep Career Platform deployment to CyberPanel..."
 
-# Configuration
-APP_DIR="/home/nextstep.co.ke/public_html"
+# Default domain user (can be overridden)
+DEFAULT_DOMAIN_USER="nextstep.co.ke"
+
+# Determine DOMAIN_USER in this order: CLI arg, DEPLOY_DOMAIN_USER env var, default
+if [[ -n "$1" ]]; then
+    DOMAIN_USER="$1"
+elif [[ -n "$DEPLOY_DOMAIN_USER" ]]; then
+    DOMAIN_USER="$DEPLOY_DOMAIN_USER"
+else
+    DOMAIN_USER="$DEFAULT_DOMAIN_USER"
+fi
+
+# Derive application paths from the DOMAIN_USER
+APP_DIR="/home/$DOMAIN_USER/public_html"
 BACKEND_DIR="$APP_DIR/backend"
 FRONTEND_DIR="$APP_DIR/frontend"
 
@@ -50,6 +67,19 @@ if ! command -v cyberpanel &> /dev/null; then
     print_warning "CyberPanel command not found. Assuming CyberPanel is installed via web interface."
 fi
 
+# Check if domain user exists
+if ! id "$DOMAIN_USER" &>/dev/null; then
+    print_error "Domain user '$DOMAIN_USER' does not exist. Please create the domain in CyberPanel first."
+    exit 1
+fi
+
+# Check if application directory exists
+if [[ ! -d "$APP_DIR" ]]; then
+    print_status "Creating application directory: $APP_DIR"
+    sudo mkdir -p "$APP_DIR"
+    sudo chown "$DOMAIN_USER:$DOMAIN_USER" "$APP_DIR"
+fi
+
 # Check if PostgreSQL is installed
 if ! command -v psql &> /dev/null; then
     print_error "PostgreSQL is not installed. Please install it first."
@@ -89,7 +119,8 @@ print_status "Installing backend dependencies..."
 
 # Create virtual environment if it doesn't exist
 if [[ ! -d "venv" ]]; then
-    python3 -m venv venv
+    # create the venv as the domain user so files are owned correctly
+    sudo -u "$DOMAIN_USER" python3 -m venv venv
 fi
 
 # Activate virtual environment
@@ -100,6 +131,9 @@ pip install --upgrade pip
 
 # Install requirements
 pip install -r requirements.txt
+
+# ensure venv is owned by domain user
+sudo chown -R "$DOMAIN_USER:$DOMAIN_USER" "$BACKEND_DIR/venv"
 
 print_status "Setting up environment configuration..."
 
@@ -153,9 +187,9 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
+User=$DOMAIN_USER
 WorkingDirectory=$BACKEND_DIR
-Environment=PATH=$BACKEND_DIR/venv/bin
+Environment="PATH=$BACKEND_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=$BACKEND_DIR/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 Restart=always
 RestartSec=3
@@ -172,9 +206,9 @@ After=network.target redis.service
 
 [Service]
 Type=simple
-User=www-data
+User=$DOMAIN_USER
 WorkingDirectory=$BACKEND_DIR
-Environment=PATH=$BACKEND_DIR/venv/bin
+Environment="PATH=$BACKEND_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=$BACKEND_DIR/venv/bin/python -m celery -A app.core.celery_app worker --loglevel=info
 Restart=always
 RestartSec=3
@@ -191,9 +225,9 @@ After=network.target redis.service
 
 [Service]
 Type=simple
-User=www-data
+User=$DOMAIN_USER
 WorkingDirectory=$BACKEND_DIR
-Environment=PATH=$BACKEND_DIR/venv/bin
+Environment="PATH=$BACKEND_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=$BACKEND_DIR/venv/bin/python -m celery -A app.core.celery_app beat --loglevel=info
 Restart=always
 RestartSec=3
@@ -241,8 +275,8 @@ fi
 
 print_status "Setting up file permissions..."
 
-# Set proper permissions
-sudo chown -R www-data:www-data $APP_DIR
+# Set proper permissions for CyberPanel
+sudo chown -R "$DOMAIN_USER:$DOMAIN_USER" "$APP_DIR"
 sudo chmod -R 755 $APP_DIR
 
 print_status "Testing API endpoint..."
@@ -260,7 +294,7 @@ fi
 print_status "Setting up backup script..."
 
 # Create backup script
-sudo tee /usr/local/bin/backup-nextstep.sh > /dev/null << 'EOF'
+sudo tee /usr/local/bin/backup-nextstep.sh > /dev/null << EOF
 #!/bin/bash
 BACKUP_DIR="/home/backups/nextstep"
 DATE=$(date +%Y%m%d_%H%M%S)
@@ -271,7 +305,7 @@ mkdir -p $BACKUP_DIR
 pg_dump -U nextstep_user -h localhost career_lmi > $BACKUP_DIR/db_backup_$DATE.sql
 
 # Backup application files
-tar -czf $BACKUP_DIR/app_backup_$DATE.tar.gz /home/nextstep.co.ke/public_html
+tar -czf $BACKUP_DIR/app_backup_$DATE.tar.gz "$APP_DIR"
 
 # Keep only last 7 days of backups
 find $BACKUP_DIR -name "*.sql" -mtime +7 -delete
@@ -281,6 +315,12 @@ echo "Backup completed: $DATE"
 EOF
 
 sudo chmod +x /usr/local/bin/backup-nextstep.sh
+
+# Install daily cron job for backups (runs at 02:00) if not already installed
+if ! crontab -l 2>/dev/null | grep -q "/usr/local/bin/backup-nextstep.sh"; then
+    (crontab -l 2>/dev/null; echo "0 2 * * * /usr/local/bin/backup-nextstep.sh >> /var/log/backup-nextstep.log 2>&1") | crontab -
+    print_status "Installed daily cron job for backups"
+fi
 
 print_status "Creating deployment update script..."
 
