@@ -60,3 +60,18 @@ Pillow==10.4.0
 # Additional utilities
 python-slugify==8.0.4
 phonenumbers==8.13.40
+
+# LinkedIn Integration
+linkedin-api==2.2.0
+requests-oauthlib==1.3.1
+
+# Calendar Integration
+google-api-python-client==2.100.0
+google-auth-httplib2==0.1.1
+google-auth-oauthlib==1.0.0
+exchangelib==5.0.3
+
+# ATS Integration
+greenhouse-api==1.0.0
+lever-api==1.0.0
+workday-api==1.0.0

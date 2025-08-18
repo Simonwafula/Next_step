@@ -113,5 +113,22 @@ class Settings(BaseModel):
         "one_on_one_coaching", "interview_preparation", "linkedin_optimization",
         "direct_recruiter_connections", "custom_job_alerts", "company_insights"
     ]
+    
+    # LinkedIn Integration
+    LINKEDIN_CLIENT_ID: Optional[str] = os.getenv("LINKEDIN_CLIENT_ID")
+    LINKEDIN_CLIENT_SECRET: Optional[str] = os.getenv("LINKEDIN_CLIENT_SECRET")
+    
+    # Google Calendar Integration
+    GOOGLE_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_CLIENT_ID")
+    GOOGLE_CLIENT_SECRET: Optional[str] = os.getenv("GOOGLE_CLIENT_SECRET")
+    
+    # Microsoft Calendar Integration
+    MICROSOFT_CLIENT_ID: Optional[str] = os.getenv("MICROSOFT_CLIENT_ID")
+    MICROSOFT_CLIENT_SECRET: Optional[str] = os.getenv("MICROSOFT_CLIENT_SECRET")
+    
+    # Integration Feature Flags
+    ENABLE_LINKEDIN_INTEGRATION: bool = os.getenv("ENABLE_LINKEDIN_INTEGRATION", "true").lower() == "true"
+    ENABLE_CALENDAR_INTEGRATION: bool = os.getenv("ENABLE_CALENDAR_INTEGRATION", "true").lower() == "true"
+    ENABLE_ATS_INTEGRATION: bool = os.getenv("ENABLE_ATS_INTEGRATION", "true").lower() == "true"
 
 settings = Settings()

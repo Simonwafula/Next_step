@@ -14,12 +14,14 @@ from ..normalization.titles import get_careers_for_degree, normalize_title
 from ..ingestion.runner import run_all_sources
 from .auth_routes import router as auth_router
 from .user_routes import router as user_router
+from .integration_routes import router as integration_router
 
 api_router = APIRouter()
 
 # Include authentication and user management routes
 api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 api_router.include_router(user_router, prefix="/users", tags=["user-management"])
+api_router.include_router(integration_router, prefix="/integrations", tags=["integrations"])
 
 # Enhanced Job Search & Title Translation
 @api_router.get("/search", response_model=list[dict])
