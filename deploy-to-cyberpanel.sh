@@ -24,8 +24,39 @@ else
     DOMAIN_USER="$DEFAULT_DOMAIN_USER"
 fi
 
-# Derive application paths from the DOMAIN_USER
-APP_DIR="/home/$DOMAIN_USER/public_html"
+# Try to find an ancestor "public_html" dir (useful when running from /home/<user>/public_html/Next_step)
+PUBLIC_HTML_DIR=""
+dir="$PWD"
+while [[ "$dir" != "/" ]]; do
+    if [[ "$(basename "$dir")" == "public_html" ]]; then
+        PUBLIC_HTML_DIR="$dir"
+        break
+    fi
+    dir=$(dirname "$dir")
+done
+
+# If provided DOMAIN_USER doesn't exist, try to auto-detect from owner of public_html
+if ! id "$DOMAIN_USER" &>/dev/null; then
+    if [[ -n "$PUBLIC_HTML_DIR" ]]; then
+        # detect owner (use stat -c on Linux; fallback to ls)
+        OWNER=$(stat -c '%U' "$PUBLIC_HTML_DIR" 2>/dev/null || ls -ld "$PUBLIC_HTML_DIR" | awk '{print $3}')
+        if [[ -n "$OWNER" ]] && id "$OWNER" &>/dev/null; then
+            print_status "Detected user '$OWNER' as owner of $PUBLIC_HTML_DIR; switching DOMAIN_USER to '$OWNER'"
+            DOMAIN_USER="$OWNER"
+            APP_DIR="$PUBLIC_HTML_DIR"
+        else
+            print_warning "Provided user '$DOMAIN_USER' not found and owner detection failed or owner user does not exist."
+        fi
+    else
+        print_warning "Provided user '$DOMAIN_USER' not found and no ancestor public_html directory was found to auto-detect owner."
+    fi
+fi
+
+# If APP_DIR wasn't set via detection, derive it from DOMAIN_USER
+if [[ -z "$APP_DIR" ]]; then
+    APP_DIR="/home/$DOMAIN_USER/public_html"
+fi
+
 BACKEND_DIR="$APP_DIR/backend"
 FRONTEND_DIR="$APP_DIR/frontend"
 
