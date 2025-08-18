@@ -64,13 +64,13 @@ Update the following in your `.env` file:
 APP_ENV=production
 APP_HOST=0.0.0.0
 APP_PORT=8000
-CORS_ORIGINS=https://yourdomain.com
+CORS_ORIGINS=https://nextstep.co.ke
 
-# Domain Configuration (replace with your domain)
-DOMAIN=yourdomain.com
-API_DOMAIN=api.yourdomain.com
-WEBSITE_URL=https://yourdomain.com
-API_BASE_URL=https://api.yourdomain.com
+# Domain Configuration
+DOMAIN=nextstep.co.ke
+API_DOMAIN=api.nextstep.co.ke
+WEBSITE_URL=https://nextstep.co.ke
+API_BASE_URL=https://api.nextstep.co.ke
 
 # PostgreSQL Database Configuration
 POSTGRES_USER=nextstep_user
@@ -118,7 +118,7 @@ Add the following configuration:
 ```nginx
 server {
     listen 80;
-    server_name yourdomain.com www.yourdomain.com;
+    server_name nextstep.co.ke www.nextstep.co.ke;
 
     # Frontend
     location / {
@@ -163,7 +163,7 @@ sudo apt install certbot python3-certbot-nginx -y
 
 ### Obtain SSL Certificate
 ```bash
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
+sudo certbot --nginx -d nextstep.co.ke -d www.nextstep.co.ke
 ```
 
 ## 5. Firewall Configuration
@@ -316,4 +316,4 @@ For issues or questions:
 
 ---
 
-**Note**: Replace `yourdomain.com` with your actual domain name throughout this guide.
+**Note**: This deployment guide is configured for nextstep.co.ke. All domain references have been updated accordingly.
