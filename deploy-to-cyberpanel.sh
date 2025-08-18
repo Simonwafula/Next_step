@@ -118,6 +118,10 @@ if [[ ! -d "$APP_DIR" ]]; then
     sudo chown "$DOMAIN_USER:$DOMAIN_USER" "$APP_DIR"
 fi
 
+# Ensure application directory and backend are owned by the domain user so venv creation succeeds
+print_status "Ensuring ownership for $APP_DIR is set to $DOMAIN_USER"
+sudo chown -R "$DOMAIN_USER:$DOMAIN_USER" "$APP_DIR" || true
+
 # Check if PostgreSQL is installed
 if ! command -v psql &> /dev/null; then
     print_error "PostgreSQL is not installed. Please install it first."
