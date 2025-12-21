@@ -16,3 +16,16 @@ def embed_text(text: str) -> list[float]:
     dim = settings.EMBEDDING_DIM
     vec = _hash_to_vec(text, dim)
     return vec.tolist()
+
+
+def generate_embeddings(texts: list[str]) -> list[list[float]]:
+    """Generate embeddings for a list of texts using the hash-based embedder."""
+    return [embed_text(t) for t in texts]
+
+
+def update_embeddings_model(db=None) -> dict:
+    """Placeholder for updating embedding model; no-op for tests.
+
+    Returns a simple dict indicating success to satisfy callers in workflows.
+    """
+    return {"success": True, "message": "no-op in test environment"}

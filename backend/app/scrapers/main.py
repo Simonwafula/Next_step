@@ -2,8 +2,8 @@
 import logging
 import argparse
 from datetime import datetime
-from scraper import SiteSpider
-from config import SITES
+from .scraper import SiteSpider
+from .config import SITES
 
 logging.basicConfig(
     level=logging.INFO,

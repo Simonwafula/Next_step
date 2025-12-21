@@ -141,3 +141,19 @@ def explain_title_match(original: str, normalized_family: str, normalized_title:
     
     family_desc = family_descriptions.get(normalized_family, normalized_family)
     return f"Mapped '{original}' to {family_desc} family as '{normalized_title}'"
+
+
+def update_title_mappings(new_mappings: dict) -> None:
+    """Merge new title alias mappings into the existing TITLE_ALIASES.
+
+    This is a lightweight helper used by learning pipelines to persist
+    discovered aliases during tests.
+    """
+    for k, v in (new_mappings or {}).items():
+        if k in TITLE_ALIASES:
+            # extend existing alias list
+            existing = set(TITLE_ALIASES[k])
+            existing.update(v if isinstance(v, (list, tuple)) else [v])
+            TITLE_ALIASES[k] = list(existing)
+        else:
+            TITLE_ALIASES[k] = list(v) if isinstance(v, (list, tuple)) else [v]

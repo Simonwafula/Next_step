@@ -3,7 +3,13 @@ import json
 import logging
 from typing import List, Dict, Any, Optional, Tuple
 import numpy as np
-from sentence_transformers import SentenceTransformer
+from ..ml.embeddings import embed_text, generate_embeddings
+try:
+    from sentence_transformers import SentenceTransformer  # type: ignore
+    HAS_SENTENCE_TRANSFORMERS = True
+except Exception:
+    SentenceTransformer = None  # type: ignore
+    HAS_SENTENCE_TRANSFORMERS = False
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import openai
@@ -41,22 +47,22 @@ class AIService:
         }
     
     def _get_embedding_model(self):
-        """Lazy load the embedding model."""
+        """Lazy-load a real SentenceTransformer if available, otherwise use internal embedder."""
         if self.embedding_model is None:
-            try:
-                self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-                logger.info("Loaded sentence transformer model")
-            except Exception as e:
-                logger.error(f"Failed to load embedding model: {e}")
-                # Fallback to a simpler model or raise error
-                raise e
+            if HAS_SENTENCE_TRANSFORMERS and SentenceTransformer is not None:
+                try:
+                    self.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+                    logger.info("Loaded sentence-transformers model for embeddings")
+                except Exception as e:
+                    logger.warning(f"Failed to load sentence-transformers model: {e}; falling back to internal embedder")
+                    self.embedding_model = "internal_hash_embedder"
+            else:
+                self.embedding_model = "internal_hash_embedder"
         return self.embedding_model
     
     def generate_job_embedding(self, job_post: JobPost) -> List[float]:
         """Generate semantic embedding for a job posting."""
         try:
-            model = self._get_embedding_model()
-            
             # Combine job text fields
             text_parts = []
             if job_post.title_raw:
@@ -65,16 +71,23 @@ class AIService:
                 text_parts.append(job_post.description_raw[:1000])  # Limit length
             if job_post.requirements_raw:
                 text_parts.append(job_post.requirements_raw[:500])
-            
+
             combined_text = " ".join(text_parts)
-            
+
             if not combined_text.strip():
-                # Return zero vector if no text
-                return [0.0] * 384  # MiniLM embedding size
-            
-            # Generate embedding
-            embedding = model.encode(combined_text, convert_to_tensor=False)
-            return embedding.tolist()
+                return [0.0] * settings.EMBEDDING_DIM
+
+            model = self._get_embedding_model()
+            if model != "internal_hash_embedder":
+                try:
+                    emb = model.encode(combined_text, convert_to_tensor=False)
+                    # sentence-transformers returns numpy array or list
+                    return emb.tolist() if hasattr(emb, 'tolist') else list(emb)
+                except Exception as e:
+                    logger.error(f"Error generating embedding with sentence-transformers: {e}; falling back")
+            # Fallback to internal embedding implementation
+            embedding = embed_text(combined_text)
+            return embedding
             
         except Exception as e:
             logger.error(f"Error generating job embedding: {e}")
@@ -85,8 +98,15 @@ class AIService:
         """Generate embedding for search query."""
         try:
             model = self._get_embedding_model()
-            embedding = model.encode(query, convert_to_tensor=False)
-            return embedding.tolist()
+            if model != "internal_hash_embedder":
+                try:
+                    emb = model.encode(query, convert_to_tensor=False)
+                    return emb.tolist() if hasattr(emb, 'tolist') else list(emb)
+                except Exception as e:
+                    logger.error(f"Error generating query embedding with sentence-transformers: {e}; falling back")
+            # Fallback
+            embedding = embed_text(query)
+            return embedding
         except Exception as e:
             logger.error(f"Error generating query embedding: {e}")
             return [0.0] * 384

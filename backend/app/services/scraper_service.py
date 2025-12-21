@@ -9,8 +9,8 @@ from pathlib import Path
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 
-# Add scrapers to path
-sys.path.append(str(Path(__file__).parent.parent / "scrapers"))
+# Ensure package root (app/) is on sys.path so `import scrapers.*` works
+sys.path.append(str(Path(__file__).parent.parent))
 
 from scrapers.main import scrape_site, scrape_all_sites
 from scrapers.config import SITES, USE_POSTGRES

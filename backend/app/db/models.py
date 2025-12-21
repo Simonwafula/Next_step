@@ -1,6 +1,17 @@
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 from sqlalchemy import String, Integer, Text, ForeignKey, Float, DateTime, Boolean, Index
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+import os
+
+# Use PostgreSQL JSONB when available, but fall back to generic JSON for SQLite
+if os.getenv("DATABASE_URL", "").startswith("sqlite"):
+    from sqlalchemy import JSON as JSONB
+    UUID = String(36)
+else:
+    try:
+        from sqlalchemy.dialects.postgresql import JSONB, UUID
+    except Exception:
+        from sqlalchemy import JSON as JSONB
+        UUID = String(36)
 from datetime import datetime
 from typing import List
 import uuid
@@ -66,6 +77,14 @@ class JobSkill(Base):
     job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"))
     skill_id: Mapped[int] = mapped_column(ForeignKey("skill.id"))
     confidence: Mapped[float] = mapped_column(Float, default=0.5)
+
+
+class ProcessingLog(Base):
+    __tablename__ = "processing_log"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    process_type: Mapped[str] = mapped_column(String(120), index=True)
+    results: Mapped[dict] = mapped_column(JSONB, default=dict)
+    processed_at: Mapped[DateTime] = mapped_column(DateTime, default=datetime.utcnow)
 
 class MetricsDaily(Base):
     __tablename__ = "metrics_daily"
