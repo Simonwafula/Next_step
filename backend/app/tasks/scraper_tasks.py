@@ -11,7 +11,7 @@ from ..services.scraper_service import scraper_service
 logger = logging.getLogger(__name__)
 
 @celery_app.task(bind=True, name="app.tasks.scraper_tasks.test_all_scrapers")
-def test_all_scrapers(self):
+def health_check_all_scrapers(self):
     """
     Test all scraper configurations for health monitoring
     """
@@ -51,6 +51,16 @@ def test_all_scrapers(self):
             meta={'status': f'Scraper health check failed: {str(e)}', 'progress': 0}
         )
         raise
+
+# Backwards-compatible alias for imports that expect `test_all_scrapers`.
+# This is intentionally an assignment (not a function def) so pytest does not
+# mistakenly collect it as a test function during discovery.
+test_all_scrapers = health_check_all_scrapers
+try:
+    # Prevent pytest from treating this task object as a test function
+    setattr(test_all_scrapers, "__test__", False)
+except Exception:
+    pass
 
 @celery_app.task(bind=True, name="app.tasks.scraper_tasks.run_single_scraper")
 def run_single_scraper(self, site_name: str):
