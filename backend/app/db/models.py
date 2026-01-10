@@ -54,8 +54,10 @@ class JobPost(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String(120))
     url: Mapped[str] = mapped_column(Text, unique=True)
+    url_hash: Mapped[str | None] = mapped_column(String(32), index=True)  # MD5 hash of normalized URL
     first_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    repost_count: Mapped[int] = mapped_column(Integer, default=0)  # How many times job has been reposted
     org_id: Mapped[int | None] = mapped_column(ForeignKey("organization.id"))
     title_raw: Mapped[str] = mapped_column(String(255))
     title_norm_id: Mapped[int | None] = mapped_column(ForeignKey("title_norm.id"))
@@ -69,7 +71,15 @@ class JobPost(Base):
     requirements_raw: Mapped[str | None] = mapped_column(Text)
     education: Mapped[str | None] = mapped_column(String(120))
     attachment_flag: Mapped[bool] = mapped_column(Boolean, default=False)
+    quality_score: Mapped[float | None] = mapped_column(Float)  # Data quality score 0-100
+    processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)  # When job was fully processed
     embedding: Mapped[str | None] = mapped_column(Text)  # store as JSON string or move to vector type later
+
+    # Relationships
+    organization: Mapped["Organization"] = relationship("Organization", foreign_keys=[org_id], lazy="select")
+    location: Mapped["Location"] = relationship("Location", foreign_keys=[location_id], lazy="select")
+    title_norm: Mapped["TitleNorm"] = relationship("TitleNorm", foreign_keys=[title_norm_id], lazy="select")
+    skills: Mapped[List["JobSkill"]] = relationship("JobSkill", back_populates="job_post", lazy="select")
 
 class JobSkill(Base):
     __tablename__ = "job_skill"
@@ -77,6 +87,9 @@ class JobSkill(Base):
     job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"))
     skill_id: Mapped[int] = mapped_column(ForeignKey("skill.id"))
     confidence: Mapped[float] = mapped_column(Float, default=0.5)
+
+    # Relationships
+    job_post: Mapped["JobPost"] = relationship("JobPost", back_populates="skills", lazy="select")
 
 
 class ProcessingLog(Base):
