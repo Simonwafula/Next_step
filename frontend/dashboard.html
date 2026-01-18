@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Dashboard - NextStep Careers</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-api-base="http://localhost:8000/api">
+    <div class="ambient">
+        <span class="orb orb-1"></span>
+        <span class="orb orb-2"></span>
+        <span class="orb orb-3"></span>
+    </div>
+
+    <header class="site-header">
+        <div class="container header-inner">
+            <div class="brand">
+                <span class="brand-mark">N</span>
+                <div>
+                    <p class="brand-name">NextStep Careers</p>
+                    <p class="brand-tag">Your dashboard</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html">Search</a>
+                <a href="dashboard.html" class="active">Dashboard</a>
+            </nav>
+            <div class="header-actions">
+                <span class="user-chip" id="dashboardUserChip">Hello</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="dashboard-hero">
+            <div class="container">
+                <p class="eyebrow">Your workspace</p>
+                <h1 id="dashboardGreeting">Welcome back.</h1>
+                <p class="hero-subtitle" id="dashboardPlan">Plan: Basic</p>
+            </div>
+        </section>
+
+        <section class="dashboard" id="dashboardApp" hidden>
+            <div class="container">
+                <div class="kpi-grid">
+                    <article class="kpi-card" data-kpi="profile">
+                        <p class="kpi-label">Profile completeness</p>
+                        <p class="kpi-value" id="profileCompleteness">--%</p>
+                        <p class="kpi-note" id="profileLocationHint">Location: --</p>
+                    </article>
+                    <article class="kpi-card" data-kpi="recommendations">
+                        <p class="kpi-label">Recommendations</p>
+                        <p class="kpi-value" id="recCount">--</p>
+                        <p class="kpi-note">Personalized matches</p>
+                    </article>
+                    <article class="kpi-card" data-kpi="saved">
+                        <p class="kpi-label">Saved roles</p>
+                        <p class="kpi-value" id="savedCount">--</p>
+                        <p class="kpi-note">Keep track of your favorites</p>
+                    </article>
+                    <article class="kpi-card" data-kpi="applications">
+                        <p class="kpi-label">Applications</p>
+                        <p class="kpi-value" id="applicationCount">--</p>
+                        <p class="kpi-note">Statuses across roles</p>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Top recommendations</h3>
+                            <span class="panel-note">Based on your profile</span>
+                        </div>
+                        <div class="data-list" id="recommendationsList"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Saved roles</h3>
+                            <span class="panel-note">Quick access</span>
+                        </div>
+                        <div class="data-list" id="savedJobsList"></div>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Applications</h3>
+                            <span class="panel-note">Latest status updates</span>
+                        </div>
+                        <div class="data-list" id="applicationsList"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Notifications</h3>
+                            <span class="panel-note">Recent updates</span>
+                        </div>
+                        <div class="data-list" id="notificationsList"></div>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+                    <article class="panel" data-paid-only>
+                        <div class="panel-header">
+                            <h3>Career advice</h3>
+                            <span class="panel-note">Pro feature</span>
+                        </div>
+                        <div class="panel-body">
+                            <form id="adviceForm" class="auth-form">
+                                <input type="text" id="adviceQuery" placeholder="Ask about next steps, skills, or roles" required>
+                                <button class="solid-btn" type="submit">Get advice</button>
+                            </form>
+                            <p class="auth-message" id="adviceResponse"></p>
+                        </div>
+                    </article>
+                    <article class="panel" data-free-only>
+                        <div class="panel-header">
+                            <h3>Unlock pro insights</h3>
+                        </div>
+                        <div class="panel-body">
+                            <p class="panel-note">Upgrade to access AI career advice, deeper salary insights, and priority alerts.</p>
+                            <button class="solid-btn" type="button" id="upgradeBtn">See plans</button>
+                        </div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-gate" id="dashboardGate" hidden>
+            <div class="container">
+                <div class="auth-card gate-card">
+                    <h3>Sign in to access your dashboard</h3>
+                    <p class="auth-subtext">We will keep your recommendations and saved roles here.</p>
+                    <p class="auth-message" id="dashboardGateMessage"></p>
+                    <a class="solid-btn" href="index.html?next=dashboard.html">Go to sign in</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/dashboard-ui.js"></script>
+</body>
+</html>

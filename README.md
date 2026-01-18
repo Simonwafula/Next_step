@@ -14,10 +14,13 @@ A starter scaffold for a system that:
 - **backend**: FastAPI app (search, recommend, stats, WhatsApp webhook, ingestion jobs).
 - **postgres**: Postgres 16 with pgvector extension.
 - **metabase**: Metabase UI (http://localhost:3000) — connect to Postgres manually on first run.
+- **redis**: broker/backing store for Celery tasks.
+- **celery_worker**: background worker for scrapers, processing, and monitoring jobs.
+- **celery_beat**: scheduler for periodic workflows (daily, scraper health, gov source monitor).
 
 ## Quick start
 1. Copy `.env.example` to `.env` and adjust values.
-2. `docker compose up --build` (first run will build backend image).
+2. `docker compose up --build` (first run will build backend image and start Celery services).
 3. Visit FastAPI docs: http://localhost:8000/docs
 4. Visit Metabase: http://localhost:3000 (create admin, add Postgres using env values).
 
@@ -50,6 +53,15 @@ Configure sources in `backend/app/ingestion/sources.yaml`. Run ingestion via `/a
 - `dbt/` holds a tiny dbt project with weekly metrics examples.
 - After ingestion, run dbt models to compute aggregates for Metabase.
 
+## Documentation
+- Operations & deployment: `docs/operations.md`
+- Ingestion & workflows: `docs/ingestion-workflows.md`
+- Integrations: `docs/integrations.md`
+- Product roadmap & research: `docs/product.md`
+- Feature status: `features.md`
+- User journey: `userjourney.md`
+- Change tracking: `changemap.md`
+
 ## Notes
 - This scaffold avoids heavy NLP deps by default. Replace `ml/embeddings.py` with your provider (OpenAI, HuggingFace, etc).
 - Respect robots.txt and TOS for any scraping; prefer official ATS APIs/RSS feeds.
@@ -58,4 +70,4 @@ Configure sources in `backend/app/ingestion/sources.yaml`. Run ingestion via `/a
 ## Commands
 - `docker compose up --build`
 - `docker compose logs -f backend`
-- Run dbt from a container or your host: see `dbt/README.md`.
+- Run dbt from a container or your host: see `docs/operations.md`.

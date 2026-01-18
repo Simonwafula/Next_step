@@ -7,7 +7,7 @@ from ..db.database import get_db
 from ..services.auth_service import get_current_user, require_subscription
 from ..services.personalized_recommendations import personalized_recommendations
 from ..services.ai_service import ai_service
-from ..db.models import User, SavedJob, JobApplication, JobAlert, UserNotification
+from ..db.models import User, SavedJob, JobApplication, JobAlert, UserNotification, JobPost, Organization, Location
 from sqlalchemy import select, and_, desc, func
 
 router = APIRouter()
@@ -124,25 +124,35 @@ async def get_saved_jobs(
     db: Session = Depends(get_db)
 ):
     """Get user's saved jobs."""
-    stmt = select(SavedJob).where(SavedJob.user_id == current_user.id)
+    stmt = (
+        select(SavedJob, JobPost, Organization, Location)
+        .join(JobPost, JobPost.id == SavedJob.job_post_id)
+        .outerjoin(Organization, Organization.id == JobPost.org_id)
+        .outerjoin(Location, Location.id == JobPost.location_id)
+        .where(SavedJob.user_id == current_user.id)
+    )
     
     if folder:
         stmt = stmt.where(SavedJob.folder == folder)
     
     stmt = stmt.order_by(desc(SavedJob.saved_at)).limit(limit)
     
-    saved_jobs = db.execute(stmt).scalars().all()
+    saved_jobs = db.execute(stmt).all()
     
     return {
         "saved_jobs": [
             {
-                "id": job.id,
-                "job_id": job.job_post_id,
-                "saved_at": job.saved_at.isoformat(),
-                "notes": job.notes,
-                "folder": job.folder
+                "id": saved.id,
+                "job_id": saved.job_post_id,
+                "saved_at": saved.saved_at.isoformat(),
+                "notes": saved.notes,
+                "folder": saved.folder,
+                "title": job.title_raw,
+                "url": job.url,
+                "organization": org.name if org else None,
+                "location": location.raw if location else None,
             }
-            for job in saved_jobs
+            for saved, job, org, location in saved_jobs
         ],
         "total": len(saved_jobs)
     }

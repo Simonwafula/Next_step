@@ -4,12 +4,12 @@ from typing import Optional, List
 class JobPostOut(BaseModel):
     id: int
     title: str
-    organization: str | None = None
-    location: str | None = None
+    organization: Optional[str] = None
+    location: Optional[str] = None
     url: str
-    why_match: str | None = None
+    why_match: Optional[str] = None
 
 class RecommendOut(BaseModel):
     target_role: str
     overlap: float
-    gap_skills: list[str]
+    gap_skills: List[str]

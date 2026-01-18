@@ -12,6 +12,7 @@ celery_app = Celery(
     include=[
         "app.tasks.workflow_tasks",
         "app.tasks.scraper_tasks",
+        "app.tasks.gov_monitor_tasks",
         "app.tasks.processing_tasks"
     ]
 )
@@ -42,6 +43,12 @@ celery_app.conf.update(
             'schedule': 60.0 * 60.0 * 6.0,  # 6 hours
             'options': {'queue': 'scrapers'}
         },
+        # Monitor government career pages every 6 hours
+        'gov-source-monitor': {
+            'task': 'app.tasks.gov_monitor_tasks.run_government_sources',
+            'schedule': 60.0 * 60.0 * 6.0,  # 6 hours
+            'options': {'queue': 'scrapers'}
+        },
         # Generate insights every 4 hours
         'generate-insights': {
             'task': 'app.tasks.workflow_tasks.generate_daily_insights',
@@ -52,6 +59,7 @@ celery_app.conf.update(
     task_routes={
         'app.tasks.workflow_tasks.*': {'queue': 'workflow'},
         'app.tasks.scraper_tasks.*': {'queue': 'scrapers'},
+        'app.tasks.gov_monitor_tasks.*': {'queue': 'scrapers'},
         'app.tasks.processing_tasks.*': {'queue': 'processing'},
     }
 )

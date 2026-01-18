@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Signing you in</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body data-api-base="http://localhost:8000/api">
+    <main class="hero">
+        <div class="container">
+            <div class="auth-card" style="margin: 0 auto;">
+                <h2>Signing you in</h2>
+                <p class="auth-subtext" id="status">Completing Google sign-in...</p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const apiBase = document.body.dataset.apiBase || `${window.location.origin}/api`;
+        const params = new URLSearchParams(window.location.search);
+        const code = params.get('code');
+        const statusEl = document.getElementById('status');
+        const redirectUri = `${window.location.origin}/auth-callback.html`;
+        const pendingKey = 'nextstep_pending_profile';
+
+        const goHome = (isAdmin) => {
+            window.location.href = isAdmin ? '/admin.html' : '/dashboard.html';
+        };
+
+        if (!code) {
+            statusEl.textContent = 'Missing authorization code.';
+        } else {
+            fetch(`${apiBase}/auth/google/callback?code=${encodeURIComponent(code)}&redirect_uri=${encodeURIComponent(redirectUri)}`)
+                .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+                .then(({ ok, data }) => {
+                    if (!ok) {
+                        throw new Error(data.detail || 'Google sign-in failed');
+                    }
+                    localStorage.setItem('nextstep_auth', JSON.stringify(data));
+                    const isAdmin = Boolean(data.user && data.user.is_admin);
+                    const pendingRaw = localStorage.getItem(pendingKey);
+                    let pending = null;
+                    if (pendingRaw) {
+                        try {
+                            pending = JSON.parse(pendingRaw);
+                        } catch (error) {
+                            pending = null;
+                        }
+                    }
+                    if (pending) {
+                        fetch(`${apiBase}/auth/profile`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                Authorization: `Bearer ${data.access_token}`,
+                            },
+                            body: JSON.stringify({
+                                preferred_locations: pending.location ? [pending.location] : undefined,
+                                skills: pending.skills || undefined,
+                            }),
+                        }).finally(() => {
+                            localStorage.removeItem(pendingKey);
+                            statusEl.textContent = 'Signed in. Redirecting...';
+                            setTimeout(() => goHome(isAdmin), 800);
+                        });
+                    } else {
+                        statusEl.textContent = 'Signed in. Redirecting...';
+                        setTimeout(() => goHome(isAdmin), 800);
+                    }
+                })
+                .catch((error) => {
+                    statusEl.textContent = error.message;
+                });
+        }
+    </script>
+</body>
+</html>

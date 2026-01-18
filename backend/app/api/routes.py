@@ -9,9 +9,9 @@ from ..services.lmi import (
     get_attachment_companies, get_trending_skills
 )
 from ..services.scraper_service import scraper_service
-from ..services.auth_service import get_current_user_optional
+from ..services.auth_service import get_current_user_optional, require_admin
 from ..normalization.titles import get_careers_for_degree, normalize_title
-from ..ingestion.runner import run_all_sources
+from ..ingestion.runner import run_all_sources, run_government_sources
 from .auth_routes import router as auth_router
 from .user_routes import router as user_router
 from .integration_routes import router as integration_router
@@ -297,7 +297,19 @@ async def get_recent_jobs(limit: int = Query(10, description="Number of recent j
 
 # Admin endpoints
 @api_router.post("/admin/ingest")
-def admin_ingest(db: Session = Depends(get_db)):
+def admin_ingest(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin()),
+):
     """Run job ingestion from all configured sources."""
     count = run_all_sources(db)
+    return {"ingested": count}
+
+@api_router.post("/admin/ingest/government")
+def admin_ingest_government(
+    db: Session = Depends(get_db),
+    current_user = Depends(require_admin()),
+):
+    """Run job ingestion from government sources only."""
+    count = run_government_sources(db)
     return {"ingested": count}

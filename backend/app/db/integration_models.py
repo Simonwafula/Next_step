@@ -1,6 +1,13 @@
 from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
 from sqlalchemy import String, Integer, Text, ForeignKey, Float, DateTime, Boolean, Index
-from sqlalchemy.dialects.postgresql import JSONB, UUID
+import os
+if os.getenv("DATABASE_URL", "").startswith("sqlite"):
+    from sqlalchemy import JSON as JSONB
+else:
+    try:
+        from sqlalchemy.dialects.postgresql import JSONB
+    except Exception:
+        from sqlalchemy import JSON as JSONB
 from datetime import datetime
 from typing import List
 import uuid

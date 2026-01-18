@@ -32,6 +32,7 @@ class Settings(BaseModel):
     SECRET_KEY: str = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    ADMIN_EMAILS: str = os.getenv("ADMIN_EMAILS", "")
     
     # AI & ML Configuration
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
@@ -56,6 +57,18 @@ class Settings(BaseModel):
     SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
     SMTP_TLS: bool = os.getenv("SMTP_TLS", "true").lower() == "true"
     EMAIL_FROM: str = os.getenv("EMAIL_FROM", "noreply@nextstep.co.ke")
+
+    # Password reset
+    PASSWORD_RESET_URL: str = os.getenv(
+        "PASSWORD_RESET_URL",
+        f"{os.getenv('WEBSITE_URL', 'http://localhost:5173')}/reset.html",
+    )
+    PASSWORD_RESET_EXPIRE_MINUTES: int = int(os.getenv("PASSWORD_RESET_EXPIRE_MINUTES", "30"))
+
+    # Google OAuth (auth)
+    GOOGLE_OAUTH_CLIENT_ID: Optional[str] = os.getenv("GOOGLE_OAUTH_CLIENT_ID")
+    GOOGLE_OAUTH_CLIENT_SECRET: Optional[str] = os.getenv("GOOGLE_OAUTH_CLIENT_SECRET")
+    GOOGLE_OAUTH_REDIRECT_URI: Optional[str] = os.getenv("GOOGLE_OAUTH_REDIRECT_URI")
     
     # Payment Integration
     MPESA_CONSUMER_KEY: Optional[str] = os.getenv("MPESA_CONSUMER_KEY")

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reset password</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body data-api-base="http://localhost:8000/api">
+    <main class="hero">
+        <div class="container">
+            <div class="auth-card" style="margin: 0 auto;">
+                <h2>Reset your password</h2>
+                <p class="auth-subtext">Enter your reset token and new password.</p>
+                <form id="resetForm" class="auth-form">
+                    <input type="text" id="token" placeholder="Reset token" required>
+                    <input type="password" id="password" placeholder="New password" required>
+                    <button class="solid-btn" type="submit">Update password</button>
+                </form>
+                <p class="auth-message" id="resetStatus"></p>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const apiBase = document.body.dataset.apiBase || `${window.location.origin}/api`;
+        const params = new URLSearchParams(window.location.search);
+        const tokenInput = document.getElementById('token');
+        const statusEl = document.getElementById('resetStatus');
+        const form = document.getElementById('resetForm');
+
+        const tokenFromUrl = params.get('token');
+        if (tokenFromUrl) {
+            tokenInput.value = tokenFromUrl;
+        }
+
+        form.addEventListener('submit', async (event) => {
+            event.preventDefault();
+            statusEl.textContent = '';
+            const token = tokenInput.value.trim();
+            const password = document.getElementById('password').value;
+
+            try {
+                const response = await fetch(`${apiBase}/auth/reset-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ token, new_password: password }),
+                });
+                const data = await response.json();
+                if (!response.ok) {
+                    throw new Error(data.detail || 'Reset failed');
+                }
+                statusEl.textContent = 'Password updated. You can close this page.';
+            } catch (error) {
+                statusEl.textContent = error.message;
+            }
+        });
+    </script>
+</body>
+</html>

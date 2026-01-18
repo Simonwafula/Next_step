@@ -1,1005 +1,551 @@
-// Main application controller
-class CareerSearchApp {
-    constructor() {
-        this.currentSection = 'search';
-        this.user = null;
-        this.subscription = null;
-        this.authManager = null;
-        this.dashboardManager = null;
-        
-        this.initializeApp();
+const form = document.getElementById('searchForm');
+const searchInput = document.getElementById('searchInput');
+const locationFilter = document.getElementById('locationFilter');
+const seniorityFilter = document.getElementById('seniorityFilter');
+const resultsGrid = document.getElementById('resultsGrid');
+const resultsMeta = document.getElementById('resultsMeta');
+const resultsTitle = document.getElementById('resultsTitle');
+const focusSearchBtn = document.getElementById('focusSearch');
+const authModal = document.getElementById('authModal');
+const authTabs = document.querySelectorAll('[data-auth-tab]');
+const authViews = {
+    signin: document.getElementById('authSignin'),
+    signup: document.getElementById('authSignup'),
+    reset: document.getElementById('authReset'),
+};
+const authOpenButtons = document.querySelectorAll('[data-auth-open]');
+const authCloseButtons = document.querySelectorAll('[data-auth-close]');
+const authActions = document.getElementById('authActions');
+const userActions = document.getElementById('userActions');
+const userGreeting = document.getElementById('userGreeting');
+const userMenuBtn = document.getElementById('userMenuBtn');
+const userDropdown = document.getElementById('userDropdown');
+const logoutBtn = document.getElementById('logoutBtn');
+const dashboardNav = document.getElementById('dashboardNav');
+const dashboardMenuLink = document.getElementById('dashboardMenuLink');
+const adminMenuLink = document.getElementById('adminMenuLink');
+const signinForm = document.getElementById('signinForm');
+const signupForm = document.getElementById('signupForm');
+const resetRequestForm = document.getElementById('resetRequestForm');
+const resetConfirmForm = document.getElementById('resetConfirmForm');
+const resetMessage = document.getElementById('resetMessage');
+const signinError = document.getElementById('signinError');
+const signupError = document.getElementById('signupError');
+const googleButtons = document.querySelectorAll('[data-google-auth]');
+const accountSection = document.getElementById('account');
+const accountTabs = document.querySelectorAll('.account-tabs [data-account-tab]');
+const dropdownTabs = document.querySelectorAll('#userDropdown [data-account-tab]');
+const accountViews = {
+    profile: document.getElementById('accountProfile'),
+    saved: document.getElementById('accountSaved'),
+};
+const profileName = document.getElementById('profileName');
+const profileEmail = document.getElementById('profileEmail');
+const profileLocation = document.getElementById('profileLocation');
+const profileSkills = document.getElementById('profileSkills');
+const savedJobsList = document.getElementById('savedJobsList');
+const savedJobsEmpty = document.getElementById('savedJobsEmpty');
+
+const apiBase = (() => {
+    const fromAttr = document.body.dataset.apiBase;
+    if (fromAttr) return fromAttr;
+    if (window.location.origin && window.location.origin !== 'null') {
+        return `${window.location.origin}/api`;
     }
-    
-    async initializeApp() {
-        // Initialize authentication manager
-        this.initializeAuthManager();
-        
-        // Initialize dashboard manager
-        this.initializeDashboardManager();
-        
-        // Initialize navigation
-        this.initializeNavigation();
-        
-        // Initialize modals
-        this.initializeModals();
-        
-        // Initialize sections
-        this.initializeSections();
-        
-        // Set up periodic data refresh
-        this.setupPeriodicRefresh();
-        
-        console.log('CareerSearch app initialized');
+    return 'http://localhost:8000/api';
+})();
+
+const authStorageKey = 'nextstep_auth';
+const pendingProfileKey = 'nextstep_pending_profile';
+
+const saveAuth = (payload) => {
+    localStorage.setItem(authStorageKey, JSON.stringify(payload));
+};
+
+const getAuth = () => {
+    const raw = localStorage.getItem(authStorageKey);
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        return null;
     }
-    
-    initializeAuthManager() {
-        // Get the auth manager from the global scope
-        this.authManager = window.authManager;
-        
-        if (this.authManager) {
-            // Set up authentication event listeners
-            this.authManager.onAuthStateChange((isAuthenticated, user) => {
-                this.handleAuthStateChange(isAuthenticated, user);
-            });
-        }
+};
+
+const clearAuth = () => {
+    localStorage.removeItem(authStorageKey);
+};
+
+const savePendingProfile = (payload) => {
+    localStorage.setItem(pendingProfileKey, JSON.stringify(payload));
+};
+
+const clearPendingProfile = () => {
+    localStorage.removeItem(pendingProfileKey);
+};
+
+const resetAuthState = () => {
+    clearAuth();
+    clearPendingProfile();
+    setAuthState(null);
+};
+
+const setAuthState = (user) => {
+    if (user) {
+        authActions.hidden = true;
+        userActions.hidden = false;
+        userGreeting.textContent = user.full_name || user.email;
+        accountSection.hidden = false;
+        setAccountTab('profile');
+        if (dashboardNav) dashboardNav.hidden = false;
+        if (dashboardMenuLink) dashboardMenuLink.hidden = false;
+        if (adminMenuLink) adminMenuLink.hidden = !user.is_admin;
+    } else {
+        authActions.hidden = false;
+        userActions.hidden = true;
+        userGreeting.textContent = '';
+        accountSection.hidden = true;
+        if (dashboardNav) dashboardNav.hidden = true;
+        if (dashboardMenuLink) dashboardMenuLink.hidden = true;
+        if (adminMenuLink) adminMenuLink.hidden = true;
     }
-    
-    initializeDashboardManager() {
-        // Get the dashboard manager from the global scope
-        this.dashboardManager = window.dashboardManager;
-        
-        if (this.dashboardManager && this.authManager) {
-            // Connect dashboard manager with auth manager
-            this.dashboardManager.setAuthManager(this.authManager);
-        }
+};
+
+const redirectAfterAuth = (user) => {
+    const params = new URLSearchParams(window.location.search);
+    const next = params.get('next');
+    if (next) {
+        window.location.href = next;
+        return;
     }
-    
-    handleAuthStateChange(isAuthenticated, user) {
-        this.user = user;
-        
-        if (isAuthenticated) {
-            this.updateUIForLoggedInUser();
-            this.loadUserSubscription();
-        } else {
-            this.updateUIForLoggedOutUser();
-        }
+    if (user && user.is_admin) {
+        window.location.href = 'admin.html';
+        return;
     }
-    
-    updateUIForLoggedInUser() {
-        // Show/hide appropriate UI elements
-        const loggedOutActions = document.getElementById('loggedOutActions');
-        const loggedInActions = document.getElementById('loggedInActions');
-        const dashboardNav = document.getElementById('dashboardNav');
-        
-        if (loggedOutActions) loggedOutActions.style.display = 'none';
-        if (loggedInActions) loggedInActions.style.display = 'block';
-        if (dashboardNav) dashboardNav.style.display = 'block';
-        
-        // Update user name in the UI
-        const userName = document.getElementById('userName');
-        if (userName && this.user) {
-            userName.textContent = this.user.full_name || this.user.email;
-        }
+    window.location.href = 'dashboard.html';
+};
+
+const openAuthModal = (view) => {
+    authModal.classList.add('active');
+    authModal.setAttribute('aria-hidden', 'false');
+    setAuthView(view);
+};
+
+const closeAuthModal = () => {
+    authModal.classList.remove('active');
+    authModal.setAttribute('aria-hidden', 'true');
+};
+
+const setAuthView = (view) => {
+    authTabs.forEach((tab) => {
+        tab.classList.toggle('active', tab.dataset.authTab === view);
+    });
+    Object.entries(authViews).forEach(([key, element]) => {
+        element.classList.toggle('active', key === view);
+    });
+    setAuthError(signinError, '');
+    setAuthError(signupError, '');
+    setResetMessage('');
+};
+
+const requestJson = async (url, options = {}) => {
+    const response = await fetch(url, options);
+    if (!response.ok) {
+        const errorPayload = await response.json().catch(() => ({}));
+        const message = errorPayload.detail || `Request failed (${response.status})`;
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
     }
-    
-    updateUIForLoggedOutUser() {
-        // Show/hide appropriate UI elements
-        const loggedOutActions = document.getElementById('loggedOutActions');
-        const loggedInActions = document.getElementById('loggedInActions');
-        const dashboardNav = document.getElementById('dashboardNav');
-        
-        if (loggedOutActions) loggedOutActions.style.display = 'block';
-        if (loggedInActions) loggedInActions.style.display = 'none';
-        if (dashboardNav) dashboardNav.style.display = 'none';
-        
-        // If currently on dashboard, redirect to search
-        if (this.currentSection === 'dashboard') {
-            this.showSection('search');
-        }
+    return response.json();
+};
+
+const ensureProfileData = async (token, location, skillsMap) => {
+    if (!location && (!skillsMap || !Object.keys(skillsMap).length)) return;
+    const payload = {};
+    if (location) payload.preferred_locations = [location];
+    if (skillsMap && Object.keys(skillsMap).length) payload.skills = skillsMap;
+    await requestJson(`${apiBase}/auth/profile`, {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+    });
+};
+
+const parseSkills = (value) => {
+    if (!value) return {};
+    return value
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean)
+        .reduce((acc, skill) => {
+            acc[skill] = 0.7;
+            return acc;
+        }, {});
+};
+
+const startGoogleAuth = async (context) => {
+    if (context) {
+        savePendingProfile(context);
+    } else {
+        clearPendingProfile();
     }
-    
-    initializeNavigation() {
-        const navLinks = document.querySelectorAll('.nav-link');
-        
-        navLinks.forEach(link => {
-            link.addEventListener('click', (e) => {
-                e.preventDefault();
-                const section = link.dataset.section;
-                this.showSection(section);
-            });
-        });
+    const redirectUri = `${window.location.origin}/auth-callback.html`;
+    const data = await requestJson(
+        `${apiBase}/auth/google/url?redirect_uri=${encodeURIComponent(redirectUri)}`
+    );
+    window.location.href = data.authorization_url;
+};
+
+const setAuthError = (element, message) => {
+    if (!element) return;
+    element.textContent = message || '';
+};
+
+const setResetMessage = (message, isError = false) => {
+    resetMessage.textContent = message || '';
+    resetMessage.classList.toggle('auth-error', Boolean(isError));
+};
+
+const setAccountTab = (tab) => {
+    accountTabs.forEach((button) => {
+        button.classList.toggle('active', button.dataset.accountTab === tab);
+    });
+    Object.entries(accountViews).forEach(([key, view]) => {
+        view.classList.toggle('active', key === tab);
+    });
+};
+
+const renderSkills = (skills) => {
+    profileSkills.innerHTML = '';
+    if (!skills || !Object.keys(skills).length) {
+        profileSkills.innerHTML = '<span>None yet</span>';
+        return;
     }
-    
-    showSection(sectionName) {
-        // Hide all sections
-        document.querySelectorAll('.section').forEach(section => {
-            section.classList.remove('active');
-        });
-        
-        // Show target section
-        const targetSection = document.getElementById(`${sectionName}-section`);
-        if (targetSection) {
-            targetSection.classList.add('active');
-        }
-        
-        // Update navigation
-        document.querySelectorAll('.nav-link').forEach(link => {
-            link.classList.remove('active');
-        });
-        
-        const activeLink = document.querySelector(`[data-section="${sectionName}"]`);
-        if (activeLink) {
-            activeLink.classList.add('active');
-        }
-        
-        this.currentSection = sectionName;
-        
-        // Load section-specific data
-        this.loadSectionData(sectionName);
+    Object.keys(skills).forEach((skill) => {
+        const chip = document.createElement('span');
+        chip.textContent = skill;
+        profileSkills.appendChild(chip);
+    });
+};
+
+const renderSavedJobs = (items) => {
+    savedJobsList.innerHTML = '';
+    if (!items || !items.length) {
+        savedJobsEmpty.hidden = false;
+        return;
     }
-    
-    async loadSectionData(sectionName) {
-        switch (sectionName) {
-            case 'insights':
-                await this.loadMarketInsights();
-                break;
-            case 'career-tools':
-                await this.loadCareerTools();
-                break;
-            case 'premium':
-                await this.loadPremiumData();
-                break;
-        }
-    }
-    
-    async loadMarketInsights() {
-        try {
-            // Load weekly insights
-            const weeklyInsights = await api.getWeeklyInsights();
-            this.displayWeeklyInsights(weeklyInsights);
-            
-            // Load trending skills
-            const trendingSkills = await api.getTrendingSkills();
-            this.displayTrendingSkills(trendingSkills);
-            
-            // Load trending transitions
-            const trendingTransitions = await api.getTrendingTransitions();
-            this.displayTrendingTransitions(trendingTransitions);
-            
-        } catch (error) {
-            console.error('Error loading market insights:', error);
-        }
-    }
-    
-    displayWeeklyInsights(insights) {
-        const container = document.getElementById('weeklyInsights');
-        if (!container || !insights) return;
-        
-        container.innerHTML = `
-            <div class="insights-summary">
-                <div class="insight-stat">
-                    <div class="stat-number">${insights.total_postings || 0}</div>
-                    <div class="stat-label">New Jobs This Week</div>
-                </div>
-                <div class="insight-stat">
-                    <div class="stat-number">${insights.active_companies || 0}</div>
-                    <div class="stat-label">Companies Hiring</div>
-                </div>
-                <div class="insight-stat">
-                    <div class="stat-number">${insights.median_salary ? UTILS.formatCurrency(insights.median_salary) : 'N/A'}</div>
-                    <div class="stat-label">Median Salary</div>
-                </div>
+    savedJobsEmpty.hidden = true;
+    items.forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'saved-item';
+        const title = item.title || 'Untitled role';
+        const org = item.organization || 'Unknown organization';
+        const location = item.location || 'Location unspecified';
+        card.innerHTML = `
+            <div>
+                <h4>${title}</h4>
+                <div class="saved-meta">${org} · ${location}</div>
             </div>
-            
-            ${insights.top_role_families ? `
-                <div class="top-roles">
-                    <h5>Most In-Demand Roles</h5>
-                    <div class="role-list">
-                        ${insights.top_role_families.slice(0, 5).map(role => `
-                            <div class="role-item">
-                                <span class="role-name">${role.role_family}</span>
-                                <span class="role-count">${role.count} jobs</span>
-                            </div>
-                        `).join('')}
-                    </div>
-                </div>
-            ` : ''}
+            <a class="result-link" href="${item.url || '#'}" target="_blank" rel="noopener">Open</a>
         `;
-    }
-    
-    displayTrendingSkills(skillsData) {
-        const container = document.getElementById('trendingSkills');
-        if (!container || !skillsData?.trending_skills) return;
-        
-        container.innerHTML = `
-            <div class="skills-list">
-                ${skillsData.trending_skills.slice(0, 10).map(skill => `
-                    <div class="skill-item">
-                        <span class="skill-name">${skill.skill}</span>
-                        <span class="skill-growth ${skill.growth_rate > 0 ? 'positive' : 'negative'}">
-                            ${skill.growth_rate > 0 ? '+' : ''}${skill.growth_rate}%
-                        </span>
-                    </div>
-                `).join('')}
-            </div>
-            <p class="skills-note">Growth rates compared to previous week</p>
-        `;
-    }
-    
-    displayTrendingTransitions(transitionsData) {
-        const container = document.getElementById('careerTransitions');
-        if (!container || !transitionsData?.trending_roles) return;
-        
-        container.innerHTML = `
-            <div class="transitions-list">
-                ${transitionsData.trending_roles.slice(0, 5).map(transition => `
-                    <div class="transition-item">
-                        <div class="transition-role">${transition.target_role}</div>
-                        <div class="transition-count">${transition.transition_count} professionals transitioning</div>
-                    </div>
-                `).join('')}
-            </div>
-            <p class="transitions-note">Based on ${transitionsData.period} of job market activity</p>
-        `;
-    }
-    
-    async loadCareerTools() {
-        // Initialize career tools functionality
-        this.initializeToolButtons();
-    }
-    
-    initializeToolButtons() {
-        const toolButtons = document.querySelectorAll('.tool-btn');
-        
-        toolButtons.forEach(button => {
-            button.addEventListener('click', () => {
-                const toolType = button.dataset.tool;
-                this.openCareerTool(toolType);
-            });
+        savedJobsList.appendChild(card);
+    });
+};
+
+const loadAccountData = async (token) => {
+    try {
+        const me = await requestJson(`${apiBase}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` },
         });
-    }
-    
-    openCareerTool(toolType) {
-        // Check if user has access to premium tools
-        if (this.isPremiumTool(toolType) && !this.hasFeatureAccess(toolType)) {
-            this.showPremiumUpgradeModal(toolType);
+        profileName.textContent = me.full_name || '-';
+        profileEmail.textContent = me.email || '-';
+    } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+            resetAuthState();
             return;
         }
-        
-        // Open the appropriate tool modal
-        this.showToolModal(toolType);
     }
-    
-    isPremiumTool(toolType) {
-        const premiumTools = ['cv-builder', 'cover-letter', 'why-work-with'];
-        return premiumTools.includes(toolType);
-    }
-    
-    hasFeatureAccess(feature) {
-        if (!this.subscription) return false;
-        
-        const featureMap = {
-            'cv-builder': 'ai_cv_optimization',
-            'cover-letter': 'personalized_cover_letters',
-            'why-work-with': 'advanced_career_coaching'
-        };
-        
-        const requiredFeature = featureMap[feature];
-        return this.subscription.features.includes(requiredFeature);
-    }
-    
-    showToolModal(toolType) {
-        const modal = document.getElementById('toolModal');
-        const content = document.getElementById('toolContent');
-        
-        // Generate tool content based on type
-        content.innerHTML = this.generateToolContent(toolType);
-        
-        // Show modal
-        modal.style.display = 'block';
-        
-        // Initialize tool-specific functionality
-        this.initializeToolContent(toolType);
-    }
-    
-    generateToolContent(toolType) {
-        switch (toolType) {
-            case 'cv-builder':
-                return this.generateCVBuilderContent();
-            case 'cover-letter':
-                return this.generateCoverLetterContent();
-            case 'why-work-with':
-                return this.generateStatementContent();
-            case 'career-advisor':
-                return this.generateCareerAdvisorContent();
-            default:
-                return '<p>Tool content not available.</p>';
+
+    try {
+        const profile = await requestJson(`${apiBase}/auth/profile`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const location = (profile.preferred_locations || [])[0];
+        profileLocation.textContent = location || 'Not set';
+        if (location && !locationFilter.value) {
+            locationFilter.value = location;
         }
+        renderSkills(profile.skills || {});
+    } catch (error) {
+        profileLocation.textContent = 'Not set';
+        renderSkills({});
     }
-    
-    generateCVBuilderContent() {
-        return `
-            <h2><i class="fas fa-file-alt"></i> CV Builder</h2>
-            <div class="tool-form">
-                <div class="form-group">
-                    <label for="cvName">Full Name</label>
-                    <input type="text" id="cvName" placeholder="Enter your full name">
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvEmail">Email</label>
-                    <input type="email" id="cvEmail" placeholder="your.email@example.com">
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvPhone">Phone Number</label>
-                    <input type="tel" id="cvPhone" placeholder="+254...">
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvLocation">Location</label>
-                    <input type="text" id="cvLocation" placeholder="City, Country">
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvEducation">Education</label>
-                    <textarea id="cvEducation" rows="3" placeholder="Your educational background..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvExperience">Work Experience</label>
-                    <textarea id="cvExperience" rows="5" placeholder="Your work experience and achievements..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvSkills">Skills</label>
-                    <textarea id="cvSkills" rows="3" placeholder="Your key skills and competencies..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="cvTargetRole">Target Role (Optional)</label>
-                    <input type="text" id="cvTargetRole" placeholder="e.g., Data Analyst, Software Engineer">
-                </div>
-                
-                <div class="tool-actions">
-                    <button class="btn-primary" id="generateCV">
-                        <i class="fas fa-magic"></i> Generate CV
-                    </button>
-                </div>
-                
-                <div id="cvOutput" class="tool-output" style="display: none;">
-                    <!-- Generated CV will appear here -->
-                </div>
-            </div>
+
+    try {
+        const saved = await requestJson(`${apiBase}/users/saved-jobs`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        renderSavedJobs(saved.saved_jobs || []);
+    } catch (error) {
+        renderSavedJobs([]);
+    }
+};
+
+const renderResults = (items) => {
+    resultsGrid.innerHTML = '';
+
+    if (!items.length) {
+        resultsMeta.textContent = 'No matches yet. Try another skill or course.';
+        resultsTitle.textContent = 'No results';
+        return;
+    }
+
+    resultsMeta.textContent = `${items.length} roles matched your search.`;
+    resultsTitle.textContent = 'Recommended roles';
+
+    items.forEach((item) => {
+        const card = document.createElement('article');
+        card.className = 'result-card';
+        const org = item.organization || item.org || 'Unknown organization';
+        const location = item.location || item.location_raw || 'Location unspecified';
+        const link = item.url || '#';
+        card.innerHTML = `
+            <h3 class="result-title">${item.title || 'Untitled role'}</h3>
+            <div class="result-meta">${org} · ${location}</div>
+            <a class="result-link" href="${link}" target="_blank" rel="noopener">Open posting</a>
         `;
-    }
-    
-    generateCoverLetterContent() {
-        return `
-            <h2><i class="fas fa-envelope"></i> Cover Letter Generator</h2>
-            <div class="tool-form">
-                <div class="form-group">
-                    <label for="clJobTitle">Job Title</label>
-                    <input type="text" id="clJobTitle" placeholder="e.g., Marketing Manager">
-                </div>
-                
-                <div class="form-group">
-                    <label for="clCompany">Company Name</label>
-                    <input type="text" id="clCompany" placeholder="Company you're applying to">
-                </div>
-                
-                <div class="form-group">
-                    <label for="clJobDescription">Job Description</label>
-                    <textarea id="clJobDescription" rows="4" placeholder="Paste the job description here..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="clYourBackground">Your Background</label>
-                    <textarea id="clYourBackground" rows="3" placeholder="Brief summary of your relevant experience..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="clYourSkills">Relevant Skills</label>
-                    <textarea id="clYourSkills" rows="2" placeholder="Skills relevant to this position..."></textarea>
-                </div>
-                
-                <div class="tool-actions">
-                    <button class="btn-primary" id="generateCoverLetter">
-                        <i class="fas fa-magic"></i> Generate Cover Letter
-                    </button>
-                </div>
-                
-                <div id="coverLetterOutput" class="tool-output" style="display: none;">
-                    <!-- Generated cover letter will appear here -->
-                </div>
-            </div>
-        `;
-    }
-    
-    generateStatementContent() {
-        return `
-            <h2><i class="fas fa-handshake"></i> Why Work With Me Statement</h2>
-            <div class="tool-form">
-                <div class="form-group">
-                    <label for="stBackground">Professional Background</label>
-                    <textarea id="stBackground" rows="3" placeholder="Brief overview of your professional background..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="stExperience">Key Experience</label>
-                    <textarea id="stExperience" rows="3" placeholder="Your most relevant work experience..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="stSkills">Core Skills</label>
-                    <textarea id="stSkills" rows="2" placeholder="Your strongest skills and competencies..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="stAchievements">Key Achievements</label>
-                    <textarea id="stAchievements" rows="3" placeholder="Your notable achievements and accomplishments..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="stValues">Professional Values</label>
-                    <textarea id="stValues" rows="2" placeholder="What drives you professionally..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="stTargetRole">Target Role Context (Optional)</label>
-                    <input type="text" id="stTargetRole" placeholder="Role you're targeting">
-                </div>
-                
-                <div class="tool-actions">
-                    <button class="btn-primary" id="generateStatement">
-                        <i class="fas fa-magic"></i> Generate Statement
-                    </button>
-                </div>
-                
-                <div id="statementOutput" class="tool-output" style="display: none;">
-                    <!-- Generated statement will appear here -->
-                </div>
-            </div>
-        `;
-    }
-    
-    generateCareerAdvisorContent() {
-        return `
-            <h2><i class="fas fa-route"></i> Career Path Advisor</h2>
-            <div class="tool-form">
-                <div class="form-group">
-                    <label for="caCurrentRole">Current Role/Background</label>
-                    <input type="text" id="caCurrentRole" placeholder="e.g., Junior Developer, Recent Graduate">
-                </div>
-                
-                <div class="form-group">
-                    <label for="caExperienceLevel">Experience Level</label>
-                    <select id="caExperienceLevel">
-                        <option value="">Select experience level</option>
-                        <option value="entry">Entry Level (0-2 years)</option>
-                        <option value="mid">Mid Level (3-5 years)</option>
-                        <option value="senior">Senior Level (6+ years)</option>
-                        <option value="executive">Executive Level</option>
-                    </select>
-                </div>
-                
-                <div class="form-group">
-                    <label for="caSkills">Current Skills</label>
-                    <textarea id="caSkills" rows="2" placeholder="Your current skills and competencies..."></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="caGoals">Career Goals</label>
-                    <textarea id="caGoals" rows="3" placeholder="What are your career aspirations?"></textarea>
-                </div>
-                
-                <div class="form-group">
-                    <label for="caQuery">Specific Question</label>
-                    <textarea id="caQuery" rows="3" placeholder="What specific career advice are you looking for?"></textarea>
-                </div>
-                
-                <div class="tool-actions">
-                    <button class="btn-primary" id="getCareerAdvice">
-                        <i class="fas fa-lightbulb"></i> Get Career Advice
-                    </button>
-                </div>
-                
-                <div id="careerAdviceOutput" class="tool-output" style="display: none;">
-                    <!-- Career advice will appear here -->
-                </div>
-            </div>
-        `;
-    }
-    
-    initializeToolContent(toolType) {
-        switch (toolType) {
-            case 'cv-builder':
-                this.initializeCVBuilder();
-                break;
-            case 'cover-letter':
-                this.initializeCoverLetterGenerator();
-                break;
-            case 'why-work-with':
-                this.initializeStatementGenerator();
-                break;
-            case 'career-advisor':
-                this.initializeCareerAdvisor();
-                break;
-        }
-    }
-    
-    initializeCVBuilder() {
-        const generateBtn = document.getElementById('generateCV');
-        generateBtn.addEventListener('click', async () => {
-            const userData = {
-                name: document.getElementById('cvName').value,
-                email: document.getElementById('cvEmail').value,
-                phone: document.getElementById('cvPhone').value,
-                location: document.getElementById('cvLocation').value,
-                education: document.getElementById('cvEducation').value,
-                experience: document.getElementById('cvExperience').value,
-                skills: document.getElementById('cvSkills').value
-            };
-            
-            const targetRole = document.getElementById('cvTargetRole').value;
-            
-            await this.generateCV(userData, targetRole);
-        });
-    }
-    
-    initializeCoverLetterGenerator() {
-        const generateBtn = document.getElementById('generateCoverLetter');
-        generateBtn.addEventListener('click', async () => {
-            const jobData = {
-                title: document.getElementById('clJobTitle').value,
-                company: document.getElementById('clCompany').value,
-                description: document.getElementById('clJobDescription').value
-            };
-            
-            const userData = {
-                background: document.getElementById('clYourBackground').value,
-                skills: document.getElementById('clYourSkills').value
-            };
-            
-            await this.generateCoverLetter(userData, jobData);
-        });
-    }
-    
-    initializeStatementGenerator() {
-        const generateBtn = document.getElementById('generateStatement');
-        generateBtn.addEventListener('click', async () => {
-            const userData = {
-                background: document.getElementById('stBackground').value,
-                experience: document.getElementById('stExperience').value,
-                skills: document.getElementById('stSkills').value,
-                achievements: document.getElementById('stAchievements').value,
-                values: document.getElementById('stValues').value
-            };
-            
-            const targetRole = document.getElementById('stTargetRole').value;
-            
-            await this.generateStatement(userData, targetRole);
-        });
-    }
-    
-    initializeCareerAdvisor() {
-        const generateBtn = document.getElementById('getCareerAdvice');
-        generateBtn.addEventListener('click', async () => {
-            const userData = {
-                current_role: document.getElementById('caCurrentRole').value,
-                experience_level: document.getElementById('caExperienceLevel').value,
-                skills: document.getElementById('caSkills').value,
-                career_goals: document.getElementById('caGoals').value
-            };
-            
-            const query = document.getElementById('caQuery').value;
-            
-            await this.getCareerAdvice(userData, query);
-        });
-    }
-    
-    async generateCV(userData, targetRole) {
-        const output = document.getElementById('cvOutput');
-        const generateBtn = document.getElementById('generateCV');
-        
-        try {
-            generateBtn.disabled = true;
-            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-            
-            // Mock API call - replace with actual API call
-            const response = await this.mockGenerateCV(userData, targetRole);
-            
-            output.innerHTML = `
-                <h3>Generated CV</h3>
-                <div class="cv-preview">
-                    <pre>${response.cv_content.content}</pre>
-                </div>
-                <div class="cv-actions">
-                    <button class="btn-primary" onclick="this.downloadCV()">
-                        <i class="fas fa-download"></i> Download CV
-                    </button>
-                    <button class="btn-secondary" onclick="this.editCV()">
-                        <i class="fas fa-edit"></i> Edit CV
-                    </button>
-                </div>
-            `;
-            
-            output.style.display = 'block';
-            
-        } catch (error) {
-            notifications.error('Failed to generate CV. Please try again.');
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate CV';
-        }
-    }
-    
-    async generateCoverLetter(userData, jobData) {
-        const output = document.getElementById('coverLetterOutput');
-        const generateBtn = document.getElementById('generateCoverLetter');
-        
-        try {
-            generateBtn.disabled = true;
-            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-            
-            // Use MCP server to generate cover letter
-            const response = await api.generateCoverLetter({
-                user_profile: {
-                    name: this.user?.full_name || 'User',
-                    background: userData.background,
-                    skills: userData.skills
-                },
-                job_data: jobData
-            });
-            
-            output.innerHTML = `
-                <h3>Generated Cover Letter</h3>
-                <div class="cover-letter-preview">
-                    <pre>${response.content}</pre>
-                </div>
-                <div class="cover-letter-actions">
-                    <button class="btn-primary" onclick="window.downloadDocument('cover-letter')">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                    <button class="btn-secondary" onclick="window.editDocument('cover-letter')">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                </div>
-            `;
-            
-            output.style.display = 'block';
-            
-        } catch (error) {
-            console.error('Error generating cover letter:', error);
-            this.showNotification('Failed to generate cover letter. Please try again.', 'error');
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Cover Letter';
-        }
-    }
-    
-    async generateStatement(userData, targetRole) {
-        const output = document.getElementById('statementOutput');
-        const generateBtn = document.getElementById('generateStatement');
-        
-        try {
-            generateBtn.disabled = true;
-            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Generating...';
-            
-            // Use MCP server to generate statement
-            const response = await api.generateWhyWorkWithStatement({
-                user_profile: {
-                    name: this.user?.full_name || 'User',
-                    background: userData.background,
-                    experience: userData.experience,
-                    skills: userData.skills,
-                    achievements: userData.achievements,
-                    values: userData.values
-                },
-                target_role: targetRole
-            });
-            
-            output.innerHTML = `
-                <h3>Generated "Why Work With Me" Statement</h3>
-                <div class="statement-preview">
-                    <pre>${response.content}</pre>
-                </div>
-                <div class="statement-actions">
-                    <button class="btn-primary" onclick="window.downloadDocument('statement')">
-                        <i class="fas fa-download"></i> Download
-                    </button>
-                    <button class="btn-secondary" onclick="window.editDocument('statement')">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                </div>
-            `;
-            
-            output.style.display = 'block';
-            
-        } catch (error) {
-            console.error('Error generating statement:', error);
-            this.showNotification('Failed to generate statement. Please try again.', 'error');
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = '<i class="fas fa-magic"></i> Generate Statement';
-        }
-    }
-    
-    async getCareerAdvice(userData, query) {
-        const output = document.getElementById('careerAdviceOutput');
-        const generateBtn = document.getElementById('getCareerAdvice');
-        
-        try {
-            generateBtn.disabled = true;
-            generateBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting Advice...';
-            
-            // Use MCP server to get career advice
-            const response = await api.generateCareerAdvice({
-                user_profile: userData,
-                query: query
-            });
-            
-            output.innerHTML = `
-                <h3>Career Advice</h3>
-                <div class="advice-content">
-                    <div class="advice-section">
-                        <h4>Recommendations</h4>
-                        <p>${response.advice}</p>
-                    </div>
-                    ${response.next_steps ? `
-                        <div class="advice-section">
-                            <h4>Next Steps</h4>
-                            <ul>
-                                ${response.next_steps.map(step => `<li>${step}</li>`).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
-                    ${response.resources ? `
-                        <div class="advice-section">
-                            <h4>Recommended Resources</h4>
-                            <ul>
-                                ${response.resources.map(resource => `<li>${resource}</li>`).join('')}
-                            </ul>
-                        </div>
-                    ` : ''}
-                </div>
-                <div class="advice-actions">
-                    <button class="btn-primary" onclick="window.saveAdvice()">
-                        <i class="fas fa-save"></i> Save Advice
-                    </button>
-                    <button class="btn-secondary" onclick="window.shareAdvice()">
-                        <i class="fas fa-share"></i> Share
-                    </button>
-                </div>
-            `;
-            
-            output.style.display = 'block';
-            
-        } catch (error) {
-            console.error('Error getting career advice:', error);
-            this.showNotification('Failed to get career advice. Please try again.', 'error');
-        } finally {
-            generateBtn.disabled = false;
-            generateBtn.innerHTML = '<i class="fas fa-lightbulb"></i> Get Career Advice';
-        }
-    }
+        resultsGrid.appendChild(card);
+    });
+};
 
-    async mockGenerateCV(userData, targetRole) {
-        // Use MCP server to generate CV
-        try {
-            const response = await api.generateCV({
-                user_profile: {
-                    name: userData.name,
-                    email: userData.email,
-                    phone: userData.phone,
-                    location: userData.location,
-                    education: userData.education,
-                    experience: userData.experience,
-                    skills: userData.skills
-                },
-                target_role: targetRole
-            });
-            
-            return {
-                success: true,
-                cv_content: {
-                    content: response.content
-                }
-            };
-        } catch (error) {
-            console.error('Error generating CV:', error);
-            // Fallback to mock response
-            return new Promise(resolve => {
-                setTimeout(() => {
-                    resolve({
-                        success: true,
-                        cv_content: {
-                            content: `${userData.name}
-${userData.email} | ${userData.phone} | ${userData.location}
+const fetchResults = async () => {
+    const query = searchInput.value.trim();
+    if (!query) return;
 
-PROFESSIONAL SUMMARY
-Results-driven professional with proven track record in delivering high-quality solutions and driving business growth. Strong analytical skills combined with excellent communication abilities and a passion for continuous learning.
+    resultsMeta.textContent = 'Searching...';
+    resultsTitle.textContent = 'Finding matches';
 
-EDUCATION
-${userData.education}
+    const params = new URLSearchParams({
+        q: query,
+    });
+    if (locationFilter.value) params.append('location', locationFilter.value);
+    if (seniorityFilter.value) params.append('seniority', seniorityFilter.value);
 
-WORK EXPERIENCE
-${userData.experience}
+    try {
+        const response = await fetch(`${apiBase}/search?${params.toString()}`);
+        if (!response.ok) {
+            throw new Error(`Server responded ${response.status}`);
+        }
 
-KEY SKILLS
-${userData.skills}
+        const payload = await response.json();
+        const rawItems = Array.isArray(payload) ? payload : payload.results || [];
+        renderResults(rawItems);
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+    } catch (error) {
+        resultsMeta.textContent = 'We could not reach the API. Is the backend running?';
+        resultsTitle.textContent = 'Search unavailable';
+        resultsGrid.innerHTML = '';
+        console.error(error);
+    }
+};
 
-Generated for: ${targetRole || 'General Position'}`
-                        }
-                    });
-                }, 2000);
-            });
-        }
-    }
-    
-    async loadUserSubscription() {
-        if (!this.user) return;
-        
-        try {
-            const response = await api.getUserSubscription();
-            this.subscription = response;
-        } catch (error) {
-            console.error('Error loading user subscription:', error);
-            // Use mock data for now
-            this.subscription = await this.getUserSubscription();
-        }
-    }
-    
-    showNotification(message, type = 'info') {
-        // Use the existing notification system
-        if (window.showNotification) {
-            window.showNotification(message, type);
-        } else {
-            console.log(`${type.toUpperCase()}: ${message}`);
-        }
-    }
-    
-    async loadPremiumData() {
-        if (this.user) {
-            // Load user's subscription data
-            this.subscription = await this.getUserSubscription();
-            this.updatePremiumUI();
-        }
-    }
-    
-    async getUserSubscription() {
-        try {
-            // Mock subscription data - replace with actual API call
-            return {
-                plan_id: 'professional',
-                plan_name: 'Professional',
-                features: ['ai_cv_optimization', 'personalized_cover_letters'],
-                days_remaining: 25
-            };
-        } catch (error) {
-            return null;
-        }
-    }
-    
-    updatePremiumUI() {
-        // Update premium section based on user's subscription
-        const premiumCards = document.querySelectorAll('.pricing-card');
-        
-        if (this.subscription) {
-            premiumCards.forEach(card => {
-                const planName = card.querySelector('h3').textContent.toLowerCase();
-                if (planName === this.subscription.plan_name.toLowerCase()) {
-                    const button = card.querySelector('button');
-                    button.textContent = 'Current Plan';
-                    button.classList.remove('btn-primary');
-                    button.classList.add('btn-secondary');
-                }
-            });
-        }
-    }
-    
-    initializeModals() {
-        // Login modal
-        const loginBtn = document.getElementById('loginBtn');
-        const loginModal = document.getElementById('loginModal');
-        
-        loginBtn.addEventListener('click', () => {
-            loginModal.style.display = 'block';
-        });
-        
-        // Signup modal
-        const signupBtn = document.getElementById('signupBtn');
-        const signupModal = document.getElementById('signupModal');
-        
-        signupBtn.addEventListener('click', () => {
-            signupModal.style.display = 'block';
-        });
-        
-        // Close modal handlers
-        document.querySelectorAll('.close').forEach(closeBtn => {
-            closeBtn.addEventListener('click', (e) => {
-                const modal = e.target.closest('.modal');
-                modal.style.display = 'none';
-            });
-        });
-        
-        // Click outside to close
-        window.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal')) {
-                e.target.style.display = 'none';
-            }
-        });
-    }
-    
-    async loadUserData() {
-        const token = localStorage.getItem(CONFIG.STORAGE_KEYS.USER_TOKEN);
-        if (token) {
-            try {
-                // Load user data from API
-                this.user = JSON.parse(localStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA) || 'null');
-                if (this.user) {
-                    this.updateUIForLoggedInUser();
-                }
-            } catch (error) {
-                console.error('Error loading user data:', error);
-            }
-        }
-    }
-    
-    updateUIForLoggedInUser() {
-        const loginBtn = document.getElementById('loginBtn');
-        const signupBtn = document.getElementById('signupBtn');
-        
-        loginBtn.textContent = this.user.name || 'Profile';
-        signupBtn.style.display = 'none';
-    }
-    
-    setupPeriodicRefresh() {
-        // Refresh market insights every 30 minutes
-        setInterval(() => {
-            if (this.currentSection === 'insights') {
-                this.loadMarketInsights();
-            }
-        }, 30 * 60 * 1000);
-    }
-    
-    showPremiumUpgradeModal(toolType) {
-        notifications.warning(
-            'This feature requires a premium subscription. Upgrade to access advanced career tools.',
-            'Premium Feature'
-        );
-        
-        // Switch to premium section
-        this.showSection('premium');
-    }
-}
-
-// Initialize the app when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    window.careerSearchApp = new CareerSearchApp();
+form.addEventListener('submit', (event) => {
+    event.preventDefault();
+    fetchResults();
 });
 
-// Global utility functions
-window.downloadCV = function() {
-    window.showNotification('CV download functionality would be implemented here', 'info');
+focusSearchBtn.addEventListener('click', () => {
+    searchInput.focus();
+});
+
+const chips = document.querySelectorAll('.chip');
+chips.forEach((chip) => {
+    chip.addEventListener('click', () => {
+        searchInput.value = chip.dataset.query || '';
+        fetchResults();
+    });
+});
+
+authOpenButtons.forEach((button) => {
+    button.addEventListener('click', () => openAuthModal(button.dataset.authOpen));
+});
+
+authCloseButtons.forEach((button) => {
+    button.addEventListener('click', closeAuthModal);
+});
+
+authTabs.forEach((tab) => {
+    tab.addEventListener('click', () => setAuthView(tab.dataset.authTab));
+});
+
+signinForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setAuthError(signinError, '');
+    const email = document.getElementById('signinEmail').value.trim();
+    const password = document.getElementById('signinPassword').value;
+
+    const body = new URLSearchParams();
+    body.set('username', email);
+    body.set('password', password);
+
+    try {
+        const data = await requestJson(`${apiBase}/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body,
+        });
+        saveAuth(data);
+        setAuthState(data.user);
+        await loadAccountData(data.access_token);
+        closeAuthModal();
+        redirectAfterAuth(data.user);
+    } catch (error) {
+        setAuthError(signinError, error.message);
+    }
+});
+
+signupForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setAuthError(signupError, '');
+    const payload = {
+        full_name: document.getElementById('signupName').value.trim(),
+        email: document.getElementById('signupEmail').value.trim(),
+        password: document.getElementById('signupPassword').value,
+    };
+    const location = document.getElementById('signupLocation').value;
+    const skills = parseSkills(document.getElementById('signupSkills').value);
+
+    try {
+        const data = await requestJson(`${apiBase}/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        saveAuth(data);
+        await ensureProfileData(data.access_token, location, skills);
+        setAuthState(data.user);
+        await loadAccountData(data.access_token);
+        closeAuthModal();
+        redirectAfterAuth(data.user);
+    } catch (error) {
+        setAuthError(signupError, error.message);
+    }
+});
+
+resetRequestForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setResetMessage('');
+    const email = document.getElementById('resetEmail').value.trim();
+    try {
+        const data = await requestJson(`${apiBase}/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email }),
+        });
+        setResetMessage(data.reset_token
+            ? `Reset token (dev): ${data.reset_token}`
+            : 'Check your email for a reset link.');
+    } catch (error) {
+        setResetMessage(error.message, true);
+    }
+});
+
+resetConfirmForm.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    setResetMessage('');
+    const token = document.getElementById('resetToken').value.trim();
+    const newPassword = document.getElementById('resetNewPassword').value;
+    try {
+        await requestJson(`${apiBase}/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token, new_password: newPassword }),
+        });
+        setResetMessage('Password updated. You can sign in now.');
+        setAuthView('signin');
+    } catch (error) {
+        setResetMessage(error.message, true);
+    }
+});
+
+googleButtons.forEach((button) => {
+    button.addEventListener('click', async () => {
+        const view = button.closest('.auth-view');
+        const context = view && view.id === 'authSignup'
+            ? {
+                location: document.getElementById('signupLocation').value,
+                skills: parseSkills(document.getElementById('signupSkills').value),
+            }
+            : null;
+        try {
+            await startGoogleAuth(context);
+        } catch (error) {
+            const targetError = view && view.id === 'authSignup' ? signupError : signinError;
+            setAuthError(targetError, error.message);
+        }
+    });
+});
+
+logoutBtn.addEventListener('click', () => {
+    resetAuthState();
+    userDropdown.classList.remove('active');
+});
+
+const bootstrapAuth = async () => {
+    const existingAuth = getAuth();
+    if (!existingAuth || !existingAuth.access_token) {
+        setAuthState(null);
+        return;
+    }
+
+    try {
+        const me = await requestJson(`${apiBase}/auth/me`, {
+            headers: { Authorization: `Bearer ${existingAuth.access_token}` },
+        });
+        saveAuth({ ...existingAuth, user: me });
+        setAuthState(me);
+        await loadAccountData(existingAuth.access_token);
+    } catch (error) {
+        if (error.status === 401 || error.status === 403) {
+            resetAuthState();
+            return;
+        }
+        if (existingAuth.user) {
+            setAuthState(existingAuth.user);
+        } else {
+            setAuthState(null);
+        }
+    }
 };
 
-window.editCV = function() {
-    window.showNotification('CV editing functionality would be implemented here', 'info');
-};
+bootstrapAuth();
 
-window.downloadDocument = function(type) {
-    window.showNotification(`${type} download functionality would be implemented here`, 'info');
-};
+userMenuBtn.addEventListener('click', () => {
+    userDropdown.classList.toggle('active');
+});
 
-window.editDocument = function(type) {
-    window.showNotification(`${type} editing functionality would be implemented here`, 'info');
-};
+document.addEventListener('click', (event) => {
+    if (!userDropdown.contains(event.target) && !userMenuBtn.contains(event.target)) {
+        userDropdown.classList.remove('active');
+    }
+});
 
-window.saveAdvice = function() {
-    window.showNotification('Career advice saved to your dashboard', 'success');
-};
+accountTabs.forEach((button) => {
+    button.addEventListener('click', () => {
+        setAccountTab(button.dataset.accountTab);
+        accountSection.scrollIntoView({ behavior: 'smooth' });
+        userDropdown.classList.remove('active');
+    });
+});
 
-window.shareAdvice = function() {
-    window.showNotification('Share functionality would be implemented here', 'info');
-};
+dropdownTabs.forEach((button) => {
+    button.addEventListener('click', () => {
+        setAccountTab(button.dataset.accountTab);
+        accountSection.scrollIntoView({ behavior: 'smooth' });
+        userDropdown.classList.remove('active');
+    });
+});

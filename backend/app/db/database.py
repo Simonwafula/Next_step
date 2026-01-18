@@ -33,45 +33,51 @@ if DATABASE_URL.startswith("sqlite"):
         # to aid debugging (tests will still proceed but with missing tables).
 
 def init_db():
-    # Ensure pgvector extension
-    with engine.connect() as conn:
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        conn.commit()
+    # Ensure pgvector extension (Postgres only)
+    if not DATABASE_URL.startswith("sqlite"):
+        with engine.connect() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
     # Create tables
     from .models import Base  # noqa
     Base.metadata.create_all(bind=engine)
 
 async def get_db():
-    """Async generator that yields a sync Session wrapped with async helpers.
+    """Async generator that yields a Session compatible with sync + async usage.
 
-    Tests expect `async for db in get_db()` and then to `await db.execute(...)`.
-    We provide a minimal async wrapper that runs blocking DB calls in a thread
-    executor so tests can `await db.execute(...)` while the underlying session
-    remains synchronous (SQLite in-memory for tests).
+    Some tests use `async for db in get_db()` and `await db.execute(...)`,
+    while the API code expects sync-style `db.execute(...)`. The hybrid wrapper
+    supports both without forcing async engines.
     """
-    import asyncio
 
-    class _AsyncSessionShim:
+    class _HybridResult:
+        def __init__(self, result):
+            self._result = result
+
+        def __await__(self):
+            async def _wrap():
+                return self._result
+            return _wrap().__await__()
+
+        def __getattr__(self, item):
+            return getattr(self._result, item)
+
+    class _HybridSession:
         def __init__(self, sync_session):
             self._session = sync_session
 
-        async def execute(self, *args, **kwargs):
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, lambda: self._session.execute(*args, **kwargs))
+        def execute(self, *args, **kwargs):
+            return _HybridResult(self._session.execute(*args, **kwargs))
 
-        async def commit(self):
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, lambda: self._session.commit())
+        def commit(self):
+            return _HybridResult(self._session.commit())
 
-        async def rollback(self):
-            loop = asyncio.get_event_loop()
-            return await loop.run_in_executor(None, lambda: self._session.rollback())
+        def rollback(self):
+            return _HybridResult(self._session.rollback())
 
-        async def close(self):
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, self._session.close)
+        def close(self):
+            return _HybridResult(self._session.close())
 
-        # Provide access to sync session attributes when needed (e.g., add)
         def __getattr__(self, item):
             return getattr(self._session, item)
 
@@ -92,11 +98,9 @@ async def get_db():
             finally:
                 await async_db.close()
 
-    # Otherwise, provide shim wrapping sync Session
+    # Otherwise, provide a hybrid wrapper around sync Session
     db = SessionLocal()
     try:
-        shim = _AsyncSessionShim(db)
-        yield shim
+        yield _HybridSession(db)
     finally:
         db.close()
-

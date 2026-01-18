@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NextStep Admin Console</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-api-base="http://localhost:8000/api">
+    <div class="ambient">
+        <span class="orb orb-1"></span>
+        <span class="orb orb-2"></span>
+        <span class="orb orb-3"></span>
+    </div>
+
+    <header class="site-header">
+        <div class="container header-inner">
+            <div class="brand">
+                <span class="brand-mark">N</span>
+                <div>
+                    <p class="brand-name">NextStep Careers</p>
+                    <p class="brand-tag">Admin console</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html">Search</a>
+                <a href="dashboard.html">User dashboard</a>
+            </nav>
+            <div class="header-actions">
+                <span class="user-chip" id="adminUserChip">Admin</span>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <section class="dashboard-hero">
+            <div class="container">
+                <p class="eyebrow">Admin dashboard</p>
+                <h1>Pulse of the platform.</h1>
+                <p class="hero-subtitle">
+                    Track growth, ingestion health, and what the data pipeline is delivering today.
+                </p>
+                <div class="admin-actions">
+                    <button class="solid-btn" type="button" data-admin-action="ingest">Run ingest</button>
+                    <button class="ghost-btn" type="button" data-admin-action="ingest-government">Run gov ingest</button>
+                    <button class="ghost-btn" type="button" data-admin-action="test-scrapers">Test scrapers</button>
+                    <button class="ghost-btn" type="button" data-admin-action="generate-insights">Generate insights</button>
+                </div>
+                <p class="auth-message" id="adminStatus"></p>
+            </div>
+        </section>
+
+        <section class="dashboard" id="adminApp" hidden>
+            <div class="container">
+                <div class="kpi-grid" id="kpiGrid">
+                    <article class="kpi-card" data-kpi="users_total">
+                        <p class="kpi-label">Total users</p>
+                        <p class="kpi-value">--</p>
+                        <p class="kpi-note">New this week: <span data-kpi-note="users_new_7d">--</span></p>
+                    </article>
+                    <article class="kpi-card" data-kpi="users_active_7d">
+                        <p class="kpi-label">Active users (7d)</p>
+                        <p class="kpi-value">--</p>
+                        <p class="kpi-note">Logged in last 7 days</p>
+                    </article>
+                    <article class="kpi-card" data-kpi="jobs_total">
+                        <p class="kpi-label">Jobs indexed</p>
+                        <p class="kpi-value">--</p>
+                        <p class="kpi-note">New this week: <span data-kpi-note="jobs_new_7d">--</span></p>
+                    </article>
+                    <article class="kpi-card" data-kpi="sources_total">
+                        <p class="kpi-label">Sources tracked</p>
+                        <p class="kpi-value">--</p>
+                        <p class="kpi-note">Active: <span data-kpi-note="sources_active">--</span></p>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Coverage health</h3>
+                            <span class="panel-note" id="coverageUpdated"></span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="coverage-row">
+                                <div>
+                                    <p class="panel-label">Salary coverage</p>
+                                    <p class="panel-value" id="salaryCoverage">--%</p>
+                                </div>
+                                <div class="coverage-meter">
+                                    <span id="salaryCoverageBar"></span>
+                                </div>
+                            </div>
+                            <div class="coverage-row">
+                                <div>
+                                    <p class="panel-label">Skills coverage</p>
+                                    <p class="panel-value" id="skillsCoverage">--%</p>
+                                </div>
+                                <div class="coverage-meter">
+                                    <span id="skillsCoverageBar"></span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Pipeline stats</h3>
+                        </div>
+                        <div class="panel-body" id="pipelineStats">
+                            <p class="panel-note">Loading...</p>
+                        </div>
+                    </article>
+                </div>
+
+                <div class="dashboard-grid three">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Recent users</h3>
+                        </div>
+                        <div class="data-list" id="adminUsers"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Recent jobs</h3>
+                        </div>
+                        <div class="data-list" id="adminJobs"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Sources snapshot</h3>
+                        </div>
+                        <div class="data-list" id="adminSources"></div>
+                    </article>
+                </div>
+            </div>
+        </section>
+
+        <section class="auth-gate" id="adminGate" hidden>
+            <div class="container">
+                <div class="auth-card gate-card">
+                    <h3>Admin access required</h3>
+                    <p class="auth-subtext">Sign in with an admin account to view platform metrics.</p>
+                    <p class="auth-message" id="adminGateMessage"></p>
+                    <a class="solid-btn" href="index.html?next=admin.html">Go to sign in</a>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/admin.js"></script>
+</body>
+</html>

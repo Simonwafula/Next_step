@@ -1,6 +1,10 @@
-# Next_KE Platform - Integrations Implementation
+# Integrations
 
-## Overview
+Consolidated documentation.
+
+## Next_KE Platform - Integrations Implementation
+
+### Overview
 
 This document outlines the implementation of three key integrations for the Next_KE career platform:
 
@@ -8,9 +12,9 @@ This document outlines the implementation of three key integrations for the Next
 2. **Google/Outlook Calendar Integration** - Schedule interviews and manage career events
 3. **ATS (Applicant Tracking System) Integration** - Connect with popular ATS platforms
 
-## Architecture Overview
+### Architecture Overview
 
-### Database Models
+#### Database Models
 - **LinkedInProfile** - Stores LinkedIn profile data and sync settings
 - **CalendarIntegration** - Manages calendar provider connections
 - **CalendarEvent** - Tracks calendar events (interviews, deadlines)
@@ -19,49 +23,49 @@ This document outlines the implementation of three key integrations for the Next
 - **ATSApplicationSync** - Tracks application submissions to ATS
 - **IntegrationActivityLog** - Audit trail for all integration activities
 
-### Services
+#### Services
 - **LinkedInService** - Handles LinkedIn OAuth and profile synchronization
 - **CalendarService** - Manages calendar integrations and event creation
 - **ATSService** - Handles ATS connections and job/application syncing
 
-### API Routes
+#### API Routes
 - `/api/v1/integrations/linkedin/*` - LinkedIn integration endpoints
 - `/api/v1/integrations/calendar/*` - Calendar integration endpoints
 - `/api/v1/integrations/ats/*` - ATS integration endpoints
 
-## 1. LinkedIn Profile Sync
+### 1. LinkedIn Profile Sync
 
-### Features
+#### Features
 - OAuth 2.0 authentication with LinkedIn
 - Automatic profile data synchronization
 - Privacy controls for data sharing
 - Configurable sync frequency (daily, weekly, monthly)
 - Profile completeness enhancement
 
-### Implementation Details
+#### Implementation Details
 
-#### OAuth Flow
+##### OAuth Flow
 1. User initiates LinkedIn connection
 2. Redirect to LinkedIn OAuth authorization
 3. Exchange authorization code for access token
 4. Fetch profile data from LinkedIn API
 5. Store profile data and sync settings
 
-#### Data Synchronization
+##### Data Synchronization
 - **Profile Information**: Name, headline, summary, location, industry
 - **Experience**: Work history with companies and roles
 - **Education**: Academic background
 - **Skills**: Professional skills with endorsements
 - **Profile Picture**: Optional sync
 
-#### Privacy Controls
+##### Privacy Controls
 Users can control which data elements to sync:
 - Profile picture
 - Work experience
 - Education history
 - Skills and endorsements
 
-### API Endpoints
+#### API Endpoints
 
 ```
 GET /api/v1/integrations/linkedin/auth
@@ -80,7 +84,7 @@ DELETE /api/v1/integrations/linkedin
 - Disconnect LinkedIn integration
 ```
 
-### Configuration Required
+#### Configuration Required
 
 ```env
 LINKEDIN_CLIENT_ID=your_linkedin_client_id
@@ -88,32 +92,32 @@ LINKEDIN_CLIENT_SECRET=your_linkedin_client_secret
 ENABLE_LINKEDIN_INTEGRATION=true
 ```
 
-## 2. Google/Outlook Calendar Integration
+### 2. Google/Outlook Calendar Integration
 
-### Features
+#### Features
 - OAuth 2.0 authentication with Google and Microsoft
 - Automatic interview scheduling
 - Calendar event creation for job deadlines
 - Interview reminders and notifications
 - Multi-provider support (Google Calendar, Outlook)
 
-### Implementation Details
+#### Implementation Details
 
-#### Supported Providers
+##### Supported Providers
 - **Google Calendar** - Using Google Calendar API v3
 - **Microsoft Outlook** - Using Microsoft Graph API
 
-#### Event Types
+##### Event Types
 - **Interview Events** - Scheduled job interviews
 - **Deadline Reminders** - Application deadlines
 - **Career Events** - Networking events, career fairs
 
-#### Reminder System
+##### Reminder System
 - Configurable reminder times (15 min, 1 hour, 1 day before)
 - Multiple notification channels (email, WhatsApp, in-app)
 - Automatic reminder sending
 
-### API Endpoints
+#### API Endpoints
 
 ```
 GET /api/v1/integrations/calendar/auth/{provider}
@@ -129,68 +133,68 @@ POST /api/v1/integrations/calendar/events
 - Create calendar event for interview
 ```
 
-### Configuration Required
+#### Configuration Required
 
 ```env
-# Google Calendar
+## Google Calendar
 GOOGLE_CLIENT_ID=your_google_client_id
 GOOGLE_CLIENT_SECRET=your_google_client_secret
 
-# Microsoft Outlook
+## Microsoft Outlook
 MICROSOFT_CLIENT_ID=your_microsoft_client_id
 MICROSOFT_CLIENT_SECRET=your_microsoft_client_secret
 
 ENABLE_CALENDAR_INTEGRATION=true
 ```
 
-## 3. ATS Integration
+### 3. ATS Integration
 
-### Features
+#### Features
 - Support for major ATS platforms (Greenhouse, Lever, Workday, BambooHR)
 - Automatic job synchronization from ATS
 - Application submission to ATS
 - Real-time status updates via webhooks
 - Bulk job import and management
 
-### Supported ATS Platforms
+#### Supported ATS Platforms
 
-#### Greenhouse
+##### Greenhouse
 - **Authentication**: API Key (Basic Auth)
 - **Features**: Job sync, candidate submission
 - **Webhooks**: Job updates, application status changes
 
-#### Lever
+##### Lever
 - **Authentication**: API Key (Basic Auth)
 - **Features**: Posting sync, candidate submission
 - **Webhooks**: Posting updates, application status changes
 
-#### Workday
+##### Workday
 - **Authentication**: OAuth 2.0
 - **Features**: Job sync, candidate management
 - **Webhooks**: Job updates, candidate status changes
 
-#### BambooHR
+##### BambooHR
 - **Authentication**: API Key (Basic Auth)
 - **Features**: Job sync, applicant tracking
 - **Webhooks**: Job updates, application status changes
 
-### Implementation Details
+#### Implementation Details
 
-#### Job Synchronization
+##### Job Synchronization
 1. Connect to ATS API using stored credentials
 2. Fetch job postings from ATS
 3. Map ATS job data to platform job structure
 4. Create or update job posts in platform
 5. Track sync status and errors
 
-#### Application Submission
+##### Application Submission
 1. User applies to job through platform
 2. Check if job is synced from ATS
 3. Submit application data to ATS
 4. Create tracking record for application status
 5. Monitor status updates via webhooks
 
-### API Endpoints
+#### API Endpoints
 
 ```
 POST /api/v1/integrations/ats
@@ -206,66 +210,66 @@ POST /api/v1/integrations/ats/webhook/{integration_id}
 - Webhook endpoint for ATS status updates
 ```
 
-### Configuration Required
+#### Configuration Required
 
 ```env
 ENABLE_ATS_INTEGRATION=true
 ```
 
-## Background Tasks
+### Background Tasks
 
-### Scheduled Tasks
+#### Scheduled Tasks
 - **LinkedIn Profile Sync** - Daily/weekly profile updates
 - **Calendar Reminder Processing** - Check for upcoming events
 - **ATS Job Synchronization** - Regular job updates from ATS
 - **Token Refresh** - Refresh expired OAuth tokens
 
-### Implementation
+#### Implementation
 Using Celery with Redis as message broker:
 
 ```python
-# LinkedIn sync task
+## LinkedIn sync task
 @celery.task
 async def sync_linkedin_profiles():
     async with get_db() as db:
         await linkedin_service.sync_linkedin_profiles(db)
 
-# Calendar reminder task
+## Calendar reminder task
 @celery.task
 async def process_calendar_reminders():
     async with get_db() as db:
         await calendar_service.sync_upcoming_interviews(db)
 
-# ATS sync task
+## ATS sync task
 @celery.task
 async def sync_ats_integrations():
     async with get_db() as db:
         await ats_service.sync_all_ats_integrations(db)
 ```
 
-## Security Considerations
+### Security Considerations
 
-### Data Protection
+#### Data Protection
 - All OAuth tokens encrypted at rest
 - API keys stored securely with encryption
 - Regular token rotation and refresh
 - Audit logging for all integration activities
 
-### Privacy Controls
+#### Privacy Controls
 - User consent for data synchronization
 - Granular privacy settings
 - Data retention policies
 - Right to disconnect and delete data
 
-### Rate Limiting
+#### Rate Limiting
 - Respect API rate limits for all providers
 - Implement exponential backoff for failed requests
 - Queue management for bulk operations
 - Error handling and retry logic
 
-## Monitoring and Logging
+### Monitoring and Logging
 
-### Activity Logging
+#### Activity Logging
 All integration activities are logged in `IntegrationActivityLog`:
 - Integration type and provider
 - Activity type (sync, auth, error)
@@ -273,79 +277,79 @@ All integration activities are logged in `IntegrationActivityLog`:
 - Error messages and debugging data
 - Performance metrics (duration)
 
-### Health Monitoring
+#### Health Monitoring
 - Integration status monitoring
 - Token expiration alerts
 - Sync failure notifications
 - Performance metrics tracking
 
-## Error Handling
+### Error Handling
 
-### Common Error Scenarios
+#### Common Error Scenarios
 1. **Token Expiration** - Automatic refresh or user re-authentication
 2. **API Rate Limiting** - Exponential backoff and retry
 3. **Network Failures** - Retry with circuit breaker pattern
 4. **Data Validation Errors** - Log and skip invalid records
 5. **Permission Errors** - User notification and re-authorization
 
-### Error Recovery
+#### Error Recovery
 - Automatic retry for transient errors
 - Manual retry options for users
 - Graceful degradation when integrations fail
 - Clear error messages and resolution steps
 
-## Testing Strategy
+### Testing Strategy
 
-### Unit Tests
+#### Unit Tests
 - Service layer testing with mocked APIs
 - Database model validation
 - OAuth flow testing
 - Data transformation testing
 
-### Integration Tests
+#### Integration Tests
 - End-to-end OAuth flows
 - API integration testing with test accounts
 - Webhook processing testing
 - Background task execution
 
-### Load Testing
+#### Load Testing
 - High-volume sync operations
 - Concurrent user authentication
 - API rate limit handling
 - Database performance under load
 
-## Deployment Considerations
+### Deployment Considerations
 
-### Environment Variables
+#### Environment Variables
 All integration credentials and settings configured via environment variables:
 
 ```env
-# LinkedIn
+## LinkedIn
 LINKEDIN_CLIENT_ID=
 LINKEDIN_CLIENT_SECRET=
 
-# Google Calendar
+## Google Calendar
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
 
-# Microsoft Calendar
+## Microsoft Calendar
 MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
 
-# Feature Flags
+## Feature Flags
 ENABLE_LINKEDIN_INTEGRATION=true
 ENABLE_CALENDAR_INTEGRATION=true
 ENABLE_ATS_INTEGRATION=true
 ```
 
-### Database Migration
+#### Database Migration
 Run the integration migration to create required tables:
 
 ```bash
 alembic upgrade head
 ```
 
-### Background Tasks Setup
+#### Background Tasks Setup
 Configure Celery workers for background processing:
 
 ```bash
@@ -353,9 +357,9 @@ celery -A app.main worker --loglevel=info
 celery -A app.main beat --loglevel=info
 ```
 
-## Usage Examples
+### Usage Examples
 
-### LinkedIn Integration
+#### LinkedIn Integration
 ```javascript
 // Frontend: Initiate LinkedIn connection
 const response = await fetch('/api/v1/integrations/linkedin/auth');
@@ -367,7 +371,7 @@ window.location.href = authorization_url;
 // Profile data is automatically synced
 ```
 
-### Calendar Integration
+#### Calendar Integration
 ```javascript
 // Create interview event
 const eventData = {
@@ -387,7 +391,7 @@ const response = await fetch('/api/v1/integrations/calendar/events?job_applicati
 });
 ```
 
-### ATS Integration
+#### ATS Integration
 ```javascript
 // Organization admin: Setup ATS integration
 const atsConfig = {
@@ -409,30 +413,30 @@ const response = await fetch('/api/v1/integrations/ats?organization_id=1', {
 });
 ```
 
-## Future Enhancements
+### Future Enhancements
 
-### Planned Features
+#### Planned Features
 1. **Additional ATS Providers** - SmartRecruiters, iCIMS, Taleo
 2. **Advanced Calendar Features** - Meeting room booking, availability checking
 3. **LinkedIn Company Pages** - Company insights and employee connections
 4. **Bulk Operations** - Mass job imports, batch application submissions
 5. **Analytics Dashboard** - Integration usage metrics and insights
 
-### Scalability Improvements
+#### Scalability Improvements
 1. **Microservices Architecture** - Separate integration services
 2. **Event-Driven Architecture** - Real-time updates via message queues
 3. **Caching Layer** - Redis caching for frequently accessed data
 4. **API Gateway** - Centralized API management and rate limiting
 
-## Support and Maintenance
+### Support and Maintenance
 
-### Documentation
+#### Documentation
 - API documentation with Swagger/OpenAPI
 - Integration setup guides for each provider
 - Troubleshooting guides for common issues
 - Video tutorials for end users
 
-### Monitoring
+#### Monitoring
 - Integration health dashboards
 - Error rate monitoring and alerting
 - Performance metrics and optimization

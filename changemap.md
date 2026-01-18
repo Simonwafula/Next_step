@@ -1,0 +1,74 @@
+# Change Map
+
+Purpose: Track human-readable changes and outcomes before pushing to git.
+
+## Template
+- Date:
+- Change summary:
+- Outcome:
+- Affected areas:
+- Tests:
+- Follow-ups:
+
+## 2026-01-18
+- Change summary: Added auth flows (email/password, Google OAuth, reset), introduced a search-first frontend with account UI, and wired government ingestion + monitoring. Cleaned extra virtual environments and consolidated documentation into `docs/` with new `features.md`, `userjourney.md`, and `changemap.md`.
+- Outcome: Users can sign up/sign in, recover passwords, search for roles, and view profile/saved roles; ingestion pipeline can populate data; docs are centralized and easier to navigate.
+- Affected areas: `backend/app/api`, `backend/app/services`, `frontend/`, `backend/app/ingestion/`, `docs/`, repo root.
+- Tests: Not run.
+- Follow-ups: Verify OAuth creds, SMTP config, and run ingestion against live sources.
+
+## 2026-01-18 (dev start)
+- Change summary: Added a helper script to start backend + frontend locally with the `.env` file.
+- Outcome: Developers can boot the app with one command for local browser testing.
+- Affected areas: `scripts/dev-start.sh`.
+- Tests: Not run.
+- Follow-ups: None.
+
+## 2026-01-18 (auth UX)
+- Change summary: Fixed auth UI visibility and added token validation on load to prevent mixed signed-in/out states.
+- Outcome: Sign-in and sign-out are mutually exclusive, and invalid tokens reset the session before showing profile.
+- Affected areas: `frontend/js/main.js`, `frontend/styles/main.css`.
+- Tests: Not run.
+- Follow-ups: None.
+
+## 2026-01-18 (auth backend)
+- Change summary: Reworked the database session wrapper to support both sync API usage and async test helpers.
+- Outcome: Registration and login use sync sessions correctly while async tests can still `await` DB calls.
+- Affected areas: `backend/app/db/database.py`.
+- Tests: Not run.
+- Follow-ups: Retest signup and login locally.
+
+## 2026-01-18 (dashboards)
+- Change summary: Added admin KPI endpoints with access control plus new admin/user dashboard pages and navigation links.
+- Outcome: Admins can view KPIs, sources, and recent activity; users have a dedicated dashboard with paid/free sections.
+- Affected areas: `backend/app/api/admin_routes.py`, `backend/app/services/auth_service.py`, `backend/app/api/auth_routes.py`, `frontend/admin.html`, `frontend/dashboard.html`, `frontend/js/admin.js`, `frontend/js/dashboard-ui.js`, `frontend/index.html`, `frontend/js/main.js`, `frontend/styles/main.css`, `features.md`, `.env`, `.env.example`.
+- Tests: Not run.
+- Follow-ups: Set `ADMIN_EMAILS` and verify admin access locally.
+
+## 2026-01-18 (bcrypt pin)
+- Change summary: Pinned bcrypt to a compatible version for passlib.
+- Outcome: Registration/login should work without bcrypt version errors.
+- Affected areas: `backend/requirements.txt`.
+- Tests: Not run.
+- Follow-ups: Reinstall backend requirements in the venv.
+
+## 2026-01-18 (auth response)
+- Change summary: Made phone fields optional in auth response models.
+- Outcome: Registration succeeds when phone fields are null.
+- Affected areas: `backend/app/api/auth_routes.py`.
+- Tests: Local register flow verified via script.
+- Follow-ups: None.
+
+## 2026-01-18 (auth redirect)
+- Change summary: Added post-auth redirects to user dashboard or admin console.
+- Outcome: Email/password and Google sign-in now navigate to the correct dashboard automatically.
+- Affected areas: `frontend/js/main.js`, `frontend/auth-callback.html`.
+- Tests: Not run.
+- Follow-ups: Confirm redirects on sign-in and Google OAuth.
+
+## 2026-01-18 (dashboard gate)
+- Change summary: Added clearer login links and host-mismatch messaging for dashboard/admin gates; bound frontend server to 127.0.0.1 in dev script.
+- Outcome: Sessions persist across navigation and gate explains when the host origin is wrong.
+- Affected areas: `scripts/dev-start.sh`, `frontend/dashboard.html`, `frontend/admin.html`, `frontend/js/dashboard-ui.js`, `frontend/js/admin.js`.
+- Tests: Not run.
+- Follow-ups: Use `http://127.0.0.1:5173` during local dev.

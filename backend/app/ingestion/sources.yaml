@@ -1,4 +1,5 @@
 # Example configuration for ingestion sources. Extend as needed.
+# Government monitoring sources live in government_sources.yaml.
 sources:
   - name: Example Co (Greenhouse)
     type: greenhouse

@@ -12,13 +12,23 @@ from ..db.models import User, UserProfile
 from ..db.database import get_db
 from ..core.config import settings
 
+def _password_schemes():
+    try:
+        import bcrypt as _bcrypt  # noqa: F401
+        if not getattr(_bcrypt, "__about__", None):
+            raise RuntimeError("bcrypt metadata unavailable")
+        return ["bcrypt", "pbkdf2_sha256"]
+    except Exception:
+        return ["pbkdf2_sha256"]
+
 # Password hashing
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_context = CryptContext(schemes=_password_schemes(), deprecated="auto")
 
 # JWT settings
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 REFRESH_TOKEN_EXPIRE_DAYS = 7
+PASSWORD_RESET_EXPIRE_MINUTES = settings.PASSWORD_RESET_EXPIRE_MINUTES
 
 # Security scheme
 security = HTTPBearer()
@@ -66,6 +76,27 @@ class AuthService:
                 detail="Could not validate credentials",
                 headers={"WWW-Authenticate": "Bearer"},
             )
+
+    def create_password_reset_token(self, user: User) -> str:
+        """Create a password reset token."""
+        expire = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
+        to_encode = {
+            "sub": user.id,
+            "email": user.email,
+            "type": "password_reset",
+            "exp": expire,
+        }
+        return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
+
+    def verify_password_reset_token(self, token: str) -> Dict[str, Any]:
+        """Verify password reset token."""
+        payload = self.verify_token(token)
+        if payload.get("type") != "password_reset":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid reset token",
+            )
+        return payload
     
     def get_user_by_email(self, db: Session, email: str) -> Optional[User]:
         """Get user by email."""
@@ -160,8 +191,23 @@ class AuthService:
         user.last_login = datetime.utcnow()
         db.commit()
 
+    def set_user_password(self, db: Session, user: User, new_password: str):
+        """Update user password."""
+        user.hashed_password = self.get_password_hash(new_password)
+        db.commit()
+
 # Global auth service instance
 auth_service = AuthService()
+
+def is_admin_user(user: User) -> bool:
+    admin_emails = {
+        email.strip().lower()
+        for email in settings.ADMIN_EMAILS.split(",")
+        if email.strip()
+    }
+    if not admin_emails:
+        return False
+    return user.email.lower() in admin_emails
 
 # Dependency to get current user
 async def get_current_user(
@@ -236,3 +282,14 @@ def require_subscription(required_tier: str = "professional"):
         return current_user
     
     return check_subscription
+
+# Dependency to enforce admin access
+def require_admin():
+    async def check_admin(current_user: User = Depends(get_current_user)) -> User:
+        if not is_admin_user(current_user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required",
+            )
+        return current_user
+    return check_admin
