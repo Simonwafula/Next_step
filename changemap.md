@@ -72,3 +72,37 @@ Purpose: Track human-readable changes and outcomes before pushing to git.
 - Affected areas: `scripts/dev-start.sh`, `frontend/dashboard.html`, `frontend/admin.html`, `frontend/js/dashboard-ui.js`, `frontend/js/admin.js`.
 - Tests: Not run.
 - Follow-ups: Use `http://127.0.0.1:5173` during local dev.
+
+## 2026-01-18 (dashboard auth diagnostics)
+- Change summary: Improved dashboard/admin gate messaging for missing session, expired token, or API offline.
+- Outcome: Login issues are clearer and indicate the next fix step.
+- Affected areas: `frontend/js/dashboard-ui.js`, `frontend/js/admin.js`.
+- Tests: Not run.
+- Follow-ups: None.
+
+## 2026-01-18 (signed-in badge)
+- Change summary: Added explicit "Signed in as" labels in dashboard and admin headers.
+- Outcome: Users can confirm the active session at a glance.
+- Affected areas: `frontend/js/dashboard-ui.js`, `frontend/js/admin.js`.
+- Tests: Not run.
+- Follow-ups: None.
+
+## 2026-01-18 (jwt sub fix)
+- Change summary: Stored JWT `sub` as string and parsed it back to int on lookup.
+- Outcome: `/auth/me` succeeds after login, fixing dashboard gate loops.
+- Affected areas: `backend/app/services/auth_service.py`, `backend/app/api/auth_routes.py`.
+- Tests: Manual login check pending.
+
+## 2026-01-18 (dashboard sign out)
+- Change summary: Added sign-out buttons to user and admin dashboards.
+- Outcome: Users can clear sessions directly from dashboards.
+- Affected areas: `frontend/dashboard.html`, `frontend/admin.html`, `frontend/js/dashboard-ui.js`, `frontend/js/admin.js`.
+- Tests: Not run.
+- Follow-ups: None.
+
+## 2026-01-18 (admin gate fix)
+- Change summary: Prevented admin gate overlay when admin session is valid but data fetch fails.
+- Outcome: Admins stay in the dashboard and see a status error instead of being blocked.
+- Affected areas: `frontend/js/admin.js`.
+- Tests: Not run.
+- Follow-ups: Verify admin data loads after backend restarts.

@@ -13,6 +13,7 @@ const skillsCoverage = document.getElementById('skillsCoverage');
 const skillsCoverageBar = document.getElementById('skillsCoverageBar');
 const coverageUpdated = document.getElementById('coverageUpdated');
 const adminGateMessage = document.getElementById('adminGateMessage');
+const adminSignOut = document.getElementById('adminSignOut');
 
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
@@ -25,6 +26,10 @@ const getAuth = () => {
     } catch (error) {
         return null;
     }
+};
+
+const clearAuth = () => {
+    localStorage.removeItem(authStorageKey);
 };
 
 const setStatus = (message, isError = false) => {
@@ -41,6 +46,22 @@ const requestJson = async (url, options = {}) => {
         throw error;
     }
     return payload;
+};
+
+const showGate = (message) => {
+    adminGate.hidden = false;
+    adminApp.hidden = true;
+    if (adminGateMessage) {
+        adminGateMessage.textContent = message || '';
+    }
+};
+
+const showAdminApp = () => {
+    adminGate.hidden = true;
+    adminApp.hidden = false;
+    if (adminGateMessage) {
+        adminGateMessage.textContent = '';
+    }
 };
 
 const renderKpis = (overview) => {
@@ -213,9 +234,10 @@ const wireActions = (token) => {
 const boot = async () => {
     const auth = getAuth();
     if (!auth || !auth.access_token) {
-        adminGate.hidden = false;
-        if (adminGateMessage && window.location.hostname === '::') {
-            adminGateMessage.textContent = 'You are on [::]. Use http://127.0.0.1:5173 so your admin session persists.';
+        if (window.location.hostname === '::') {
+            showGate('You are on [::]. Use http://127.0.0.1:5173 so your admin session persists.');
+        } else {
+            showGate('No saved session found. Sign in with an admin account.');
         }
         return;
     }
@@ -225,40 +247,65 @@ const boot = async () => {
             headers: { Authorization: `Bearer ${auth.access_token}` },
         });
         if (!me.is_admin) {
-            adminGate.hidden = false;
-            if (adminGateMessage) {
-                adminGateMessage.textContent = 'Signed in, but this account is not an admin.';
-            }
+            showGate('Signed in, but this account is not an admin.');
             return;
         }
 
-        adminUserChip.textContent = me.full_name || me.email || 'Admin';
-        adminApp.hidden = false;
+        const displayName = me.full_name || me.email || 'Admin';
+        adminUserChip.textContent = `Signed in as ${displayName}`;
+        adminUserChip.title = displayName;
+        showAdminApp();
         wireActions(auth.access_token);
 
         const [overview, usersPayload, jobsPayload, sourcesPayload] = await Promise.all([
             requestJson(`${apiBase}/admin/overview`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
-            }),
+            }).catch((error) => ({ error })),
             requestJson(`${apiBase}/admin/users?limit=8`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
-            }),
+            }).catch((error) => ({ error })),
             requestJson(`${apiBase}/admin/jobs?limit=8`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
-            }),
+            }).catch((error) => ({ error })),
             requestJson(`${apiBase}/admin/sources?source_type=government`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
-            }),
+            }).catch((error) => ({ error })),
         ]);
 
-        renderKpis(overview);
-        renderCoverage(overview);
-        renderPipelineStats(overview);
-        renderUserList(usersPayload.users || []);
-        renderJobList(jobsPayload.jobs || []);
-        renderSourceList(sourcesPayload.sources || []);
+        if (overview && overview.error) {
+            if (overview.error.status === 401 || overview.error.status === 403) {
+                showGate('Session expired. Sign in again with an admin account.');
+                return;
+            }
+            setStatus('Backend not reachable. Make sure the API is running.', true);
+        } else if (overview) {
+            renderKpis(overview);
+            renderCoverage(overview);
+            renderPipelineStats(overview);
+        }
+
+        if (usersPayload && !usersPayload.error) {
+            renderUserList(usersPayload.users || []);
+        }
+        if (jobsPayload && !jobsPayload.error) {
+            renderJobList(jobsPayload.jobs || []);
+        }
+        if (sourcesPayload && !sourcesPayload.error) {
+            renderSourceList(sourcesPayload.sources || []);
+        }
+
+        if (adminSignOut) {
+            adminSignOut.addEventListener('click', () => {
+                clearAuth();
+                window.location.href = 'index.html';
+            });
+        }
     } catch (error) {
-        adminGate.hidden = false;
+        if (error.status === 401 || error.status === 403) {
+            showGate('Session expired. Sign in again with an admin account.');
+        } else {
+            showGate('Backend not reachable. Make sure the API is running.');
+        }
         setStatus(error.message, true);
     }
 };

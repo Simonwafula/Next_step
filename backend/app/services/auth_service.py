@@ -48,6 +48,8 @@ class AuthService:
     def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
         """Create a JWT access token."""
         to_encode = data.copy()
+        if "sub" in to_encode:
+            to_encode["sub"] = str(to_encode["sub"])
         if expires_delta:
             expire = datetime.utcnow() + expires_delta
         else:
@@ -60,6 +62,8 @@ class AuthService:
     def create_refresh_token(self, data: Dict[str, Any]) -> str:
         """Create a JWT refresh token."""
         to_encode = data.copy()
+        if "sub" in to_encode:
+            to_encode["sub"] = str(to_encode["sub"])
         expire = datetime.utcnow() + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
         to_encode.update({"exp": expire, "type": "refresh"})
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
@@ -81,7 +85,7 @@ class AuthService:
         """Create a password reset token."""
         expire = datetime.utcnow() + timedelta(minutes=PASSWORD_RESET_EXPIRE_MINUTES)
         to_encode = {
-            "sub": user.id,
+            "sub": str(user.id),
             "email": user.email,
             "type": "password_reset",
             "exp": expire,
@@ -218,8 +222,16 @@ async def get_current_user(
     token = credentials.credentials
     payload = auth_service.verify_token(token)
     
-    user_id: int = payload.get("sub")
-    if user_id is None:
+    user_id_raw = payload.get("sub")
+    if user_id_raw is None:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    try:
+        user_id = int(user_id_raw)
+    except (TypeError, ValueError):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

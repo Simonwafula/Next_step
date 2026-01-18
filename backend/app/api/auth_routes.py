@@ -193,7 +193,10 @@ async def reset_password(
 ):
     """Reset password using a valid reset token."""
     token_payload = auth_service.verify_password_reset_token(payload.token)
-    user_id = token_payload.get("sub")
+    try:
+        user_id = int(token_payload.get("sub"))
+    except (TypeError, ValueError):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid reset token")
     user = auth_service.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")

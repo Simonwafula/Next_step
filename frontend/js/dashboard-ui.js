@@ -20,6 +20,7 @@ const adviceQuery = document.getElementById('adviceQuery');
 const adviceResponse = document.getElementById('adviceResponse');
 const upgradeBtn = document.getElementById('upgradeBtn');
 const dashboardGateMessage = document.getElementById('dashboardGateMessage');
+const dashboardSignOut = document.getElementById('dashboardSignOut');
 
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
@@ -32,6 +33,10 @@ const getAuth = () => {
     } catch (error) {
         return null;
     }
+};
+
+const clearAuth = () => {
+    localStorage.removeItem(authStorageKey);
 };
 
 const setPaidVisibility = (isPaid) => {
@@ -52,6 +57,13 @@ const requestJson = async (url, options = {}) => {
         throw error;
     }
     return payload;
+};
+
+const showGate = (message) => {
+    dashboardGate.hidden = false;
+    if (dashboardGateMessage) {
+        dashboardGateMessage.textContent = message || '';
+    }
 };
 
 const renderList = (target, items, emptyMessage) => {
@@ -77,9 +89,10 @@ const renderList = (target, items, emptyMessage) => {
 const boot = async () => {
     const auth = getAuth();
     if (!auth || !auth.access_token) {
-        dashboardGate.hidden = false;
-        if (dashboardGateMessage && window.location.hostname === '::') {
-            dashboardGateMessage.textContent = 'You are on [::]. Use http://127.0.0.1:5173 so your login persists.';
+        if (window.location.hostname === '::') {
+            showGate('You are on [::]. Use http://127.0.0.1:5173 so your login persists.');
+        } else {
+            showGate('No saved session found. Sign in again to load your dashboard.');
         }
         return;
     }
@@ -89,9 +102,11 @@ const boot = async () => {
             headers: { Authorization: `Bearer ${auth.access_token}` },
         });
 
+        const displayName = me.full_name || me.email || 'Account';
         dashboardGreeting.textContent = `Welcome back, ${me.full_name || 'there'}.`;
         dashboardPlan.textContent = `Plan: ${me.subscription_tier || 'basic'}`;
-        dashboardUserChip.textContent = me.full_name || me.email || 'Account';
+        dashboardUserChip.textContent = `Signed in as ${displayName}`;
+        dashboardUserChip.title = displayName;
 
         const isPaid = me.subscription_tier && me.subscription_tier !== 'basic';
         setPaidVisibility(isPaid);
@@ -197,9 +212,20 @@ const boot = async () => {
             });
         }
 
+        if (dashboardSignOut) {
+            dashboardSignOut.addEventListener('click', () => {
+                clearAuth();
+                window.location.href = 'index.html';
+            });
+        }
+
         dashboardApp.hidden = false;
     } catch (error) {
-        dashboardGate.hidden = false;
+        if (error.status === 401 || error.status === 403) {
+            showGate('Session expired. Sign in again to continue.');
+        } else {
+            showGate('Backend not reachable. Make sure the API is running.');
+        }
     }
 };
 
