@@ -137,6 +137,11 @@ GRANT ALL PRIVILEGES ON DATABASE career_lmi TO nextstep_user;
 cd /home/nextstep.co.ke/public_html/backend
 python -m alembic upgrade head
 ```
+If `alembic.ini` is not present in the repo, run:
+```bash
+cd /home/nextstep.co.ke/public_html/backend
+python -c "from app.db.database import init_db; init_db()"
+```
 
 #### 3. Install Dependencies
 

@@ -110,7 +110,13 @@ bootstrap_venv() {
 }
 
 run_migrations() {
-  sudo -u "$APP_USER" bash -lc "set -o allexport; source '$ENV_FILE'; set +o allexport; source '$VENV_DIR/bin/activate'; cd '$REPO_ROOT/backend'; python -m alembic upgrade head"
+  local alembic_cfg="$REPO_ROOT/backend/alembic.ini"
+  if [[ -f "$alembic_cfg" ]]; then
+    sudo -u "$APP_USER" bash -lc "set -o allexport; source '$ENV_FILE'; set +o allexport; source '$VENV_DIR/bin/activate'; cd '$REPO_ROOT/backend'; alembic -c '$alembic_cfg' upgrade head"
+    return
+  fi
+  echo "alembic.ini not found; running SQLAlchemy init_db() instead."
+  sudo -u "$APP_USER" bash -lc "set -o allexport; source '$ENV_FILE'; set +o allexport; source '$VENV_DIR/bin/activate'; cd '$REPO_ROOT/backend'; python -c \"from app.db.database import init_db; init_db()\""
 }
 
 write_systemd_units() {
