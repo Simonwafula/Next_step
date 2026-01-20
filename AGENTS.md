@@ -15,7 +15,7 @@
 ## Build, Test, and Development Commands
 - `docker compose up --build`: build and start the full stack (API, Postgres, Metabase).
 - `docker compose logs -f backend`: tail backend logs while developing.
-- `DATABASE_URL=sqlite:///./test_db.sqlite pytest backend/test_automated_workflow.py -q`: fast local test run against SQLite.
+- `DATABASE_URL=sqlite:///./var/nextstep.sqlite pytest backend/test_automated_workflow.py -q`: fast local test run against SQLite.
 - `dbt debug`, `dbt run`, `dbt test` from `dbt/`: validate and build analytics models (requires `~/.dbt/profiles.yml`).
 
 ## Coding Style & Naming Conventions

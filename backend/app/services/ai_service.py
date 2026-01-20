@@ -289,8 +289,14 @@ class AIService:
                 "Do you have any questions for us?"
             ]
     
-    def calculate_job_match_score(self, user_profile: UserProfile, job_post: JobPost, 
-                                 job_embedding: List[float] = None) -> Dict[str, Any]:
+    def calculate_job_match_score(
+        self,
+        user_profile: UserProfile,
+        job_post: JobPost,
+        job_embedding: List[float] = None,
+        job_location_text: str | None = None,
+        user_keywords: List[str] | None = None,
+    ) -> Dict[str, Any]:
         """Calculate comprehensive job match score for a user."""
         try:
             scores = {
@@ -299,14 +305,22 @@ class AIService:
                 'location_match': 0.0,
                 'experience_match': 0.0,
                 'salary_match': 0.0,
+                'keyword_match': 0.0,
                 'explanation': '',
                 'matching_skills': [],
                 'missing_skills': []
             }
+
+            job_text_parts = [
+                job_post.title_raw or "",
+                job_post.description_raw or "",
+                job_post.requirements_raw or "",
+            ]
+            job_text = " ".join(part for part in job_text_parts if part).strip()
             
             # Skill matching
-            if user_profile.skills and job_post.description_raw:
-                job_skills = self.extract_skills_from_text(job_post.description_raw)
+            if user_profile.skills and job_text:
+                job_skills = self.extract_skills_from_text(job_text)
                 skill_score, matching_skills, missing_skills = self.calculate_skill_match(
                     user_profile.skills, job_skills
                 )
@@ -315,9 +329,14 @@ class AIService:
                 scores['missing_skills'] = missing_skills
             
             # Location matching
-            if user_profile.preferred_locations and job_post.location_id:
-                # This would need location data from the job_post relationship
-                scores['location_match'] = 0.8  # Placeholder
+            if user_profile.preferred_locations and (job_location_text or job_text):
+                location_blob = f"{job_location_text or ''} {job_text}".lower()
+                matches = [
+                    loc for loc in user_profile.preferred_locations
+                    if loc and str(loc).lower() in location_blob
+                ]
+                if matches:
+                    scores['location_match'] = min(len(matches) / len(user_profile.preferred_locations), 1.0)
             
             # Experience level matching
             if user_profile.experience_level and job_post.seniority:
@@ -336,22 +355,31 @@ class AIService:
                     job_post.salary_max
                 )
                 scores['salary_match'] = salary_match
+
+            # Keyword matching (skills, goals, search history)
+            keywords = user_keywords or self._extract_user_keywords(user_profile)
+            if keywords and job_text:
+                keyword_score, _ = self._keyword_match_score(job_text, keywords)
+                scores['keyword_match'] = keyword_score
             
             # Calculate overall score (weighted average)
             weights = {
                 'skill_match': 0.4,
-                'location_match': 0.2,
-                'experience_match': 0.2,
-                'salary_match': 0.2
+                'keyword_match': 0.2,
+                'location_match': 0.15,
+                'experience_match': 0.15,
+                'salary_match': 0.1
             }
-            
-            overall_score = sum(
-                scores[key] * weight 
-                for key, weight in weights.items() 
-                if scores[key] > 0
-            )
-            
-            scores['overall_score'] = overall_score
+
+            weighted_sum = 0.0
+            weight_total = 0.0
+            for key, weight in weights.items():
+                value = scores.get(key, 0.0)
+                if value > 0:
+                    weighted_sum += value * weight
+                    weight_total += weight
+
+            scores['overall_score'] = weighted_sum / weight_total if weight_total else 0.0
             scores['explanation'] = self._generate_match_explanation(scores, job_post)
             
             return scores
@@ -364,6 +392,7 @@ class AIService:
                 'location_match': 0.0,
                 'experience_match': 0.0,
                 'salary_match': 0.0,
+                'keyword_match': 0.0,
                 'explanation': 'Unable to calculate match score',
                 'matching_skills': [],
                 'missing_skills': []
@@ -417,6 +446,39 @@ class AIService:
             
         except Exception:
             return 0.5  # Neutral score if calculation fails
+
+    def _extract_user_keywords(self, user_profile: UserProfile) -> List[str]:
+        keywords = set()
+        if user_profile.skills:
+            for skill in user_profile.skills.keys():
+                if skill:
+                    keywords.add(str(skill).strip().lower())
+
+        for field in (user_profile.current_role, user_profile.career_goals, user_profile.education):
+            if not field:
+                continue
+            for token in self._split_keywords(field):
+                keywords.add(token)
+
+        return sorted(keywords)
+
+    def _split_keywords(self, text: str) -> List[str]:
+        tokens = []
+        for chunk in str(text).replace("|", ",").replace("/", ",").split(","):
+            chunk = chunk.strip().lower()
+            if len(chunk) < 3:
+                continue
+            tokens.append(chunk)
+        return tokens
+
+    def _keyword_match_score(self, text: str, keywords: List[str]):
+        if not keywords or not text:
+            return 0.0, []
+        haystack = text.lower()
+        matched = [kw for kw in keywords if kw in haystack]
+        if not matched:
+            return 0.0, []
+        return min(len(matched) / len(keywords), 1.0), matched
     
     def _generate_match_explanation(self, scores: Dict, job_post: JobPost) -> str:
         """Generate human-readable explanation for job match."""
@@ -436,6 +498,9 @@ class AIService:
         
         if scores['location_match'] > 0.7:
             explanations.append("Preferred location")
+
+        if scores.get('keyword_match', 0) > 0.5:
+            explanations.append("Matches your interests")
         
         if scores['salary_match'] > 0.7:
             explanations.append("Salary expectations met")

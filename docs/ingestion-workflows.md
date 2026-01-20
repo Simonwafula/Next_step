@@ -76,11 +76,12 @@ New scraper management endpoints:
 
 ```
 GET  /scrapers/status           - Get scraper and database status
-POST /scrapers/run/{site_name}  - Run scraper for specific site
-POST /scrapers/run-all          - Run all scrapers
+POST /scrapers/run/{site_name}  - Run scraper for specific site (params: process_jobs=[true|false], include_recent_jobs=[true|false], recent_jobs_limit=<int>)
+POST /scrapers/run-all          - Run all scrapers (supports same params as the single-site endpoint)
 POST /scrapers/migrate          - Migrate SQLite data to PostgreSQL
 GET  /scrapers/recent-jobs      - Get recent jobs from database
 ```
+When `include_recent_jobs=true`, the response also returns a `recent_jobs` list (id, title, url, source, organization_id, first_seen) so you can immediately inspect the ingested records without an extra query.
 
 ### Setup Instructions
 
@@ -371,10 +372,19 @@ from app.services.scraper_service import ScraperService
 service = ScraperService()
 
 ## Run scraper and process jobs
-result = await service.run_scraper_for_site("brightermonday", process_jobs=True)
+result = await service.run_scraper_for_site(
+    "brightermonday",
+    process_jobs=True,
+    include_recent_jobs=True,
+    recent_jobs_limit=5
+)
 
 ## Run all scrapers with processing
-result = await service.run_all_scrapers(process_jobs=True)
+result = await service.run_all_scrapers(
+    process_jobs=True,
+    include_recent_jobs=True,
+    recent_jobs_limit=10
+)
 ```
 
 ### Configuration

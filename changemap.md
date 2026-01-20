@@ -10,6 +10,20 @@ Purpose: Track human-readable changes and outcomes before pushing to git.
 - Tests:
 - Follow-ups:
 
+## 2026-01-19 (local sqlite path)
+- Change summary: Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
+- Outcome: Local dev avoids the corrupted `test_db.sqlite` and boots with a clean DB path.
+- Affected areas: `.env`, `.env.example`, `scripts/dev-start.sh`, `AGENTS.md`, `backend/var/`.
+- Tests: Not run.
+- Follow-ups: Move or delete the old `backend/test_db.sqlite` if it still exists.
+
+## 2026-01-19 (env quoting)
+- Change summary: Quoted `.env` values that contain spaces so the dev script can `source` the file safely.
+- Outcome: `scripts/dev-start.sh` no longer fails on `PROJECT_NAME` or `DESCRIPTION`.
+- Affected areas: `.env`, `.env.example`.
+- Tests: Not run.
+- Follow-ups: Re-run `./scripts/dev-start.sh`.
+
 ## 2026-01-18
 - Change summary: Added auth flows (email/password, Google OAuth, reset), introduced a search-first frontend with account UI, and wired government ingestion + monitoring. Cleaned extra virtual environments and consolidated documentation into `docs/` with new `features.md`, `userjourney.md`, and `changemap.md`.
 - Outcome: Users can sign up/sign in, recover passwords, search for roles, and view profile/saved roles; ingestion pipeline can populate data; docs are centralized and easier to navigate.
@@ -106,3 +120,24 @@ Purpose: Track human-readable changes and outcomes before pushing to git.
 - Affected areas: `frontend/js/admin.js`.
 - Tests: Not run.
 - Follow-ups: Verify admin data loads after backend restarts.
+
+## 2026-01-18 (gov scraper enhancements)
+- Change summary: Improved government scraper link detection, added PDF text extraction, and fallback capture for list pages.
+- Outcome: More sources yield ingestible postings for insights.
+- Affected areas: `backend/app/ingestion/connectors/gov_careers.py`, `backend/requirements.txt`.
+- Tests: Not run.
+- Follow-ups: Install updated requirements and run `/api/admin/ingest/government`.
+
+## 2026-01-18 (source cleanup tool)
+- Change summary: Added a script to remove government sources returning 404/410.
+- Outcome: Easy cleanup pass for stale URLs before ingestion runs.
+- Affected areas: `scripts/clean_government_sources.py`.
+- Tests: Not run.
+- Follow-ups: Run the script locally with network access.
+
+## 2026-01-18 (personalized recommendations)
+- Change summary: Expanded recommendation scoring with keyword, location, and recency signals and removed stale recs before storing.
+- Outcome: Recommendations align better with user skills/search history and prioritize recent postings.
+- Affected areas: `backend/app/services/ai_service.py`, `backend/app/services/personalized_recommendations.py`.
+- Tests: Not run.
+- Follow-ups: Trigger `/api/users/recommendations` and review match quality.

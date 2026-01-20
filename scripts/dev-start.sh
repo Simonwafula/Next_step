@@ -16,6 +16,24 @@ if [[ ! -d "${BACKEND_DIR}/venv3.11" ]]; then
   exit 1
 fi
 
+# Load env for local checks (dotenv will still inject for uvicorn).
+set -a
+# shellcheck disable=SC1090
+source "${ENV_FILE}"
+set +a
+
+if [[ "${USE_POSTGRES:-}" == "false" && -z "${DATABASE_URL:-}" ]]; then
+  export DATABASE_URL="sqlite:///./var/nextstep.sqlite"
+fi
+
+if [[ "${DATABASE_URL:-}" == sqlite:* ]]; then
+  sqlite_path="${DATABASE_URL#sqlite:///}"
+  if [[ "${sqlite_path}" != /* ]]; then
+    sqlite_path="${BACKEND_DIR}/${sqlite_path}"
+  fi
+  mkdir -p "$(dirname "${sqlite_path}")"
+fi
+
 # shellcheck disable=SC1091
 source "${BACKEND_DIR}/venv3.11/bin/activate"
 

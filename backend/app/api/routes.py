@@ -276,14 +276,32 @@ async def scraper_status():
     return await scraper_service.get_scraper_status()
 
 @api_router.post("/scrapers/run/{site_name}")
-async def run_scraper(site_name: str):
+async def run_scraper(
+    site_name: str,
+    process_jobs: bool = Query(True, description="Process scraper output into job processor"),
+    include_recent_jobs: bool = Query(False, description="Include recent ingested jobs in the response"),
+    recent_jobs_limit: int = Query(10, ge=1, le=50, description="Number of recent jobs to return when requested"),
+):
     """Run scraper for a specific site."""
-    return await scraper_service.run_scraper_for_site(site_name)
+    return await scraper_service.run_scraper_for_site(
+        site_name,
+        process_jobs=process_jobs,
+        include_recent_jobs=include_recent_jobs,
+        recent_jobs_limit=recent_jobs_limit,
+    )
 
 @api_router.post("/scrapers/run-all")
-async def run_all_scrapers():
+async def run_all_scrapers(
+    process_jobs: bool = Query(True, description="Process scraper output into job processor"),
+    include_recent_jobs: bool = Query(False, description="Include recent ingested jobs in the response"),
+    recent_jobs_limit: int = Query(10, ge=1, le=50, description="Number of recent jobs to return when requested"),
+):
     """Run scrapers for all configured sites."""
-    return await scraper_service.run_all_scrapers()
+    return await scraper_service.run_all_scrapers(
+        process_jobs=process_jobs,
+        include_recent_jobs=include_recent_jobs,
+        recent_jobs_limit=recent_jobs_limit,
+    )
 
 @api_router.post("/scrapers/migrate")
 async def migrate_sqlite_to_postgres():

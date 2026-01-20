@@ -2,7 +2,7 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
-from sqlalchemy import select, and_, or_, desc, func
+from sqlalchemy import select, and_, or_, desc, func, delete
 
 from ..db.models import (
     User, UserProfile, JobPost, UserJobRecommendation, 
@@ -34,10 +34,7 @@ class PersonalizedRecommendationService:
             ).join(
                 Location, Location.id == JobPost.location_id, isouter=True
             ).where(
-                and_(
-                    JobPost.first_seen >= cutoff_date,
-                    JobPost.description_raw.is_not(None)
-                )
+                JobPost.first_seen >= cutoff_date
             )
             
             # Apply user preferences
@@ -67,13 +64,27 @@ class PersonalizedRecommendationService:
             # Exclude already applied/saved jobs
             applied_job_ids = self._get_applied_job_ids(db, user.id)
             saved_job_ids = self._get_saved_job_ids(db, user.id)
-            excluded_ids = applied_job_ids + saved_job_ids
+            dismissed_job_ids = self._get_dismissed_job_ids(db, user.id)
+            excluded_ids = applied_job_ids + saved_job_ids + dismissed_job_ids
             
             if excluded_ids:
                 stmt = stmt.where(~JobPost.id.in_(excluded_ids))
+
+            user_keywords = self._get_user_keywords(db, user)
+            if user_keywords and not (
+                profile.preferred_locations or profile.experience_level or profile.salary_expectations
+            ):
+                keyword_conditions = []
+                for keyword in user_keywords[:5]:
+                    keyword_conditions.extend([
+                        JobPost.title_raw.ilike(f"%{keyword}%"),
+                        JobPost.description_raw.ilike(f"%{keyword}%"),
+                    ])
+                if keyword_conditions:
+                    stmt = stmt.where(or_(*keyword_conditions))
             
             # Limit results for processing
-            stmt = stmt.limit(100)
+            stmt = stmt.order_by(desc(JobPost.first_seen)).limit(200)
             
             # Execute query
             results = db.execute(stmt).all()
@@ -83,10 +94,19 @@ class PersonalizedRecommendationService:
             for job_post, org, location in results:
                 try:
                     # Calculate comprehensive match score
-                    match_data = self.ai_service.calculate_job_match_score(profile, job_post)
+                    location_text = self._build_location_text(location)
+                    match_data = self.ai_service.calculate_job_match_score(
+                        profile,
+                        job_post,
+                        job_location_text=location_text,
+                        user_keywords=user_keywords,
+                    )
+
+                    recency_score = self._calculate_recency_score(job_post.first_seen)
+                    final_score = match_data['overall_score'] * (0.75 + 0.25 * recency_score)
                     
                     # Skip jobs with very low match scores
-                    if match_data['overall_score'] < 0.2:
+                    if final_score < 0.2:
                         continue
                     
                     recommendation = {
@@ -98,11 +118,12 @@ class PersonalizedRecommendationService:
                         'salary_range': self._format_salary(job_post),
                         'seniority': job_post.seniority,
                         'first_seen': job_post.first_seen.isoformat(),
-                        'match_score': round(match_data['overall_score'], 2),
+                        'match_score': round(final_score, 2),
                         'skill_match': round(match_data['skill_match'], 2),
                         'experience_match': round(match_data['experience_match'], 2),
                         'location_match': round(match_data['location_match'], 2),
                         'salary_match': round(match_data['salary_match'], 2),
+                        'keyword_match': round(match_data.get('keyword_match', 0.0), 2),
                         'explanation': match_data['explanation'],
                         'matching_skills': match_data['matching_skills'][:5],  # Top 5
                         'missing_skills': match_data['missing_skills'][:3],    # Top 3
@@ -348,6 +369,84 @@ class PersonalizedRecommendationService:
             return list(results)
         except Exception:
             return []
+
+    def _get_dismissed_job_ids(self, db: Session, user_id: int) -> List[int]:
+        try:
+            stmt = select(UserJobRecommendation.job_post_id).where(
+                and_(
+                    UserJobRecommendation.user_id == user_id,
+                    UserJobRecommendation.dismissed == True
+                )
+            )
+            results = db.execute(stmt).scalars().all()
+            return list(results)
+        except Exception:
+            return []
+
+    def _get_user_keywords(self, db: Session, user: User) -> List[str]:
+        keywords = set()
+        profile = user.profile
+
+        if profile and profile.skills:
+            for skill in profile.skills.keys():
+                if skill:
+                    keywords.add(str(skill).strip().lower())
+
+        for field in (profile.current_role, profile.career_goals, profile.education) if profile else ():
+            if not field:
+                continue
+            for token in self._split_keywords(field):
+                keywords.add(token)
+
+        try:
+            stmt = (
+                select(SearchHistory.query)
+                .where(SearchHistory.user_id == user.id)
+                .order_by(desc(SearchHistory.searched_at))
+                .limit(5)
+            )
+            results = db.execute(stmt).scalars().all()
+            for query in results:
+                for token in self._split_keywords(query):
+                    keywords.add(token)
+        except Exception:
+            pass
+
+        return sorted(keywords)
+
+    def _split_keywords(self, text: str) -> List[str]:
+        tokens = []
+        for chunk in str(text).replace("|", ",").replace("/", ",").split(","):
+            chunk = chunk.strip().lower()
+            if len(chunk) < 3:
+                continue
+            tokens.append(chunk)
+        return tokens
+
+    def _build_location_text(self, location: Optional[Location]) -> str:
+        if not location:
+            return ""
+        parts = [
+            location.raw or "",
+            location.city or "",
+            location.region or "",
+            location.country or "",
+        ]
+        return " ".join(part for part in parts if part).strip()
+
+    def _calculate_recency_score(self, first_seen: datetime) -> float:
+        if not first_seen:
+            return 0.3
+        days = (datetime.utcnow() - first_seen).days
+        if days <= 3:
+            return 1.0
+        if days <= 7:
+            return 0.85
+        if days <= 14:
+            return 0.7
+        if days <= 30:
+            return 0.5
+        return 0.3
     
     def _format_location(self, location: Optional[Location]) -> str:
         """Format location for display."""
@@ -386,7 +485,7 @@ class PersonalizedRecommendationService:
             # Clear old recommendations (older than 7 days)
             cutoff_date = datetime.utcnow() - timedelta(days=7)
             db.execute(
-                select(UserJobRecommendation).where(
+                delete(UserJobRecommendation).where(
                     and_(
                         UserJobRecommendation.user_id == user_id,
                         UserJobRecommendation.recommended_at < cutoff_date
@@ -418,7 +517,7 @@ class PersonalizedRecommendationService:
                         matching_skills=rec['matching_skills'],
                         missing_skills=rec['missing_skills'],
                         recommended_at=datetime.utcnow(),
-                        algorithm_version="v2.0",
+                        algorithm_version="v2.1",
                         is_active=True
                     )
                     db.add(recommendation)

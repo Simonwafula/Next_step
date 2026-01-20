@@ -29,7 +29,13 @@ class ScraperService:
         self.logger = logging.getLogger(__name__)
         self.job_processor = JobProcessorService()
     
-    async def run_scraper_for_site(self, site_name: str, process_jobs: bool = True) -> Dict[str, Any]:
+    async def run_scraper_for_site(
+        self,
+        site_name: str,
+        process_jobs: bool = True,
+        include_recent_jobs: bool = False,
+        recent_jobs_limit: int = 10,
+    ) -> Dict[str, Any]:
         """Run scraper for a specific site and optionally process job details"""
         if site_name not in SITES:
             return {
@@ -41,7 +47,7 @@ class ScraperService:
             self.logger.info(f"Starting scraper for {site_name}")
             
             # Run scraper in a separate thread to avoid blocking
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             scraped_data = await loop.run_in_executor(None, self._scrape_site_with_data, site_name)
             
             if scraped_data:
@@ -67,6 +73,9 @@ class ScraperService:
                 # Get final job count
                 job_count = await self.get_job_count()
                 result["total_jobs_in_db"] = job_count
+                if include_recent_jobs:
+                    recent = await self.get_recent_jobs(recent_jobs_limit)
+                    result["recent_jobs"] = recent
                 
                 return result
             else:
@@ -84,7 +93,12 @@ class ScraperService:
                 "error": str(e)
             }
     
-    async def run_all_scrapers(self, process_jobs: bool = True) -> Dict[str, Any]:
+    async def run_all_scrapers(
+        self,
+        process_jobs: bool = True,
+        include_recent_jobs: bool = False,
+        recent_jobs_limit: int = 10,
+    ) -> Dict[str, Any]:
         """Run scrapers for all configured sites and optionally process job details"""
         try:
             self.logger.info("Starting scrapers for all sites")
@@ -123,6 +137,8 @@ class ScraperService:
                     "total_failed_jobs": total_failed,
                     "processing_success_rate": total_processed / total_scraped if total_scraped > 0 else 0
                 })
+            if include_recent_jobs:
+                summary["recent_jobs"] = await self.get_recent_jobs(recent_jobs_limit)
             
             return summary
             
@@ -172,7 +188,7 @@ class ScraperService:
             migrator = JobDataMigrator()
             
             # Run migration in a separate thread
-            loop = asyncio.get_event_loop()
+            loop = asyncio.get_running_loop()
             migrated_count = await loop.run_in_executor(None, self._run_migration, migrator)
             
             return {
@@ -204,29 +220,32 @@ class ScraperService:
             from scrapers.brighter_monday_scraper import BrighterMondayScraper
             from scrapers.indeed_scraper import IndeedScraper
             from scrapers.linkedin_scraper import LinkedInScraper
-            
+
             # Map site names to scraper classes
             scraper_map = {
                 'brightermonday': BrighterMondayScraper,
                 'indeed': IndeedScraper,
                 'linkedin': LinkedInScraper,
             }
-            
+
             if site_name not in scraper_map:
                 self.logger.warning(f"No scraper implementation for {site_name}")
                 return []
-            
-            # Create and run scraper
+
             scraper_class = scraper_map[site_name]
-            scraper = scraper_class()
-            
-            # This would need to be implemented in each scraper to return data
-            # For now, we'll return empty list and log
-            self.logger.info(f"Scraper for {site_name} would run here")
-            return []
-            
+            return asyncio.run(self._execute_scraper(scraper_class))
+
         except Exception as e:
             self.logger.error(f"Error in _scrape_site_with_data for {site_name}: {e}")
+            return []
+
+    async def _execute_scraper(self, scraper_class) -> List[Dict]:
+        """Run the async scraper inside a temporary event loop"""
+        try:
+            async with scraper_class() as scraper:
+                return await scraper.scrape_job_listings()
+        except Exception as e:
+            self.logger.error(f"Async scraper execution failed: {e}")
             return []
     
     async def process_existing_job_urls(self, job_urls: List[Dict]) -> Dict[str, Any]:

@@ -1,5 +1,3 @@
-# Auto-generated from kenya_career_pages_seed_v2_with_county_assemblies.xlsx
-# Edit the spreadsheet and re-export rather than hand-editing large blocks.
 sources:
 - name: Public Service Commission (PSCIMS / PSCK Jobs)
   type: gov_careers
@@ -357,28 +355,6 @@ sources:
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
-- name: Kilifi County Government
-  type: gov_careers
-  org: Kilifi County Government
-  group: county
-  county: Kilifi
-  homepage: https://www.kilifi.go.ke
-  status: Unverified
-  list_urls:
-  - https://www.kilifi.go.ke/vacancies/
-  - https://www.kilifi.go.ke/vacancy/
-  - https://www.kilifi.go.ke/vacancy-cpsb/
-  - https://www.kilifi.go.ke/jobs/
-  - https://www.kilifi.go.ke/careers/
-  - https://www.kilifi.go.ke/opportunities/
-  - https://www.kilifi.go.ke/category/vacancies/
-  - https://www.kilifi.go.ke/tenders/
-  - https://www.kilifi.go.ke/downloads/
-  - https://www.kilifi.go.ke/public-service-board/
-  - https://www.kilifi.go.ke/county-public-service-board/
-  source_url: https://cog.go.ke/the-47-counties/
-  notes: .nan
-  last_checked: '2026-01-18'
 - name: Tana River County Government
   type: gov_careers
   org: Tana River County Government
@@ -388,16 +364,7 @@ sources:
   status: Unverified
   list_urls:
   - https://www.tanariver.go.ke/vacancies/
-  - https://www.tanariver.go.ke/vacancy/
-  - https://www.tanariver.go.ke/vacancy-cpsb/
-  - https://www.tanariver.go.ke/jobs/
-  - https://www.tanariver.go.ke/careers/
-  - https://www.tanariver.go.ke/opportunities/
-  - https://www.tanariver.go.ke/category/vacancies/
   - https://www.tanariver.go.ke/tenders/
-  - https://www.tanariver.go.ke/downloads/
-  - https://www.tanariver.go.ke/public-service-board/
-  - https://www.tanariver.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -410,16 +377,11 @@ sources:
   status: Unverified
   list_urls:
   - https://www.lamu.go.ke/vacancies/
-  - https://www.lamu.go.ke/vacancy/
-  - https://www.lamu.go.ke/vacancy-cpsb/
   - https://www.lamu.go.ke/jobs/
   - https://www.lamu.go.ke/careers/
-  - https://www.lamu.go.ke/opportunities/
-  - https://www.lamu.go.ke/category/vacancies/
   - https://www.lamu.go.ke/tenders/
   - https://www.lamu.go.ke/downloads/
   - https://www.lamu.go.ke/public-service-board/
-  - https://www.lamu.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -477,15 +439,8 @@ sources:
   list_urls:
   - https://www.wajir.go.ke/vacancies/
   - https://www.wajir.go.ke/vacancy/
-  - https://www.wajir.go.ke/vacancy-cpsb/
   - https://www.wajir.go.ke/jobs/
-  - https://www.wajir.go.ke/careers/
-  - https://www.wajir.go.ke/opportunities/
-  - https://www.wajir.go.ke/category/vacancies/
   - https://www.wajir.go.ke/tenders/
-  - https://www.wajir.go.ke/downloads/
-  - https://www.wajir.go.ke/public-service-board/
-  - https://www.wajir.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -498,38 +453,7 @@ sources:
   status: Unverified
   list_urls:
   - https://mandera.go.ke/vacancies/
-  - https://mandera.go.ke/vacancy/
-  - https://mandera.go.ke/vacancy-cpsb/
-  - https://mandera.go.ke/jobs/
-  - https://mandera.go.ke/careers/
-  - https://mandera.go.ke/opportunities/
-  - https://mandera.go.ke/category/vacancies/
   - https://mandera.go.ke/tenders/
-  - https://mandera.go.ke/downloads/
-  - https://mandera.go.ke/public-service-board/
-  - https://mandera.go.ke/county-public-service-board/
-  source_url: https://cog.go.ke/the-47-counties/
-  notes: .nan
-  last_checked: '2026-01-18'
-- name: Marsabit County Government
-  type: gov_careers
-  org: Marsabit County Government
-  group: county
-  county: Marsabit
-  homepage: https://marsabit.go.ke
-  status: Unverified
-  list_urls:
-  - https://marsabit.go.ke/vacancies/
-  - https://marsabit.go.ke/vacancy/
-  - https://marsabit.go.ke/vacancy-cpsb/
-  - https://marsabit.go.ke/jobs/
-  - https://marsabit.go.ke/careers/
-  - https://marsabit.go.ke/opportunities/
-  - https://marsabit.go.ke/category/vacancies/
-  - https://marsabit.go.ke/tenders/
-  - https://marsabit.go.ke/downloads/
-  - https://marsabit.go.ke/public-service-board/
-  - https://marsabit.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -569,7 +493,6 @@ sources:
   - https://meru.go.ke/jobs/
   - https://meru.go.ke/careers/
   - https://meru.go.ke/opportunities/
-  - https://meru.go.ke/category/vacancies/
   - https://meru.go.ke/tenders/
   - https://meru.go.ke/downloads/
   - https://meru.go.ke/public-service-board/
@@ -585,17 +508,8 @@ sources:
   homepage: https://www.tharakanithi.go.ke
   status: Unverified
   list_urls:
-  - https://www.tharakanithi.go.ke/vacancies/
-  - https://www.tharakanithi.go.ke/vacancy/
-  - https://www.tharakanithi.go.ke/vacancy-cpsb/
-  - https://www.tharakanithi.go.ke/jobs/
   - https://www.tharakanithi.go.ke/careers/
-  - https://www.tharakanithi.go.ke/opportunities/
-  - https://www.tharakanithi.go.ke/category/vacancies/
-  - https://www.tharakanithi.go.ke/tenders/
   - https://www.tharakanithi.go.ke/downloads/
-  - https://www.tharakanithi.go.ke/public-service-board/
-  - https://www.tharakanithi.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -608,15 +522,9 @@ sources:
   status: Unverified
   list_urls:
   - https://www.embu.go.ke/vacancies/
-  - https://www.embu.go.ke/vacancy/
-  - https://www.embu.go.ke/vacancy-cpsb/
-  - https://www.embu.go.ke/jobs/
   - https://www.embu.go.ke/careers/
-  - https://www.embu.go.ke/opportunities/
-  - https://www.embu.go.ke/category/vacancies/
   - https://www.embu.go.ke/tenders/
   - https://www.embu.go.ke/downloads/
-  - https://www.embu.go.ke/public-service-board/
   - https://www.embu.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
@@ -675,15 +583,8 @@ sources:
   list_urls:
   - https://www.makueni.go.ke/vacancies/
   - https://www.makueni.go.ke/vacancy/
-  - https://www.makueni.go.ke/vacancy-cpsb/
-  - https://www.makueni.go.ke/jobs/
-  - https://www.makueni.go.ke/careers/
-  - https://www.makueni.go.ke/opportunities/
-  - https://www.makueni.go.ke/category/vacancies/
   - https://www.makueni.go.ke/tenders/
   - https://www.makueni.go.ke/downloads/
-  - https://www.makueni.go.ke/public-service-board/
-  - https://www.makueni.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -696,16 +597,7 @@ sources:
   status: Unverified
   list_urls:
   - https://www.nyandarua.go.ke/vacancies/
-  - https://www.nyandarua.go.ke/vacancy/
-  - https://www.nyandarua.go.ke/vacancy-cpsb/
-  - https://www.nyandarua.go.ke/jobs/
-  - https://www.nyandarua.go.ke/careers/
-  - https://www.nyandarua.go.ke/opportunities/
-  - https://www.nyandarua.go.ke/category/vacancies/
   - https://www.nyandarua.go.ke/tenders/
-  - https://www.nyandarua.go.ke/downloads/
-  - https://www.nyandarua.go.ke/public-service-board/
-  - https://www.nyandarua.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -761,17 +653,9 @@ sources:
   homepage: https://muranga.go.ke
   status: Unverified
   list_urls:
-  - https://muranga.go.ke/vacancies/
-  - https://muranga.go.ke/vacancy/
-  - https://muranga.go.ke/vacancy-cpsb/
-  - https://muranga.go.ke/jobs/
   - https://muranga.go.ke/careers/
-  - https://muranga.go.ke/opportunities/
-  - https://muranga.go.ke/category/vacancies/
   - https://muranga.go.ke/tenders/
   - https://muranga.go.ke/downloads/
-  - https://muranga.go.ke/public-service-board/
-  - https://muranga.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -785,15 +669,9 @@ sources:
   list_urls:
   - https://www.kiambu.go.ke/vacancies/
   - https://www.kiambu.go.ke/vacancy/
-  - https://www.kiambu.go.ke/vacancy-cpsb/
-  - https://www.kiambu.go.ke/jobs/
   - https://www.kiambu.go.ke/careers/
-  - https://www.kiambu.go.ke/opportunities/
-  - https://www.kiambu.go.ke/category/vacancies/
   - https://www.kiambu.go.ke/tenders/
   - https://www.kiambu.go.ke/downloads/
-  - https://www.kiambu.go.ke/public-service-board/
-  - https://www.kiambu.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -805,15 +683,8 @@ sources:
   homepage: https://www.turkana.go.ke
   status: Unverified
   list_urls:
-  - https://www.turkana.go.ke/vacancies/
-  - https://www.turkana.go.ke/vacancy/
-  - https://www.turkana.go.ke/vacancy-cpsb/
   - https://www.turkana.go.ke/jobs/
-  - https://www.turkana.go.ke/careers/
-  - https://www.turkana.go.ke/opportunities/
-  - https://www.turkana.go.ke/category/vacancies/
   - https://www.turkana.go.ke/tenders/
-  - https://www.turkana.go.ke/downloads/
   - https://www.turkana.go.ke/public-service-board/
   - https://www.turkana.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
@@ -827,17 +698,8 @@ sources:
   homepage: https://www.westpokot.go.ke
   status: Unverified
   list_urls:
-  - https://www.westpokot.go.ke/vacancies/
-  - https://www.westpokot.go.ke/vacancy/
-  - https://www.westpokot.go.ke/vacancy-cpsb/
-  - https://www.westpokot.go.ke/jobs/
   - https://www.westpokot.go.ke/careers/
-  - https://www.westpokot.go.ke/opportunities/
-  - https://www.westpokot.go.ke/category/vacancies/
   - https://www.westpokot.go.ke/tenders/
-  - https://www.westpokot.go.ke/downloads/
-  - https://www.westpokot.go.ke/public-service-board/
-  - https://www.westpokot.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -850,16 +712,7 @@ sources:
   status: Unverified
   list_urls:
   - https://www.samburu.go.ke/vacancies/
-  - https://www.samburu.go.ke/vacancy/
-  - https://www.samburu.go.ke/vacancy-cpsb/
-  - https://www.samburu.go.ke/jobs/
-  - https://www.samburu.go.ke/careers/
-  - https://www.samburu.go.ke/opportunities/
-  - https://www.samburu.go.ke/category/vacancies/
   - https://www.samburu.go.ke/tenders/
-  - https://www.samburu.go.ke/downloads/
-  - https://www.samburu.go.ke/public-service-board/
-  - https://www.samburu.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -871,39 +724,9 @@ sources:
   homepage: https://www.transnzoia.go.ke
   status: Unverified
   list_urls:
-  - https://www.transnzoia.go.ke/vacancies/
   - https://www.transnzoia.go.ke/vacancy/
-  - https://www.transnzoia.go.ke/vacancy-cpsb/
-  - https://www.transnzoia.go.ke/jobs/
-  - https://www.transnzoia.go.ke/careers/
-  - https://www.transnzoia.go.ke/opportunities/
   - https://www.transnzoia.go.ke/category/vacancies/
   - https://www.transnzoia.go.ke/tenders/
-  - https://www.transnzoia.go.ke/downloads/
-  - https://www.transnzoia.go.ke/public-service-board/
-  - https://www.transnzoia.go.ke/county-public-service-board/
-  source_url: https://cog.go.ke/the-47-counties/
-  notes: .nan
-  last_checked: '2026-01-18'
-- name: Uasin Gishu County Government
-  type: gov_careers
-  org: Uasin Gishu County Government
-  group: county
-  county: Uasin Gishu
-  homepage: https://uasingishu.go.ke
-  status: Unverified
-  list_urls:
-  - https://uasingishu.go.ke/vacancies/
-  - https://uasingishu.go.ke/vacancy/
-  - https://uasingishu.go.ke/vacancy-cpsb/
-  - https://uasingishu.go.ke/jobs/
-  - https://uasingishu.go.ke/careers/
-  - https://uasingishu.go.ke/opportunities/
-  - https://uasingishu.go.ke/category/vacancies/
-  - https://uasingishu.go.ke/tenders/
-  - https://uasingishu.go.ke/downloads/
-  - https://uasingishu.go.ke/public-service-board/
-  - https://uasingishu.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -917,14 +740,8 @@ sources:
   list_urls:
   - https://www.elgeyomarakwet.go.ke/vacancies/
   - https://www.elgeyomarakwet.go.ke/vacancy/
-  - https://www.elgeyomarakwet.go.ke/vacancy-cpsb/
-  - https://www.elgeyomarakwet.go.ke/jobs/
-  - https://www.elgeyomarakwet.go.ke/careers/
-  - https://www.elgeyomarakwet.go.ke/opportunities/
-  - https://www.elgeyomarakwet.go.ke/category/vacancies/
   - https://www.elgeyomarakwet.go.ke/tenders/
   - https://www.elgeyomarakwet.go.ke/downloads/
-  - https://www.elgeyomarakwet.go.ke/public-service-board/
   - https://www.elgeyomarakwet.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
@@ -937,16 +754,9 @@ sources:
   homepage: https://nandi.go.ke
   status: Unverified
   list_urls:
-  - https://nandi.go.ke/vacancies/
-  - https://nandi.go.ke/vacancy/
-  - https://nandi.go.ke/vacancy-cpsb/
   - https://nandi.go.ke/jobs/
-  - https://nandi.go.ke/careers/
-  - https://nandi.go.ke/opportunities/
-  - https://nandi.go.ke/category/vacancies/
   - https://nandi.go.ke/tenders/
   - https://nandi.go.ke/downloads/
-  - https://nandi.go.ke/public-service-board/
   - https://nandi.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
@@ -965,7 +775,6 @@ sources:
   - https://www.baringo.go.ke/jobs/
   - https://www.baringo.go.ke/careers/
   - https://www.baringo.go.ke/opportunities/
-  - https://www.baringo.go.ke/category/vacancies/
   - https://www.baringo.go.ke/tenders/
   - https://www.baringo.go.ke/downloads/
   - https://www.baringo.go.ke/public-service-board/
@@ -1003,17 +812,7 @@ sources:
   homepage: https://www.nakuru.go.ke
   status: Unverified
   list_urls:
-  - https://www.nakuru.go.ke/vacancies/
-  - https://www.nakuru.go.ke/vacancy/
-  - https://www.nakuru.go.ke/vacancy-cpsb/
   - https://www.nakuru.go.ke/jobs/
-  - https://www.nakuru.go.ke/careers/
-  - https://www.nakuru.go.ke/opportunities/
-  - https://www.nakuru.go.ke/category/vacancies/
-  - https://www.nakuru.go.ke/tenders/
-  - https://www.nakuru.go.ke/downloads/
-  - https://www.nakuru.go.ke/public-service-board/
-  - https://www.nakuru.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -1026,16 +825,8 @@ sources:
   status: Unverified
   list_urls:
   - https://www.narok.go.ke/vacancies/
-  - https://www.narok.go.ke/vacancy/
-  - https://www.narok.go.ke/vacancy-cpsb/
-  - https://www.narok.go.ke/jobs/
-  - https://www.narok.go.ke/careers/
-  - https://www.narok.go.ke/opportunities/
-  - https://www.narok.go.ke/category/vacancies/
-  - https://www.narok.go.ke/tenders/
   - https://www.narok.go.ke/downloads/
   - https://www.narok.go.ke/public-service-board/
-  - https://www.narok.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -1047,39 +838,11 @@ sources:
   homepage: https://www.kajiado.go.ke
   status: Unverified
   list_urls:
-  - https://www.kajiado.go.ke/vacancies/
-  - https://www.kajiado.go.ke/vacancy/
-  - https://www.kajiado.go.ke/vacancy-cpsb/
   - https://www.kajiado.go.ke/jobs/
   - https://www.kajiado.go.ke/careers/
-  - https://www.kajiado.go.ke/opportunities/
   - https://www.kajiado.go.ke/category/vacancies/
   - https://www.kajiado.go.ke/tenders/
   - https://www.kajiado.go.ke/downloads/
-  - https://www.kajiado.go.ke/public-service-board/
-  - https://www.kajiado.go.ke/county-public-service-board/
-  source_url: https://cog.go.ke/the-47-counties/
-  notes: .nan
-  last_checked: '2026-01-18'
-- name: Kericho County Government
-  type: gov_careers
-  org: Kericho County Government
-  group: county
-  county: Kericho
-  homepage: https://kericho.go.ke
-  status: Unverified
-  list_urls:
-  - https://kericho.go.ke/vacancies/
-  - https://kericho.go.ke/vacancy/
-  - https://kericho.go.ke/vacancy-cpsb/
-  - https://kericho.go.ke/jobs/
-  - https://kericho.go.ke/careers/
-  - https://kericho.go.ke/opportunities/
-  - https://kericho.go.ke/category/vacancies/
-  - https://kericho.go.ke/tenders/
-  - https://kericho.go.ke/downloads/
-  - https://kericho.go.ke/public-service-board/
-  - https://kericho.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -1093,13 +856,7 @@ sources:
   list_urls:
   - https://www.bomet.go.ke/vacancies/
   - https://www.bomet.go.ke/vacancy/
-  - https://www.bomet.go.ke/vacancy-cpsb/
-  - https://www.bomet.go.ke/jobs/
-  - https://www.bomet.go.ke/careers/
-  - https://www.bomet.go.ke/opportunities/
-  - https://www.bomet.go.ke/category/vacancies/
   - https://www.bomet.go.ke/tenders/
-  - https://www.bomet.go.ke/downloads/
   - https://www.bomet.go.ke/public-service-board/
   - https://www.bomet.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
@@ -1115,11 +872,7 @@ sources:
   list_urls:
   - https://www.kakamega.go.ke/vacancies/
   - https://www.kakamega.go.ke/vacancy/
-  - https://www.kakamega.go.ke/vacancy-cpsb/
   - https://www.kakamega.go.ke/jobs/
-  - https://www.kakamega.go.ke/careers/
-  - https://www.kakamega.go.ke/opportunities/
-  - https://www.kakamega.go.ke/category/vacancies/
   - https://www.kakamega.go.ke/tenders/
   - https://www.kakamega.go.ke/downloads/
   - https://www.kakamega.go.ke/public-service-board/
@@ -1137,11 +890,7 @@ sources:
   list_urls:
   - https://vihiga.go.ke/vacancies/
   - https://vihiga.go.ke/vacancy/
-  - https://vihiga.go.ke/vacancy-cpsb/
   - https://vihiga.go.ke/jobs/
-  - https://vihiga.go.ke/careers/
-  - https://vihiga.go.ke/opportunities/
-  - https://vihiga.go.ke/category/vacancies/
   - https://vihiga.go.ke/tenders/
   - https://vihiga.go.ke/downloads/
   - https://vihiga.go.ke/public-service-board/
@@ -1159,15 +908,9 @@ sources:
   list_urls:
   - https://www.bungoma.go.ke/vacancies/
   - https://www.bungoma.go.ke/vacancy/
-  - https://www.bungoma.go.ke/vacancy-cpsb/
   - https://www.bungoma.go.ke/jobs/
-  - https://www.bungoma.go.ke/careers/
-  - https://www.bungoma.go.ke/opportunities/
-  - https://www.bungoma.go.ke/category/vacancies/
   - https://www.bungoma.go.ke/tenders/
   - https://www.bungoma.go.ke/downloads/
-  - https://www.bungoma.go.ke/public-service-board/
-  - https://www.bungoma.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -1180,38 +923,6 @@ sources:
   status: Unverified
   list_urls:
   - https://www.busiacounty.go.ke/vacancies/
-  - https://www.busiacounty.go.ke/vacancy/
-  - https://www.busiacounty.go.ke/vacancy-cpsb/
-  - https://www.busiacounty.go.ke/jobs/
-  - https://www.busiacounty.go.ke/careers/
-  - https://www.busiacounty.go.ke/opportunities/
-  - https://www.busiacounty.go.ke/category/vacancies/
-  - https://www.busiacounty.go.ke/tenders/
-  - https://www.busiacounty.go.ke/downloads/
-  - https://www.busiacounty.go.ke/public-service-board/
-  - https://www.busiacounty.go.ke/county-public-service-board/
-  source_url: https://cog.go.ke/the-47-counties/
-  notes: .nan
-  last_checked: '2026-01-18'
-- name: Siaya County Government
-  type: gov_careers
-  org: Siaya County Government
-  group: county
-  county: Siaya
-  homepage: https://www.siaya.go.ke
-  status: Unverified
-  list_urls:
-  - https://www.siaya.go.ke/vacancies/
-  - https://www.siaya.go.ke/vacancy/
-  - https://www.siaya.go.ke/vacancy-cpsb/
-  - https://www.siaya.go.ke/jobs/
-  - https://www.siaya.go.ke/careers/
-  - https://www.siaya.go.ke/opportunities/
-  - https://www.siaya.go.ke/category/vacancies/
-  - https://www.siaya.go.ke/tenders/
-  - https://www.siaya.go.ke/downloads/
-  - https://www.siaya.go.ke/public-service-board/
-  - https://www.siaya.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -1223,16 +934,9 @@ sources:
   homepage: https://kisumu.go.ke
   status: Unverified
   list_urls:
-  - https://kisumu.go.ke/vacancies/
-  - https://kisumu.go.ke/vacancy/
-  - https://kisumu.go.ke/vacancy-cpsb/
-  - https://kisumu.go.ke/jobs/
-  - https://kisumu.go.ke/careers/
   - https://kisumu.go.ke/opportunities/
-  - https://kisumu.go.ke/category/vacancies/
   - https://kisumu.go.ke/tenders/
   - https://kisumu.go.ke/downloads/
-  - https://kisumu.go.ke/public-service-board/
   - https://kisumu.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
@@ -1245,17 +949,9 @@ sources:
   homepage: https://homabay.go.ke
   status: Unverified
   list_urls:
-  - https://homabay.go.ke/vacancies/
-  - https://homabay.go.ke/vacancy/
-  - https://homabay.go.ke/vacancy-cpsb/
-  - https://homabay.go.ke/jobs/
   - https://homabay.go.ke/careers/
-  - https://homabay.go.ke/opportunities/
-  - https://homabay.go.ke/category/vacancies/
   - https://homabay.go.ke/tenders/
   - https://homabay.go.ke/downloads/
-  - https://homabay.go.ke/public-service-board/
-  - https://homabay.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -1267,61 +963,8 @@ sources:
   homepage: https://migori.go.ke
   status: Unverified
   list_urls:
-  - https://migori.go.ke/vacancies/
-  - https://migori.go.ke/vacancy/
-  - https://migori.go.ke/vacancy-cpsb/
   - https://migori.go.ke/jobs/
-  - https://migori.go.ke/careers/
-  - https://migori.go.ke/opportunities/
-  - https://migori.go.ke/category/vacancies/
   - https://migori.go.ke/tenders/
-  - https://migori.go.ke/downloads/
-  - https://migori.go.ke/public-service-board/
-  - https://migori.go.ke/county-public-service-board/
-  source_url: https://cog.go.ke/the-47-counties/
-  notes: .nan
-  last_checked: '2026-01-18'
-- name: Kisii County Government
-  type: gov_careers
-  org: Kisii County Government
-  group: county
-  county: Kisii
-  homepage: https://www.kisii.go.ke
-  status: Unverified
-  list_urls:
-  - https://www.kisii.go.ke/vacancies/
-  - https://www.kisii.go.ke/vacancy/
-  - https://www.kisii.go.ke/vacancy-cpsb/
-  - https://www.kisii.go.ke/jobs/
-  - https://www.kisii.go.ke/careers/
-  - https://www.kisii.go.ke/opportunities/
-  - https://www.kisii.go.ke/category/vacancies/
-  - https://www.kisii.go.ke/tenders/
-  - https://www.kisii.go.ke/downloads/
-  - https://www.kisii.go.ke/public-service-board/
-  - https://www.kisii.go.ke/county-public-service-board/
-  source_url: https://cog.go.ke/the-47-counties/
-  notes: .nan
-  last_checked: '2026-01-18'
-- name: Nyamira County Government
-  type: gov_careers
-  org: Nyamira County Government
-  group: county
-  county: Nyamira
-  homepage: https://www.nyamira.go.ke
-  status: Unverified
-  list_urls:
-  - https://www.nyamira.go.ke/vacancies/
-  - https://www.nyamira.go.ke/vacancy/
-  - https://www.nyamira.go.ke/vacancy-cpsb/
-  - https://www.nyamira.go.ke/jobs/
-  - https://www.nyamira.go.ke/careers/
-  - https://www.nyamira.go.ke/opportunities/
-  - https://www.nyamira.go.ke/category/vacancies/
-  - https://www.nyamira.go.ke/tenders/
-  - https://www.nyamira.go.ke/downloads/
-  - https://www.nyamira.go.ke/public-service-board/
-  - https://www.nyamira.go.ke/county-public-service-board/
   source_url: https://cog.go.ke/the-47-counties/
   notes: .nan
   last_checked: '2026-01-18'
@@ -1501,7 +1144,6 @@ sources:
   status: Verified (Active)
   list_urls:
   - https://tharakanithiassembly.go.ke/
-  - https://assembly.tharakanithi.go.ke/
   notes: Many assemblies post adverts under Vacancies/Notices/Downloads rather than
     a dedicated Careers page.
 - name: County Assembly of Embu
