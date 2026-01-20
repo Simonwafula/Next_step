@@ -6,6 +6,14 @@ Consolidated documentation.
 
 This guide provides deployment instructions for the NextStep Career Platform on a VPS with CyberPanel already configured.
 
+### Production Hosting Context
+
+- **Domain**: `nextstep.co.ke` (already provisioned in CyberPanel)
+- **Server access**: `ssh root@57.217.62.77` (use your saved passphrase) and switch to `nexts7595` for day-to-day operations
+- **Application root**: `/home/nextstep.co.ke/public_html` (the Git working tree)
+- **Runtime assets**: production `.env` and `.venv` live at `/home/nextstep.co.ke/.env` and `/home/nextstep.co.ke/.venv`; keep them owned by `nexts7595`
+- **Repository permissions**: ensure `/home/nextstep.co.ke/public_html` is owned by `nexts7595:nexts7595` so automated updates stay writable
+
 ### Current VPS Status
 
 ✅ **VPS Setup Complete**
@@ -31,11 +39,35 @@ cd /home/nextstep.co.ke/public_html
 git pull origin main
 ```
 
+##### One-shot Production Bootstrap (optional)
+
+If you want a single command to prepare the database, Redis, systemd services, migrations, and the Python environment, run:
+
+```bash
+cd /home/nextstep.co.ke/public_html
+sudo AUTO_INSTALL=1 bash scripts/bootstrap_prod.sh
+```
+
+Set `AUTO_INSTALL=1` only if you want the script to install missing packages (PostgreSQL/Redis). Otherwise omit it to fail fast.
+
+##### Bootstrap Python Environment (run once as `nexts7595`)
+
+```bash
+cd /home/nextstep.co.ke/public_html
+bash scripts/setup_prod_environment.sh
+```
+
+The script installs dependencies into `/home/nextstep.co.ke/.venv` and verifies the repo sits under the expected path. Keep your `.env` at `/home/nextstep.co.ke/.env` before running this helper.
+
 ##### Configure Environment Variables
 ```bash
-## Update production environment
-cp .env.example .env
-nano .env
+## Update the shared production environment file
+cp .env.example /home/nextstep.co.ke/.env
+nano /home/nextstep.co.ke/.env
+## Load the variables for one-off commands
+set -o allexport
+source /home/nextstep.co.ke/.env
+set +o allexport
 ```
 
 **Required Environment Variables:**
@@ -111,6 +143,7 @@ python -m alembic upgrade head
 ##### Backend Dependencies
 ```bash
 cd /home/nextstep.co.ke/public_html/backend
+source /home/nextstep.co.ke/.venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -136,10 +169,11 @@ After=network.target
 
 [Service]
 Type=simple
-User=www-data
+User=nexts7595
 WorkingDirectory=/home/nextstep.co.ke/public_html/backend
-Environment=PATH=/usr/local/bin
-ExecStart=/usr/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+EnvironmentFile=/home/nextstep.co.ke/.env
+Environment=PATH=/home/nextstep.co.ke/.venv/bin:/usr/local/bin:/usr/bin
+ExecStart=/home/nextstep.co.ke/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
 Restart=always
 
 [Install]
@@ -158,10 +192,11 @@ After=network.target redis.service
 
 [Service]
 Type=simple
-User=www-data
+User=nexts7595
 WorkingDirectory=/home/nextstep.co.ke/public_html/backend
-Environment=PATH=/usr/local/bin
-ExecStart=/usr/bin/python -m celery -A app.core.celery_app worker --loglevel=info
+EnvironmentFile=/home/nextstep.co.ke/.env
+Environment=PATH=/home/nextstep.co.ke/.venv/bin:/usr/local/bin:/usr/bin
+ExecStart=/home/nextstep.co.ke/.venv/bin/celery -A app.core.celery_app worker --loglevel=info
 Restart=always
 
 [Install]
@@ -180,10 +215,11 @@ After=network.target redis.service
 
 [Service]
 Type=simple
-User=www-data
+User=nexts7595
 WorkingDirectory=/home/nextstep.co.ke/public_html/backend
-Environment=PATH=/usr/local/bin
-ExecStart=/usr/bin/python -m celery -A app.core.celery_app beat --loglevel=info
+EnvironmentFile=/home/nextstep.co.ke/.env
+Environment=PATH=/home/nextstep.co.ke/.venv/bin:/usr/local/bin:/usr/bin
+ExecStart=/home/nextstep.co.ke/.venv/bin/celery -A app.core.celery_app beat --loglevel=info
 Restart=always
 
 [Install]

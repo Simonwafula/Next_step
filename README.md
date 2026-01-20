@@ -54,7 +54,7 @@ Configure sources in `backend/app/ingestion/sources.yaml`. Run ingestion via `/a
 - After ingestion, run dbt models to compute aggregates for Metabase.
 
 ## Documentation
-- Operations & deployment: `docs/operations.md`
+- Operations & deployment: `docs/operations.md` (includes the CyberPanel/nextstep.co.ke production checklist and bootstrap helper)
 - Ingestion & workflows: `docs/ingestion-workflows.md`
 - Integrations: `docs/integrations.md`
 - Product roadmap & research: `docs/product.md`
