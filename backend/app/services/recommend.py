@@ -188,13 +188,17 @@ def generate_transition_explanation(current_role: str, target_role: str,
 
 def get_trending_transitions(db: Session, days: int = 30) -> list[dict]:
     """Get trending career transitions based on recent job postings"""
-    
+    from datetime import datetime, timedelta
+
+    # Calculate cutoff date for SQLite compatibility
+    cutoff_date = datetime.utcnow() - timedelta(days=days)
+
     # Get roles with increasing demand
     stmt = select(
         JobPost.title_raw,
         func.count(JobPost.id).label('count')
     ).where(
-        JobPost.first_seen >= func.now() - func.interval(f'{days} days')
+        JobPost.first_seen >= cutoff_date
     ).group_by(JobPost.title_raw).having(
         func.count(JobPost.id) > 2
     ).order_by(desc('count'))
