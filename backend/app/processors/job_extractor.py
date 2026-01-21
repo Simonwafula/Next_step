@@ -194,38 +194,58 @@ class JobDataExtractor:
         
     async def _extract_myjobmag(self, soup: BeautifulSoup, url: str, html_content: str) -> Dict:
         """Extract job details from MyJobMag"""
+        # Get basic title
+        title = self._safe_extract(soup, ['h1'], 'text')
+        
+        # Get content from printable section
+        content_element = soup.find('li', id='printable')
+        content_text = content_element.get_text(strip=True) if content_element else ''
+        
+        # Extract structured information from content
+        company, location, salary, deadline, job_type, description = self._parse_myjobmag_content(content_text)
+        
         return {
             'url': url,
             'source': 'myjobmag',
-            'title': self._safe_extract(soup, ['.job-title', 'h1', '.title'], 'text'),
-            'company': self._safe_extract(soup, ['.company-name', '.employer', '.job-company'], 'text'),
-            'location': self._safe_extract(soup, ['.job-location', '.location'], 'text'),
-            'description': self._safe_extract(soup, ['.job-description', '.description', '.content'], 'html'),
-            'requirements': self._safe_extract(soup, ['.job-requirements', '.requirements'], 'html'),
-            'salary_text': self._safe_extract(soup, ['.salary', '.compensation'], 'text'),
-            'employment_type': self._safe_extract(soup, ['.job-type', '.employment-type'], 'text'),
-            'posted_date': self._safe_extract(soup, ['.posted-date', '.date'], 'text'),
-            'application_deadline': self._safe_extract(soup, ['.deadline', '.closing-date'], 'text'),
-            'contact_info': self._safe_extract(soup, ['.contact-info', '.contact'], 'text'),
+            'title': title,
+            'company': company,
+            'location': location,
+            'description': description,
+            'requirements': '',  # MyJobMag doesn't separate requirements
+            'salary_text': salary,
+            'employment_type': job_type,
+            'posted_date': '',  # MyJobMag doesn't show posted date
+            'application_deadline': deadline,
+            'contact_info': self._extract_contact_info(content_text),
             'raw_html': html_content,
             'extracted_at': datetime.utcnow()
         }
         
     async def _extract_jobwebkenya(self, soup: BeautifulSoup, url: str, html_content: str) -> Dict:
         """Extract job details from JobWebKenya"""
+        # Get basic title
+        title = self._safe_extract(soup, ['h1'], 'text')
+        
+        # Get content from main section
+        content_element = soup.find('div', class_='section single')
+        content_text = content_element.get_text(strip=True) if content_element else ''
+        
+        # Extract structured information from content
+        company, location, salary, deadline, job_type, description = self._parse_jobwebkenya_content(content_text)
+        
         return {
             'url': url,
             'source': 'jobwebkenya',
-            'title': self._safe_extract(soup, ['.job-title', 'h1', '.title'], 'text'),
-            'company': self._safe_extract(soup, ['.company-name', '.employer', '.job-company'], 'text'),
-            'location': self._safe_extract(soup, ['.job-location', '.location'], 'text'),
-            'description': self._safe_extract(soup, ['.job-description', '.description', '.content'], 'html'),
-            'requirements': self._safe_extract(soup, ['.job-requirements', '.requirements'], 'html'),
-            'salary_text': self._safe_extract(soup, ['.salary', '.compensation'], 'text'),
-            'employment_type': self._safe_extract(soup, ['.job-type', '.employment-type'], 'text'),
-            'posted_date': self._safe_extract(soup, ['.posted-date', '.date'], 'text'),
-            'application_deadline': self._safe_extract(soup, ['.deadline', '.closing-date'], 'text'),
-            'contact_info': self._safe_extract(soup, ['.contact-info', '.contact'], 'text'),
+            'title': title,
+            'company': company,
+            'location': location,
+            'description': description,
+            'requirements': '',  # JobWebKenya doesn't separate requirements
+            'salary_text': salary,
+            'employment_type': job_type,
+            'posted_date': '',  # JobWebKenya doesn't show posted date
+            'application_deadline': deadline,
+            'contact_info': self._extract_contact_info(content_text),
             'raw_html': html_content,
             'extracted_at': datetime.utcnow()
         }
@@ -264,6 +284,206 @@ class JobDataExtractor:
                 continue
         return ''
         
+    def _parse_myjobmag_content(self, content_text: str) -> tuple:
+        """Parse MyJobMag content to extract structured information"""
+        import re
+        
+        # Initialize defaults
+        company = location = salary = deadline = job_type = description = ''
+        
+        # Extract company (before "Read more about this company")
+        company_match = re.search(r'(.*?)Read more about this company', content_text, re.DOTALL)
+        if company_match:
+            company_text = company_match.group(1).strip()
+            # Extract the first comma-separated phrase which is usually the company name
+            if ',' in company_text:
+                company = company_text.split(',')[0].strip()
+            else:
+                # If no comma, take first reasonable length phrase
+                words = company_text.split()
+                company = ' '.join(words[:3])  # First 3 words
+        else:
+            # Fallback: extract from beginning of content
+            words = content_text.split()[:3]
+            company = ' '.join(words)
+        
+        # Extract location (more precise pattern)
+        location_match = re.search(r'Location([A-Za-z\s]+?)(?:Job|Field|$)', content_text)
+        if location_match:
+            location = location_match.group(1).strip()
+        
+        # Extract job type (clean up the pattern)
+        job_type_match = re.search(r'Job Type([^\n]+?)(?:Qualification|$)', content_text)
+        if job_type_match:
+            job_type = job_type_match.group(1).strip()
+        
+        # Extract salary (look for KSH, KSh patterns)
+        salary_match = re.search(r'(?:KSH|KSh)[\s,0-9]+', content_text, re.IGNORECASE)
+        if salary_match:
+            salary = salary_match.group(0).strip()
+        
+        # Extract deadline (after "Deadline" or "Closing")
+        deadline_match = re.search(r'(?:Deadline|Closing)[\s:]+([^\n]+)', content_text, re.IGNORECASE)
+        if deadline_match:
+            deadline = deadline_match.group(1).strip()
+        
+        # Extract description (after "Job Purpose" or "Primary Responsibilities")
+        desc_start_patterns = [
+            r'Job Purpose[:\s]+(.*?)(?:Primary Responsibilities|Qualifications|Experience|Method of Application|$)',
+            r'Primary Responsibilities[:\s]+(.*?)(?:Qualifications|Experience|Method of Application|$)'
+        ]
+        
+        for pattern in desc_start_patterns:
+            desc_match = re.search(pattern, content_text, re.DOTALL | re.IGNORECASE)
+            if desc_match:
+                description = desc_match.group(1).strip()
+                # Clean up description - remove excessive whitespace and newlines
+                description = re.sub(r'\s+', ' ', description)
+                # Limit to first 1000 characters for processing
+                if len(description) > 1000:
+                    description = description[:1000] + '...'
+                break
+        
+        # If no structured description found, use a portion of the content
+        if not description:
+            # Take content after company info but before qualifications
+            lines = content_text.split('\n')
+            desc_lines = []
+            skip_lines = ['Qualification', 'Experience', 'Location', 'Job Field', 'Job Purpose']
+            capturing = False
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                    
+                if any(skip in line for skip in skip_lines):
+                    if capturing:
+                        break
+                    continue
+                    
+                if line.startswith('Job Purpose') or line.startswith('Primary Responsibilities'):
+                    capturing = True
+                    if ':' in line:
+                        desc_lines.append(line.split(':', 1)[1].strip())
+                    continue
+                    
+                if capturing and len(line) > 20:  # Skip short lines
+                    desc_lines.append(line)
+                    
+            description = ' '.join(desc_lines[:5])  # First 5 meaningful lines
+            description = re.sub(r'\s+', ' ', description)  # Clean up whitespace
+        
+        return company, location, salary, deadline, job_type, description
+    
+    def _parse_jobwebkenya_content(self, content_text: str) -> tuple:
+        """Parse JobWebKenya content to extract structured information"""
+        import re
+        
+        # Initialize defaults
+        company = location = salary = deadline = job_type = description = ''
+        
+        # Extract company (look for company patterns)
+        company_patterns = [
+            r'Company[:\s]+([^\n]+)',
+            r'Employer[:\s]+([^\n]+)',
+            r'Organization[:\s]+([^\n]+)'
+        ]
+        
+        for pattern in company_patterns:
+            match = re.search(pattern, content_text, re.IGNORECASE)
+            if match:
+                company = match.group(1).strip()
+                break
+        
+        # Extract location
+        location_patterns = [
+            r'Location[:\s]+([^\n]+)',
+            r'City[:\s]+([^\n]+)',
+            r'Town[:\s]+([^\n]+)'
+        ]
+        
+        for pattern in location_patterns:
+            match = re.search(pattern, content_text, re.IGNORECASE)
+            if match:
+                location = match.group(1).strip()
+                break
+        
+        # Extract job type
+        job_type_patterns = [
+            r'Job Type[:\s]+([^\n]+)',
+            r'Type[:\s]+([^\n]+)',
+            r'Employment Type[:\s]+([^\n]+)'
+        ]
+        
+        for pattern in job_type_patterns:
+            match = re.search(pattern, content_text, re.IGNORECASE)
+            if match:
+                job_type = match.group(1).strip()
+                break
+        
+        # Extract salary
+        salary_patterns = [
+            r'Salary[:\s]+([^\n]+)',
+            r'Pay[:\s]+([^\n]+)',
+            r'(?:KSH|KSh)[\s,0-9]+',
+            r'KES[\s,0-9]+'
+        ]
+        
+        for pattern in salary_patterns:
+            matches = re.findall(pattern, content_text, re.IGNORECASE)
+            if matches:
+                salary = matches[0].strip()
+                break
+        
+        # Extract deadline
+        deadline_patterns = [
+            r'Deadline[:\s]+([^\n]+)',
+            r'Closing Date[:\s]+([^\n]+)',
+            r'Expires[:\s]+([^\n]+)',
+            r'Apply Before[:\s]+([^\n]+)'
+        ]
+        
+        for pattern in deadline_patterns:
+            match = re.search(pattern, content_text, re.IGNORECASE)
+            if match:
+                deadline = match.group(1).strip()
+                break
+        
+        # Extract description (look for description sections)
+        desc_patterns = [
+            r'Description[:\s]+(.*?)(?:Requirements|Qualifications|Skills|$)',
+            r'Job Description[:\s]+(.*?)(?:Requirements|Qualifications|Skills|$)',
+            r'About the Role[:\s]+(.*?)(?:Requirements|Qualifications|Skills|$)'
+        ]
+        
+        for pattern in desc_patterns:
+            match = re.search(pattern, content_text, re.DOTALL | re.IGNORECASE)
+            if match:
+                description = match.group(1).strip()
+                description = re.sub(r'\s+', ' ', description)  # Clean up whitespace
+                if len(description) > 1000:
+                    description = description[:1000] + '...'
+                break
+        
+        return company, location, salary, deadline, job_type, description
+    
+    def _extract_contact_info(self, content_text: str) -> str:
+        """Extract contact information from content"""
+        import re
+        
+        # Look for email addresses
+        email_match = re.search(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b', content_text)
+        if email_match:
+            return email_match.group(0)
+        
+        # Look for phone numbers
+        phone_match = re.search(r'(?:\+254|0)[7-9]\d{8}', content_text)
+        if phone_match:
+            return phone_match.group(0)
+        
+        return ''
+    
     def extract_structured_data(self, html_content: str) -> Dict:
         """Extract structured data (JSON-LD, microdata) from HTML"""
         soup = BeautifulSoup(html_content, 'html.parser')
@@ -273,10 +493,12 @@ class JobDataExtractor:
         json_scripts = soup.find_all('script', type='application/ld+json')
         for script in json_scripts:
             try:
-                data = json.loads(script.string)
-                if isinstance(data, dict) and data.get('@type') == 'JobPosting':
-                    structured_data['json_ld'] = data
-                    break
+                script_content = getattr(script, 'string', None)
+                if script_content:
+                    data = json.loads(script_content)
+                    if isinstance(data, dict) and data.get('@type') == 'JobPosting':
+                        structured_data['json_ld'] = data
+                        break
             except json.JSONDecodeError:
                 continue
                 

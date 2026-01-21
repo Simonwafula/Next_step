@@ -117,16 +117,33 @@ class JobScraper:
         listings = []
         soup = BeautifulSoup(response.text, 'html.parser')
         
-        for job in soup.find_all('h2'):
-            job_link_tag = job.find("a", href=True)
+        # Fixed: Use article with class="job" instead of h2
+        for job in soup.find_all('article', class_='job'):
             try:
-                title = job_link_tag['title']
-                link_tag = job_link_tag['href']
-                if not link_tag:
-                    continue   
+                # Job title and link
+                title_elem = job.find('h2').find('a')
+                title = title_elem.get_text(strip=True)
+                link = title_elem['href']
+                
+                if not link:
+                    continue
                     
-                full_link = urljoin(self.base_url, link_tag)
-                listings.append(JobListing(title=title, full_link=full_link))
+                full_link = urljoin(self.base_url, link)
+                
+                # Extract additional info for better content
+                company = job.find('p', class_='company')
+                company_name = company.find('a').get_text(strip=True) if company else ''
+                
+                location = job.find('ul', class_='location')
+                location_text = location.find('li').get_text(strip=True) if location else ''
+                
+                description = job.find('div', class_='desc')
+                desc_text = description.get_text(strip=True) if description else ''
+                
+                # Combine all info for content
+                content = f"Company: {company_name}\nLocation: {location_text}\n\n{desc_text}"
+                
+                listings.append(JobListing(title=title, full_link=full_link, content=content))
                 
             except Exception as e:
                 logging.error(f"Error parsing job listing: {e}")

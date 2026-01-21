@@ -27,3 +27,11 @@
 - Advanced analytics dashboards and benchmarking (Metabase + LMI).
 - Expanded data sources (private sector boards, international roles).
 - Subscription billing and premium tiers.
+
+## Proposed / Under Consideration
+- Source health monitoring with uptime checks, change detection, and auto-disable on repeated failures.
+- Data quality scoring with a manual review queue for noisy sources.
+- Resume import (PDF/Doc) with structured profile extraction.
+- Geo-aware search with commute filters and county-level salary insights.
+- Public API keys with rate limits for partners and researchers.
+- Government PDF ingestion with OCR for gazette-style postings.
