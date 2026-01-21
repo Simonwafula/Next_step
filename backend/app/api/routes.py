@@ -41,12 +41,12 @@ def search(q: str = Query("", description="Search query, job title, or 'I studie
     - "statistician jobs"
     """
     # Enhanced search with optional personalization
+    # Note: personalization will be implemented in P0.3
     results = search_jobs(
-        db, 
-        q=q, 
-        location=location, 
-        seniority=seniority,
-        user=current_user if personalized and current_user else None
+        db,
+        q=q,
+        location=location,
+        seniority=seniority
     )
     
     # Add personalization metadata if user is authenticated

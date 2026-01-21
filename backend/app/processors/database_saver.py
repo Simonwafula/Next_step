@@ -70,12 +70,37 @@ class JobDatabaseSaver:
             if existing_job:
                 # Update last_seen timestamp
                 existing_job.last_seen = cleaned_data.get('extracted_at', datetime.utcnow())
+
+                # Update structured fields if we have better data
+                if org_id and not existing_job.org_id:
+                    existing_job.org_id = org_id
+                if location_id and not existing_job.location_id:
+                    existing_job.location_id = location_id
+                if title_norm_id and not existing_job.title_norm_id:
+                    existing_job.title_norm_id = title_norm_id
+                if cleaned_data.get('description_raw') and not existing_job.description_raw:
+                    existing_job.description_raw = cleaned_data.get('description_raw')
+                if cleaned_data.get('requirements_raw') and not existing_job.requirements_raw:
+                    existing_job.requirements_raw = cleaned_data.get('requirements_raw')
+                if cleaned_data.get('salary_min') and not existing_job.salary_min:
+                    existing_job.salary_min = cleaned_data.get('salary_min')
+                if cleaned_data.get('salary_max') and not existing_job.salary_max:
+                    existing_job.salary_max = cleaned_data.get('salary_max')
+                if cleaned_data.get('currency') and not existing_job.currency:
+                    existing_job.currency = cleaned_data.get('currency')
+                if cleaned_data.get('employment_type') and not existing_job.tenure:
+                    existing_job.tenure = cleaned_data.get('employment_type')
+                if cleaned_data.get('seniority') and not existing_job.seniority:
+                    existing_job.seniority = cleaned_data.get('seniority')
+                if cleaned_data.get('education') and not existing_job.education:
+                    existing_job.education = cleaned_data.get('education')
+
                 db.commit()
                 logger.info(f"Updated existing job post: {existing_job.id}")
-                
+
                 # Update skills
                 self._update_job_skills(db, existing_job.id, cleaned_data.get('skills', []))
-                
+
                 return existing_job.id
             
             # Add new job post

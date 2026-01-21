@@ -196,21 +196,28 @@ class JobDataExtractor:
         """Extract job details from MyJobMag"""
         # Get basic title
         title = self._safe_extract(soup, ['h1'], 'text')
-        
+
         # Get content from printable section
         content_element = soup.find('li', id='printable')
-        content_text = content_element.get_text(strip=True) if content_element else ''
-        
+        content_text = content_element.get_text(separator=' ', strip=True) if content_element else ''
+
+        # Extract company from title (format: "Job Title at Company Name")
+        company = self._extract_company_from_title(title)
+
         # Extract structured information from content
-        company, location, salary, deadline, job_type, description = self._parse_myjobmag_content(content_text)
-        
+        content_company, location, salary, deadline, job_type, description = self._parse_myjobmag_content(content_text)
+
+        # Use content company if title extraction failed
+        if not company and content_company:
+            company = content_company
+
         return {
             'url': url,
             'source': 'myjobmag',
             'title': title,
             'company': company,
             'location': location,
-            'description': description,
+            'description': description or content_text[:1500],  # Use content as fallback description
             'requirements': '',  # MyJobMag doesn't separate requirements
             'salary_text': salary,
             'employment_type': job_type,
@@ -225,21 +232,28 @@ class JobDataExtractor:
         """Extract job details from JobWebKenya"""
         # Get basic title
         title = self._safe_extract(soup, ['h1'], 'text')
-        
+
         # Get content from main section
         content_element = soup.find('div', class_='section single')
-        content_text = content_element.get_text(strip=True) if content_element else ''
-        
+        content_text = content_element.get_text(separator=' ', strip=True) if content_element else ''
+
+        # Extract company from title (format: "Job Title at Company Name")
+        company = self._extract_company_from_title(title)
+
         # Extract structured information from content
-        company, location, salary, deadline, job_type, description = self._parse_jobwebkenya_content(content_text)
-        
+        content_company, location, salary, deadline, job_type, description = self._parse_jobwebkenya_content(content_text)
+
+        # Use content company if title extraction failed
+        if not company and content_company:
+            company = content_company
+
         return {
             'url': url,
             'source': 'jobwebkenya',
             'title': title,
             'company': company,
             'location': location,
-            'description': description,
+            'description': description or content_text[:1500],  # Use content as fallback description
             'requirements': '',  # JobWebKenya doesn't separate requirements
             'salary_text': salary,
             'employment_type': job_type,
@@ -283,189 +297,216 @@ class JobDataExtractor:
                 logger.debug(f"Error with selector {selector}: {e}")
                 continue
         return ''
+
+    def _extract_company_from_title(self, title: str) -> str:
+        """Extract company name from title (format: 'Job Title at Company Name')"""
+        if not title:
+            return ''
+
+        # Common patterns for company in title
+        # Format 1: "Job Title at Company Name"
+        if ' at ' in title.lower():
+            parts = title.rsplit(' at ', 1)
+            if len(parts) == 2:
+                company = parts[1].strip()
+                # Clean up common suffixes in parentheses
+                if '(' in company:
+                    company = company.split('(')[0].strip()
+                return company
+
+        # Format 2: "Job Title - Company Name"
+        if ' - ' in title:
+            parts = title.rsplit(' - ', 1)
+            if len(parts) == 2:
+                company = parts[1].strip()
+                return company
+
+        return ''
         
     def _parse_myjobmag_content(self, content_text: str) -> tuple:
         """Parse MyJobMag content to extract structured information"""
         import re
-        
+
         # Initialize defaults
         company = location = salary = deadline = job_type = description = ''
-        
+
         # Extract company (before "Read more about this company")
-        company_match = re.search(r'(.*?)Read more about this company', content_text, re.DOTALL)
+        company_match = re.search(r'^([^,]+)', content_text.strip())
         if company_match:
             company_text = company_match.group(1).strip()
-            # Extract the first comma-separated phrase which is usually the company name
-            if ',' in company_text:
-                company = company_text.split(',')[0].strip()
-            else:
-                # If no comma, take first reasonable length phrase
-                words = company_text.split()
-                company = ' '.join(words[:3])  # First 3 words
-        else:
-            # Fallback: extract from beginning of content
-            words = content_text.split()[:3]
-            company = ' '.join(words)
-        
-        # Extract location (more precise pattern)
-        location_match = re.search(r'Location([A-Za-z\s]+?)(?:Job|Field|$)', content_text)
-        if location_match:
-            location = location_match.group(1).strip()
-        
-        # Extract job type (clean up the pattern)
-        job_type_match = re.search(r'Job Type([^\n]+?)(?:Qualification|$)', content_text)
-        if job_type_match:
-            job_type = job_type_match.group(1).strip()
-        
-        # Extract salary (look for KSH, KSh patterns)
-        salary_match = re.search(r'(?:KSH|KSh)[\s,0-9]+', content_text, re.IGNORECASE)
-        if salary_match:
-            salary = salary_match.group(0).strip()
-        
-        # Extract deadline (after "Deadline" or "Closing")
-        deadline_match = re.search(r'(?:Deadline|Closing)[\s:]+([^\n]+)', content_text, re.IGNORECASE)
-        if deadline_match:
-            deadline = deadline_match.group(1).strip()
-        
-        # Extract description (after "Job Purpose" or "Primary Responsibilities")
-        desc_start_patterns = [
-            r'Job Purpose[:\s]+(.*?)(?:Primary Responsibilities|Qualifications|Experience|Method of Application|$)',
-            r'Primary Responsibilities[:\s]+(.*?)(?:Qualifications|Experience|Method of Application|$)'
+            # Clean up - remove common non-company text
+            if len(company_text) < 100 and 'Read more' not in company_text:
+                company = company_text
+
+        # Extract location - improved pattern for MyJobMag format
+        # Format: "Location Nairobi Job Field" or "Location Nairobi"
+        location_patterns = [
+            r'Location\s+([A-Za-z\s,]+?)(?=\s*Job|\s*Field|\s*Qualification|\s*$)',
+            r'Location[:\s]+([A-Za-z\s,]+)',
         ]
-        
-        for pattern in desc_start_patterns:
+        for pattern in location_patterns:
+            location_match = re.search(pattern, content_text, re.IGNORECASE)
+            if location_match:
+                location = location_match.group(1).strip()
+                # Clean up trailing words
+                location = re.sub(r'\s+(Job|Field|Qualification).*$', '', location, flags=re.IGNORECASE)
+                break
+
+        # Extract job type - improved pattern
+        # Format: "Job Type Full Time , Onsite"
+        job_type_patterns = [
+            r'Job Type\s+([^Q\n]+?)(?=\s*Qualification|\s*Experience|\s*Location|\s*$)',
+            r'Job Type[:\s]+([^\n]+)',
+        ]
+        for pattern in job_type_patterns:
+            job_type_match = re.search(pattern, content_text, re.IGNORECASE)
+            if job_type_match:
+                job_type = job_type_match.group(1).strip()
+                # Clean up
+                job_type = re.sub(r'\s+', ' ', job_type).strip(' ,')
+                break
+
+        # Extract salary (look for KSH, KSh, KES patterns - more specific)
+        # Handle Kenyan format: Kshs. 157, 427 – Kshs. 234, 431/=
+        salary_patterns = [
+            # Range with /= suffix: Kshs. 157, 427 – Kshs. 234, 431/=
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d{1,3}(?:[,\s]+\d{3})*(?:/=)?)\s*[-–]\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*(\d{1,3}(?:[,\s]+\d{3})*(?:/=)?)',
+            # Single value: KSH 50,000 or Kshs. 157, 427/=
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d{1,3}(?:[,\s]+\d{3})*(?:/=)?)',
+        ]
+        for pattern in salary_patterns:
+            salary_match = re.search(pattern, content_text, re.IGNORECASE)
+            if salary_match:
+                salary = salary_match.group(0).strip()
+                # Limit salary text length
+                if len(salary) > 80:
+                    salary = salary[:80]
+                break
+
+        # Extract deadline (after "Deadline" or "Closing" or "Apply Before")
+        deadline_patterns = [
+            r'(?:Deadline|Closing\s*Date|Apply\s*Before)[:\s]+([^\n]+)',
+            r'(?:Deadline|Closing)[:\s]+(\d{1,2}[/-]\d{1,2}[/-]\d{2,4})',
+        ]
+        for pattern in deadline_patterns:
+            deadline_match = re.search(pattern, content_text, re.IGNORECASE)
+            if deadline_match:
+                deadline = deadline_match.group(1).strip()
+                break
+
+        # Extract description (after "Job Purpose" or "Primary Responsibilities")
+        desc_patterns = [
+            r'Job Purpose[:\s]+(.*?)(?=Primary Responsibilities|Qualifications|Experience Required|Method of Application|How to Apply|$)',
+            r'Primary Responsibilities[:\s]+(.*?)(?=Qualifications|Experience|Method of Application|How to Apply|$)',
+            r'(?:Job\s*)?Description[:\s]+(.*?)(?=Qualifications|Requirements|Experience|How to Apply|$)',
+        ]
+
+        for pattern in desc_patterns:
             desc_match = re.search(pattern, content_text, re.DOTALL | re.IGNORECASE)
             if desc_match:
                 description = desc_match.group(1).strip()
-                # Clean up description - remove excessive whitespace and newlines
+                # Clean up description - remove excessive whitespace
                 description = re.sub(r'\s+', ' ', description)
-                # Limit to first 1000 characters for processing
-                if len(description) > 1000:
-                    description = description[:1000] + '...'
+                if len(description) > 1500:
+                    description = description[:1500] + '...'
                 break
-        
-        # If no structured description found, use a portion of the content
-        if not description:
-            # Take content after company info but before qualifications
-            lines = content_text.split('\n')
-            desc_lines = []
-            skip_lines = ['Qualification', 'Experience', 'Location', 'Job Field', 'Job Purpose']
-            capturing = False
-            
-            for line in lines:
-                line = line.strip()
-                if not line:
-                    continue
-                    
-                if any(skip in line for skip in skip_lines):
-                    if capturing:
-                        break
-                    continue
-                    
-                if line.startswith('Job Purpose') or line.startswith('Primary Responsibilities'):
-                    capturing = True
-                    if ':' in line:
-                        desc_lines.append(line.split(':', 1)[1].strip())
-                    continue
-                    
-                if capturing and len(line) > 20:  # Skip short lines
-                    desc_lines.append(line)
-                    
-            description = ' '.join(desc_lines[:5])  # First 5 meaningful lines
-            description = re.sub(r'\s+', ' ', description)  # Clean up whitespace
-        
+
         return company, location, salary, deadline, job_type, description
     
     def _parse_jobwebkenya_content(self, content_text: str) -> tuple:
         """Parse JobWebKenya content to extract structured information"""
         import re
-        
+
         # Initialize defaults
         company = location = salary = deadline = job_type = description = ''
-        
+
         # Extract company (look for company patterns)
+        # JobWebKenya format: "Company: Company Name"
         company_patterns = [
-            r'Company[:\s]+([^\n]+)',
-            r'Employer[:\s]+([^\n]+)',
-            r'Organization[:\s]+([^\n]+)'
+            r'Company[:\s]+([^\n]+?)(?=\s*Location|\s*State|\s*$)',
+            r'Employer[:\s]+([^\n]+?)(?=\s*Location|\s*State|\s*$)',
+            r'Organization[:\s]+([^\n]+?)(?=\s*Location|\s*State|\s*$)',
         ]
-        
+
         for pattern in company_patterns:
             match = re.search(pattern, content_text, re.IGNORECASE)
             if match:
                 company = match.group(1).strip()
                 break
-        
-        # Extract location
-        location_patterns = [
-            r'Location[:\s]+([^\n]+)',
-            r'City[:\s]+([^\n]+)',
-            r'Town[:\s]+([^\n]+)'
-        ]
-        
-        for pattern in location_patterns:
-            match = re.search(pattern, content_text, re.IGNORECASE)
-            if match:
-                location = match.group(1).strip()
-                break
-        
+
+        # Extract location - JobWebKenya often has separate State field
+        # Format: "Location: Kenya State: Nairobi"
+        state_match = re.search(r'State[:\s]+([^\n]+?)(?=\s*Job|\s*type|\s*category|\s*$)', content_text, re.IGNORECASE)
+        location_match = re.search(r'Location[:\s]+([^\n]+?)(?=\s*State|\s*Job|\s*type|\s*$)', content_text, re.IGNORECASE)
+
+        if state_match:
+            location = state_match.group(1).strip()
+        elif location_match:
+            location = location_match.group(1).strip()
+
         # Extract job type
+        # Format: "Job type: Full-Time"
         job_type_patterns = [
-            r'Job Type[:\s]+([^\n]+)',
-            r'Type[:\s]+([^\n]+)',
-            r'Employment Type[:\s]+([^\n]+)'
+            r'Job\s*type[:\s]+([^\n]+?)(?=\s*Job\s*category|\s*$)',
+            r'Employment\s*Type[:\s]+([^\n]+)',
+            r'Type[:\s]+([^\n]+?)(?=\s*category|\s*$)',
         ]
-        
+
         for pattern in job_type_patterns:
             match = re.search(pattern, content_text, re.IGNORECASE)
             if match:
                 job_type = match.group(1).strip()
                 break
-        
-        # Extract salary
+
+        # Extract salary - more specific patterns
+        # Handle Kenyan format: Kshs. 157, 427 – Kshs. 234, 431/=
         salary_patterns = [
-            r'Salary[:\s]+([^\n]+)',
-            r'Pay[:\s]+([^\n]+)',
-            r'(?:KSH|KSh)[\s,0-9]+',
-            r'KES[\s,0-9]+'
+            # Range with /= suffix: Kshs. 157, 427 – Kshs. 234, 431/=
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d{1,3}(?:[,\s]+\d{3})*(?:/=)?)\s*[-–]\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*(\d{1,3}(?:[,\s]+\d{3})*(?:/=)?)',
+            # Single value: KSH 50,000 or Kshs. 157, 427/=
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d{1,3}(?:[,\s]+\d{3})*(?:/=)?)',
         ]
-        
+
         for pattern in salary_patterns:
-            matches = re.findall(pattern, content_text, re.IGNORECASE)
-            if matches:
-                salary = matches[0].strip()
+            match = re.search(pattern, content_text, re.IGNORECASE)
+            if match:
+                salary = match.group(0).strip()
+                # Limit salary text length
+                if len(salary) > 80:
+                    salary = salary[:80]
                 break
-        
+
         # Extract deadline
         deadline_patterns = [
             r'Deadline[:\s]+([^\n]+)',
-            r'Closing Date[:\s]+([^\n]+)',
+            r'Closing\s*Date[:\s]+([^\n]+)',
+            r'Apply\s*Before[:\s]+([^\n]+)',
             r'Expires[:\s]+([^\n]+)',
-            r'Apply Before[:\s]+([^\n]+)'
         ]
-        
+
         for pattern in deadline_patterns:
             match = re.search(pattern, content_text, re.IGNORECASE)
             if match:
                 deadline = match.group(1).strip()
                 break
-        
-        # Extract description (look for description sections)
+
+        # Extract description
+        # JobWebKenya often has content after "Job Description" heading
         desc_patterns = [
-            r'Description[:\s]+(.*?)(?:Requirements|Qualifications|Skills|$)',
-            r'Job Description[:\s]+(.*?)(?:Requirements|Qualifications|Skills|$)',
-            r'About the Role[:\s]+(.*?)(?:Requirements|Qualifications|Skills|$)'
+            r'Job\s*Description\s+(.*?)(?=Duties|Responsibilities|Requirements|Qualifications|Skills|How to Apply|$)',
+            r'Description[:\s]+(.*?)(?=Requirements|Qualifications|Skills|How to Apply|$)',
+            r'About\s*(?:the\s*)?Role[:\s]+(.*?)(?=Requirements|Qualifications|Skills|$)',
         ]
-        
+
         for pattern in desc_patterns:
             match = re.search(pattern, content_text, re.DOTALL | re.IGNORECASE)
             if match:
                 description = match.group(1).strip()
-                description = re.sub(r'\s+', ' ', description)  # Clean up whitespace
-                if len(description) > 1000:
-                    description = description[:1000] + '...'
+                description = re.sub(r'\s+', ' ', description)
+                if len(description) > 1500:
+                    description = description[:1500] + '...'
                 break
-        
+
         return company, location, salary, deadline, job_type, description
     
     def _extract_contact_info(self, content_text: str) -> str:

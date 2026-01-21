@@ -114,7 +114,7 @@ def search_jobs(db: Session, q: str = "", location: str | None = None, seniority
     
     # Sort by similarity score if available
     if query_embedding:
-        results.sort(key=lambda x: x.get("similarity_score", 0), reverse=True)
+        results.sort(key=lambda x: x.get("similarity_score") or 0, reverse=True)
     
     # If no results, provide suggestions
     if not results and q:

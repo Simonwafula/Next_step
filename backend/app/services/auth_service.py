@@ -31,7 +31,8 @@ REFRESH_TOKEN_EXPIRE_DAYS = 7
 PASSWORD_RESET_EXPIRE_MINUTES = settings.PASSWORD_RESET_EXPIRE_MINUTES
 
 # Security scheme
-security = HTTPBearer()
+# auto_error=False allows get_current_user_optional to work for unauthenticated users
+security = HTTPBearer(auto_error=False)
 
 class AuthService:
     def __init__(self):
@@ -219,6 +220,12 @@ async def get_current_user(
     db: Session = Depends(get_db)
 ) -> User:
     """Get current authenticated user."""
+    if not credentials:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     token = credentials.credentials
     payload = auth_service.verify_token(token)
     
