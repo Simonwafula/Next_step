@@ -54,6 +54,27 @@ celery_app.conf.update(
             'task': 'app.tasks.workflow_tasks.generate_daily_insights',
             'schedule': 60.0 * 60.0 * 4.0,  # 4 hours
             'options': {'queue': 'insights'}
+        },
+        # Process immediate job alerts every hour
+        'process-immediate-alerts': {
+            'task': 'app.tasks.processing_tasks.process_job_alerts',
+            'schedule': 60.0 * 60.0,  # 1 hour
+            'args': ['immediate'],
+            'options': {'queue': 'processing'}
+        },
+        # Process daily job alerts once per day
+        'process-daily-alerts': {
+            'task': 'app.tasks.processing_tasks.process_job_alerts',
+            'schedule': 60.0 * 60.0 * 24.0,  # 24 hours
+            'args': ['daily'],
+            'options': {'queue': 'processing'}
+        },
+        # Process weekly job alerts once per week
+        'process-weekly-alerts': {
+            'task': 'app.tasks.processing_tasks.process_job_alerts',
+            'schedule': 60.0 * 60.0 * 24.0 * 7.0,  # 7 days
+            'args': ['weekly'],
+            'options': {'queue': 'processing'}
         }
     },
     task_routes={

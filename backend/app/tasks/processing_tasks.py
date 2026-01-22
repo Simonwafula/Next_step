@@ -5,9 +5,10 @@ from typing import Dict, Any, List
 from datetime import datetime, timedelta
 
 from ..core.celery_app import celery_app
-from ..db.database import get_db
+from ..db.database import get_db, SessionLocal
 from ..services.automated_workflow_service import automated_workflow_service
 from ..services.data_processing_service import data_processing_service
+from ..services.email_service import send_email
 from ..processors.job_processor import JobProcessor
 
 logger = logging.getLogger(__name__)
@@ -628,9 +629,213 @@ async def _validate_job_data_async(job_ids: List[int] = None) -> Dict[str, Any]:
                 "status": "completed",
                 "validation_results": validation_results
             }
-            
+
         except Exception as e:
             logger.error(f"Job data validation failed: {str(e)}")
             raise
         finally:
             await db.close()
+
+
+# Job Alert Processing Tasks
+@celery_app.task(bind=True, name="app.tasks.processing_tasks.process_job_alerts")
+def process_job_alerts(self, frequency: str = "daily"):
+    """
+    Process job alerts and send notifications to users.
+
+    Args:
+        frequency: Alert frequency to process ("immediate", "daily", "weekly")
+    """
+    try:
+        self.update_state(
+            state='PROGRESS',
+            meta={'status': f'Processing {frequency} job alerts', 'progress': 0}
+        )
+
+        result = _process_job_alerts_sync(frequency)
+
+        self.update_state(
+            state='SUCCESS',
+            meta={
+                'status': f'{frequency.title()} job alerts processed successfully',
+                'progress': 100,
+                'result': result
+            }
+        )
+
+        return result
+
+    except Exception as e:
+        logger.error(f"Job alert processing failed: {str(e)}")
+        self.update_state(
+            state='FAILURE',
+            meta={'status': f'Job alert processing failed: {str(e)}', 'progress': 0}
+        )
+        raise
+
+
+def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
+    """Process job alerts synchronously (Celery-compatible)"""
+    from sqlalchemy import select, and_
+    from ..db.models import JobAlert, JobPost, User, UserNotification
+    from ..services.search import search_jobs
+
+    db = SessionLocal()
+    try:
+        # Get active alerts for the specified frequency
+        stmt = select(JobAlert).where(
+            and_(
+                JobAlert.is_active == True,
+                JobAlert.frequency == frequency
+            )
+        )
+        alerts = db.execute(stmt).scalars().all()
+
+        alerts_processed = 0
+        notifications_sent = 0
+
+        # Calculate time window for new jobs
+        if frequency == "immediate":
+            hours_back = 1
+        elif frequency == "daily":
+            hours_back = 24
+        else:  # weekly
+            hours_back = 168
+
+        cutoff_time = datetime.utcnow() - timedelta(hours=hours_back)
+
+        for alert in alerts:
+            try:
+                # Search for matching jobs
+                matching_jobs = search_jobs(
+                    db,
+                    q=alert.query,
+                    location=alert.filters.get("location"),
+                    seniority=alert.filters.get("seniority")
+                )
+
+                # Filter for new jobs only
+                new_jobs = [
+                    job for job in matching_jobs
+                    if job.get("first_seen") and
+                    datetime.fromisoformat(job["first_seen"].replace("Z", "")) > cutoff_time
+                ]
+
+                if new_jobs:
+                    # Get user for this alert
+                    user = db.execute(
+                        select(User).where(User.id == alert.user_id)
+                    ).scalar_one_or_none()
+
+                    if user:
+                        # Create notification
+                        notification = UserNotification(
+                            user_id=user.id,
+                            type="job_alert",
+                            title=f"🎯 {len(new_jobs)} new jobs match '{alert.name}'",
+                            message=_format_job_alert_message(new_jobs[:5], alert.name),
+                            data={
+                                "alert_id": alert.id,
+                                "job_count": len(new_jobs),
+                                "job_ids": [j.get("id") for j in new_jobs[:10]]
+                            },
+                            delivered_via=[]
+                        )
+                        db.add(notification)
+
+                        # Send email if in delivery methods
+                        if "email" in (alert.delivery_methods or []) and user.email:
+                            email_sent = _send_job_alert_email(
+                                user.email,
+                                alert.name,
+                                new_jobs[:10]
+                            )
+                            if email_sent:
+                                notification.delivered_via.append("email")
+                                notifications_sent += 1
+
+                        # Update alert stats
+                        alert.last_triggered = datetime.utcnow()
+                        alert.last_jobs_count = len(new_jobs)
+                        alert.jobs_found_total = (alert.jobs_found_total or 0) + len(new_jobs)
+
+                        db.add(alert)
+
+                alerts_processed += 1
+
+            except Exception as e:
+                logger.error(f"Error processing alert {alert.id}: {e}")
+                continue
+
+        db.commit()
+
+        return {
+            "status": "completed",
+            "frequency": frequency,
+            "alerts_processed": alerts_processed,
+            "notifications_sent": notifications_sent,
+            "processed_at": datetime.utcnow().isoformat()
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Job alert processing failed: {str(e)}")
+        raise
+    finally:
+        db.close()
+
+
+def _format_job_alert_message(jobs: List[Dict], alert_name: str) -> str:
+    """Format job alert message for notification"""
+    if not jobs:
+        return f"No new jobs found for '{alert_name}'"
+
+    message = f"New opportunities matching your '{alert_name}' alert:\n\n"
+
+    for i, job in enumerate(jobs[:5], 1):
+        title = job.get("title", "Unknown Title")
+        company = job.get("organization", "Unknown Company")
+        location = job.get("location", "")
+
+        message += f"{i}. {title}\n"
+        message += f"   🏢 {company}"
+        if location:
+            message += f" | 📍 {location}"
+        message += "\n"
+
+    if len(jobs) > 5:
+        message += f"\n...and {len(jobs) - 5} more opportunities!"
+
+    return message
+
+
+def _send_job_alert_email(to_email: str, alert_name: str, jobs: List[Dict]) -> bool:
+    """Send job alert email digest"""
+    if not jobs:
+        return False
+
+    subject = f"🎯 {len(jobs)} new jobs match your '{alert_name}' alert"
+
+    body = f"Hi there,\n\n"
+    body += f"Great news! We found {len(jobs)} new job(s) matching your '{alert_name}' job alert.\n\n"
+    body += "Here are the top matches:\n\n"
+
+    for i, job in enumerate(jobs[:10], 1):
+        title = job.get("title", "Unknown Title")
+        company = job.get("organization", "Unknown Company")
+        location = job.get("location", "")
+        url = job.get("url", "")
+
+        body += f"{i}. {title}\n"
+        body += f"   Company: {company}\n"
+        if location:
+            body += f"   Location: {location}\n"
+        if url:
+            body += f"   Apply: {url}\n"
+        body += "\n"
+
+    body += "\n---\n"
+    body += "You're receiving this email because you set up a job alert on NextStep.\n"
+    body += "To manage your alerts, visit your account settings.\n"
+
+    return send_email(to_email, subject, body)

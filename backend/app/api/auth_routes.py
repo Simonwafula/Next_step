@@ -1,6 +1,6 @@
 from datetime import timedelta
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Form, Query, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -11,6 +11,7 @@ from ..db.database import get_db
 from ..services.auth_service import auth_service, get_current_user, get_current_user_optional, is_admin_user
 from ..db.models import User, UserProfile
 from ..core.config import settings
+from ..core.rate_limiter import rate_limit
 from ..services.email_service import send_password_reset_email
 
 router = APIRouter()
@@ -95,7 +96,8 @@ def build_token_response(db: Session, user: User) -> Dict[str, Any]:
     }
 
 @router.post("/register", response_model=Token)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@rate_limit(max_requests=5, window_seconds=60)  # 5 registrations per minute per IP
+async def register(request: Request, user_data: UserCreate, db: Session = Depends(get_db)):
     """Register a new user."""
     try:
         # Create user
@@ -119,7 +121,9 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
 
 @router.post("/login", response_model=Token)
+@rate_limit(max_requests=10, window_seconds=60)  # 10 login attempts per minute per IP
 async def login(
+    request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db)
 ):
@@ -169,7 +173,9 @@ async def refresh_token(
         )
 
 @router.post("/forgot-password")
+@rate_limit(max_requests=3, window_seconds=60)  # 3 reset requests per minute per IP
 async def forgot_password(
+    request: Request,
     payload: PasswordResetRequest,
     db: Session = Depends(get_db)
 ):

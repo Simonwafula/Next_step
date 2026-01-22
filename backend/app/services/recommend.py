@@ -218,27 +218,46 @@ def get_trending_transitions(db: Session, days: int = 30) -> list[dict]:
     return trending_transitions
 
 def get_salary_insights_for_transition(db: Session, target_role: str) -> dict:
-    """Get salary insights for a target role"""
-    
+    """Get salary insights for a target role (SQLite compatible)"""
+
+    # SQLite doesn't support percentile_cont, so we calculate median manually
+    # First, get all salary values for the role
     stmt = select(
-        func.percentile_cont(0.5).within_group(JobPost.salary_min).label('median_min'),
-        func.percentile_cont(0.5).within_group(JobPost.salary_max).label('median_max'),
-        func.count(JobPost.id).label('sample_size')
+        JobPost.salary_min,
+        JobPost.salary_max
     ).where(
         JobPost.title_raw.ilike(f"%{target_role}%"),
         JobPost.salary_min.is_not(None)
-    )
-    
-    result = db.execute(stmt).first()
-    
-    if result and result.sample_size > 0:
+    ).order_by(JobPost.salary_min)
+
+    rows = db.execute(stmt).all()
+    sample_size = len(rows)
+
+    if sample_size > 0:
+        # Calculate median (middle value or average of two middle values)
+        salary_mins = [row.salary_min for row in rows if row.salary_min is not None]
+        salary_maxs = [row.salary_max for row in rows if row.salary_max is not None]
+
+        def calculate_median(values):
+            if not values:
+                return None
+            sorted_vals = sorted(values)
+            n = len(sorted_vals)
+            mid = n // 2
+            if n % 2 == 0:
+                return (sorted_vals[mid - 1] + sorted_vals[mid]) / 2
+            return sorted_vals[mid]
+
+        median_min = calculate_median(salary_mins)
+        median_max = calculate_median(salary_maxs) if salary_maxs else None
+
         return {
-            "median_salary_min": result.median_min,
-            "median_salary_max": result.median_max,
-            "sample_size": result.sample_size,
-            "coverage": f"Based on {result.sample_size} job postings with salary data"
+            "median_salary_min": median_min,
+            "median_salary_max": median_max,
+            "sample_size": sample_size,
+            "coverage": f"Based on {sample_size} job postings with salary data"
         }
-    
+
     return {
         "median_salary_min": None,
         "median_salary_max": None,

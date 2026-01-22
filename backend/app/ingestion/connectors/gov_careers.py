@@ -191,9 +191,12 @@ def ingest_gov_careers(db: Session, **src) -> int:
     seen_urls: set[str] = set()
     added = 0
 
+    # Government sites often have SSL certificate issues
+    # Use verify=False as a fallback for sites with expired/invalid certs
     client = httpx.Client(
         timeout=30,
         follow_redirects=True,
+        verify=False,  # Handle SSL cert issues common with gov sites
         headers={"User-Agent": "NextStepGovMonitor/1.0"},
     )
 
@@ -253,7 +256,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                 existing = (
                     db.query(JobPost)
                     .filter(or_(JobPost.url == link_url, JobPost.url_hash == url_hash))
-                    .one_or_none()
+                    .first()  # Use first() instead of one_or_none() to handle duplicates
                 )
                 if existing:
                     existing.last_seen = datetime.utcnow()
@@ -297,7 +300,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                     existing = (
                         db.query(JobPost)
                         .filter(or_(JobPost.url == list_url, JobPost.url_hash == url_hash))
-                        .one_or_none()
+                        .first()  # Use first() instead of one_or_none() to handle duplicates
                     )
                     if not existing:
                         title = page_title or org_name or "Career opportunity"
