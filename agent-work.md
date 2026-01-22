@@ -1,8 +1,8 @@
 # Agent Work Dashboard - Next Step MVP Implementation
 
 **Date**: January 22, 2026
-**Loop**: 9/40
-**Mode**: Build - P1 COMPLETE, Diversity Target MET!
+**Loop**: 10/40
+**Mode**: Build - P1 COMPLETE, Loop 10 enhancements committed
 
 ---
 
@@ -37,8 +37,8 @@
 - ✅ Careers-for-degree API working ("economics" → relevant careers)
 - ✅ Fixed auth to allow unauthenticated access to search
 
-### Next (Current Loop 7)
-- 🎉 **P1 PRODUCTION HARDENING IN PROGRESS**
+### Next (Current Loop 10)
+- 🎉 **P1 PRODUCTION HARDENING COMPLETE**
 - ✅ **P1.1 PRODUCTION READINESS - CORE COMPLETED** (Loop 6-7)
   - ✅ Rate limiting already working (in-memory sliding window)
   - ✅ API key authentication for admin endpoints
@@ -50,7 +50,14 @@
 - ✅ **P1.4 WHATSAPP OUTBOUND READY** (Loop 6-7)
   - ✅ send_whatsapp_message function implemented
   - ✅ Twilio integration with error handling
-- 🎯 **NEXT**: Run BrighterMonday ingestion to populate database
+- ✅ **P1.5 LOOP 10 COMMITS** (Loop 10)
+  - ✅ Job alert Celery tasks (immediate/daily/weekly processing)
+  - ✅ Rate limiting on auth endpoints (register, login, forgot-password)
+  - ✅ SQLite compatibility for salary insights
+  - ✅ Gov_careers SSL fix and duplicate handling
+  - ✅ Enhanced salary extraction with validation thresholds
+  - ✅ Backfill script for salary data
+- 🎯 **NEXT**: Re-run scrapers with new extractors to populate salary data
 
 ### Blocked
 - None identified yet
@@ -162,6 +169,51 @@
 ---
 
 ## 📊 Change Log
+
+### 2026-01-22 - P1.5 LOOP 10 ENHANCEMENTS 🔧 (Loop 10)
+
+**📧 JOB ALERT PROCESSING: IMPLEMENTED**
+- ✅ Added `process_job_alerts` Celery task for processing job alerts
+- ✅ Celery beat schedule configured:
+  - `process-immediate-alerts`: every 1 hour
+  - `process-daily-alerts`: every 24 hours
+  - `process-weekly-alerts`: every 7 days
+- ✅ Email digest function for job alert notifications
+
+**🔒 AUTH RATE LIMITING: ADDED**
+- ✅ Rate limiting on `/auth/register`: 5 requests/min per IP
+- ✅ Rate limiting on `/auth/login`: 10 requests/min per IP
+- ✅ Rate limiting on `/auth/forgot-password`: 3 requests/min per IP
+
+**💰 SALARY EXTRACTION: ENHANCED**
+- ✅ Added salary extraction to gov_careers connector
+- ✅ Validation thresholds: KES 5,000-50M, USD 50-500K
+- ✅ Updated BrighterMonday extractor with correct selectors
+- ✅ Created `backfill_salary_data.py` script for existing jobs
+- ✅ Seniority extraction from titles and descriptions
+
+**🔧 SQLite COMPATIBILITY: FIXED**
+- ✅ Manual median calculation for salary insights (replaces percentile_cont)
+- ✅ Gov_careers SSL verification disabled for gov sites with cert issues
+- ✅ Duplicate handling uses `.first()` instead of `.one_or_none()`
+
+**Files Created/Modified**:
+- `backend/app/tasks/processing_tasks.py` - Job alert Celery tasks
+- `backend/app/core/celery_app.py` - Beat schedule for alerts
+- `backend/app/api/auth_routes.py` - Rate limiting decorators
+- `backend/app/services/recommend.py` - SQLite median calculation
+- `backend/app/ingestion/connectors/gov_careers.py` - Salary/seniority extraction
+- `backend/app/processors/job_extractor.py` - BrighterMonday selectors
+- `backend/scripts/backfill_salary_data.py` - NEW: Salary backfill script
+
+**Data Quality Status (Loop 10)**:
+- Total jobs: 1,863
+- With organization: 1,466 (78.7%)
+- With location: 1,109 (59.5%)
+- With salary: 0 (0%) - requires re-scraping with new extractors
+- With description: 503 (27.0%)
+
+---
 
 ### 2026-01-22 - P1 PRODUCTION HARDENING 🚀 (Loop 6-7)
 
