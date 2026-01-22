@@ -259,7 +259,7 @@ class JobDataCleaner:
         }
         
     def _parse_salary(self, salary_text: str) -> Dict:
-        """Parse salary information"""
+        """Parse salary information with validation thresholds"""
         if not salary_text:
             return {
                 'salary_min': None,
@@ -267,9 +267,23 @@ class JobDataCleaner:
                 'currency': None,
                 'salary_period': None,
             }
-            
+
+        # Minimum realistic salary thresholds to filter out false positives
+        MIN_SALARY = {
+            'KES': 5000,    # 5,000 KES minimum monthly
+            'USD': 50,      # 50 USD minimum
+            'EUR': 50,      # 50 EUR minimum
+            'GBP': 50,      # 50 GBP minimum
+        }
+        MAX_SALARY = {
+            'KES': 50000000,  # 50 million KES maximum
+            'USD': 500000,    # 500K USD maximum
+            'EUR': 500000,
+            'GBP': 500000,
+        }
+
         salary_clean = salary_text.lower().replace(',', '')
-        
+
         # Determine currency
         currency = 'KES'  # Default
         if '$' in salary_text or 'usd' in salary_clean:
@@ -278,7 +292,7 @@ class JobDataCleaner:
             currency = 'EUR'
         elif '£' in salary_text or 'gbp' in salary_clean:
             currency = 'GBP'
-            
+
         # Determine period
         salary_period = 'monthly'  # Default
         if any(word in salary_clean for word in ['annual', 'yearly', 'year', 'per year']):
@@ -287,7 +301,7 @@ class JobDataCleaner:
             salary_period = 'hourly'
         elif any(word in salary_clean for word in ['daily', 'day', 'per day']):
             salary_period = 'daily'
-            
+
         # Extract salary amounts
         salary_min = None
         salary_max = None
@@ -304,6 +318,12 @@ class JobDataCleaner:
             if cleaned.lower().endswith('k'):
                 return float(cleaned[:-1]) * 1000
             return float(cleaned)
+
+        def is_valid_salary(val: float, curr: str) -> bool:
+            """Check if salary is within realistic bounds."""
+            min_val = MIN_SALARY.get(curr, 5000)
+            max_val = MAX_SALARY.get(curr, 50000000)
+            return min_val <= val <= max_val
 
         for i, pattern in enumerate(self.salary_patterns):
             match = re.search(pattern, salary_clean, re.IGNORECASE)
@@ -324,21 +344,30 @@ class JobDataCleaner:
                     if len(groups) == 2 and groups[1]:  # Range
                         # Check if this is K notation pattern
                         if 'k' in pattern.lower():
-                            salary_min = handle_k_notation(groups[0])
-                            salary_max = handle_k_notation(groups[1])
+                            val_min = handle_k_notation(groups[0])
+                            val_max = handle_k_notation(groups[1])
                         else:
-                            salary_min = clean_salary_value(groups[0])
-                            salary_max = clean_salary_value(groups[1])
+                            val_min = clean_salary_value(groups[0])
+                            val_max = clean_salary_value(groups[1])
+                        # Validate both values
+                        if is_valid_salary(val_min, currency) and is_valid_salary(val_max, currency):
+                            salary_min = val_min
+                            salary_max = val_max
                     elif len(groups) >= 1 and groups[0]:  # Single value
                         if 'k' in pattern.lower() and not groups[0].lower() in ['negotiable', 'competitive', 'attractive']:
-                            salary_min = handle_k_notation(groups[0])
+                            val = handle_k_notation(groups[0])
                         else:
-                            salary_min = clean_salary_value(groups[0])
-                        salary_max = salary_min
+                            val = clean_salary_value(groups[0])
+                        # Validate single value
+                        if is_valid_salary(val, currency):
+                            salary_min = val
+                            salary_max = val
                 except (ValueError, AttributeError):
                     continue
-                break
-                
+                # Only break if we found valid salary
+                if salary_min is not None:
+                    break
+
         return {
             'salary_min': salary_min,
             'salary_max': salary_max,
