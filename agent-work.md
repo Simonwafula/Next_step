@@ -1,8 +1,8 @@
 # Agent Work Dashboard - Next Step MVP Implementation
 
 **Date**: January 22, 2026
-**Loop**: 10/40
-**Mode**: Build - P1 COMPLETE, Loop 10 enhancements committed
+**Loop**: 11/40
+**Mode**: Build - P1 COMPLETE, Data quality improving
 
 ---
 
@@ -37,7 +37,7 @@
 - ✅ Careers-for-degree API working ("economics" → relevant careers)
 - ✅ Fixed auth to allow unauthenticated access to search
 
-### Next (Current Loop 10)
+### Next (Current Loop 11)
 - 🎉 **P1 PRODUCTION HARDENING COMPLETE**
 - ✅ **P1.1 PRODUCTION READINESS - CORE COMPLETED** (Loop 6-7)
   - ✅ Rate limiting already working (in-memory sliding window)
@@ -57,7 +57,12 @@
   - ✅ Gov_careers SSL fix and duplicate handling
   - ✅ Enhanced salary extraction with validation thresholds
   - ✅ Backfill script for salary data
-- 🎯 **NEXT**: Re-run scrapers with new extractors to populate salary data
+- ✅ **P1.6 LOOP 11 DATA QUALITY** (Loop 11)
+  - ✅ Re-scraped BrighterMonday jobs (32 with descriptions now)
+  - ✅ Salary extraction verified working (9 jobs with salary)
+  - ✅ Added salary validation thresholds to data_cleaner.py
+  - ✅ Seniority extraction: 404 jobs classified
+- 🎯 **NEXT**: Continue improving data quality coverage
 
 ### Blocked
 - None identified yet
@@ -212,6 +217,33 @@
 - With location: 1,109 (59.5%)
 - With salary: 0 (0%) - requires re-scraping with new extractors
 - With description: 503 (27.0%)
+
+---
+
+### 2026-01-22 - P1.6 DATA QUALITY IMPROVEMENTS 📊 (Loop 11)
+
+**📊 RE-SCRAPING RESULTS**
+- ✅ Re-ran BrighterMonday ingestion (2 pages, 32 unique jobs)
+- ✅ Jobs with descriptions increased: 32 BrighterMonday jobs now have full content
+- ✅ Salary extraction working: 9 jobs now have salary data
+- ✅ Seniority classification: 404 jobs classified (entry/mid/senior/management/executive)
+
+**💰 SALARY VALIDATION THRESHOLDS ADDED**
+- ✅ Added to `data_cleaner.py` to filter false positives
+- ✅ KES: 5,000 - 50,000,000 (monthly salary range)
+- ✅ USD/EUR/GBP: 50 - 500,000
+- ✅ Prevents small values (commissions) being extracted as salaries
+
+**Data Quality Status (Loop 11)**:
+- Total jobs: 1,865
+- With organization: 1,466 (78.6%)
+- With location: 1,109 (59.5%)
+- With salary: 9 (0.5%) - BrighterMonday only, most jobs don't list salary
+- With description >100 chars: 425 (22.8%)
+- With seniority: 404 (21.7%)
+
+**Files Modified**:
+- `backend/app/processors/data_cleaner.py` - Added salary validation thresholds
 
 ---
 
