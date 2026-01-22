@@ -2,11 +2,13 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import HTTPException, status, Depends
+from fastapi import HTTPException, status, Depends, Header
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import select
 import uuid
+import secrets
+import hashlib
 
 from ..db.models import User, UserProfile
 from ..db.database import get_db
@@ -312,3 +314,94 @@ def require_admin():
             )
         return current_user
     return check_admin
+
+
+# API Key authentication for server-to-server or script access
+def verify_api_key(api_key: str) -> bool:
+    """
+    Verify API key against configured admin API key.
+    Uses constant-time comparison to prevent timing attacks.
+    """
+    configured_key = getattr(settings, 'ADMIN_API_KEY', None)
+    if not configured_key:
+        return False
+
+    # Use constant-time comparison
+    return secrets.compare_digest(api_key, configured_key)
+
+
+async def get_api_key_user(
+    x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+    db: Session = Depends(get_db)
+) -> Optional[User]:
+    """
+    Authenticate via API key header for admin access.
+    Returns a synthetic admin user for API key auth.
+    """
+    if not x_api_key:
+        return None
+
+    if not verify_api_key(x_api_key):
+        return None
+
+    # Return synthetic admin user for API key auth
+    # This avoids needing a real user account for scripts
+    class APIKeyUser:
+        id = 0
+        uuid = "api-key-admin"
+        email = "api-admin@system.local"
+        full_name = "API Key Admin"
+        is_active = True
+        is_verified = True
+        subscription_tier = "enterprise"
+        subscription_expires = None
+
+    return APIKeyUser()
+
+
+def require_admin_or_api_key():
+    """
+    Dependency that allows either JWT admin auth or API key auth.
+    Useful for admin endpoints that need to be accessible by both
+    logged-in admins and automated scripts.
+    """
+    async def check_auth(
+        credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
+        x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
+        db: Session = Depends(get_db)
+    ):
+        # Try API key auth first
+        if x_api_key:
+            if verify_api_key(x_api_key):
+                class APIKeyUser:
+                    id = 0
+                    uuid = "api-key-admin"
+                    email = "api-admin@system.local"
+                    full_name = "API Key Admin"
+                    is_active = True
+                    is_verified = True
+                    subscription_tier = "enterprise"
+                    subscription_expires = None
+                return APIKeyUser()
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid API key"
+            )
+
+        # Fall back to JWT auth
+        if not credentials:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Authentication required (Bearer token or X-API-Key header)",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+
+        user = await get_current_user(credentials, db)
+        if not is_admin_user(user):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Admin access required"
+            )
+        return user
+
+    return check_auth

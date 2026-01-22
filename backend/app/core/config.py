@@ -33,6 +33,7 @@ class Settings(BaseModel):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
     ADMIN_EMAILS: str = os.getenv("ADMIN_EMAILS", "")
+    ADMIN_API_KEY: Optional[str] = os.getenv("ADMIN_API_KEY")  # For server-to-server admin access
     
     # AI & ML Configuration
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")

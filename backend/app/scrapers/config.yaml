@@ -9,7 +9,7 @@ sites:
   brighter_monday:
     base_url: "https://www.brightermonday.co.ke"
     listing_path: "/jobs?page={page}"
-    listing_selector: "a.relative.mb-3.text-lg.font-medium.break-words"
+    listing_selector: "a[href*='/listings/'][title]"
     title_attribute: "title"
     content_selector: "article.job__details"
     pagination_selector: "ul.pagination a[href*='?page=']"

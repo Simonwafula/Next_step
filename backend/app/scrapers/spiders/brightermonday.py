@@ -81,7 +81,9 @@ class Scraper:
         for result in results:
             if result:
                 soup = BeautifulSoup(result, 'html.parser')
-                jobs = soup.find_all('a', class_='relative mb-3 text-lg font-medium break-words focus:outline-none metrics-apply-now text-link-500 text-loading-animate')
+                # Updated selector: find all <a> tags with href containing /listings/
+                # and a title attribute (which contains the job title)
+                jobs = soup.find_all('a', href=lambda x: x and '/listings/' in x, title=True)
 
                 for job in jobs:
                     title = job.get('title', '').strip()

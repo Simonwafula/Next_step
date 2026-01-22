@@ -4,10 +4,58 @@ from ..services.recommend import transitions_for
 from ..services.lmi import get_weekly_insights, get_attachment_companies
 from ..normalization.titles import get_careers_for_degree, normalize_title
 from ..db.database import get_db
+from ..core.config import settings
 from sqlalchemy.orm import Session
 import re
+import logging
 
+logger = logging.getLogger(__name__)
 router = APIRouter()
+
+
+async def send_whatsapp_message(to_number: str, message: str) -> bool:
+    """
+    Send a WhatsApp message via Twilio API.
+
+    Args:
+        to_number: Recipient phone number (with country code)
+        message: Message text to send
+
+    Returns:
+        True if message was sent successfully, False otherwise
+    """
+    if not all([settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN, settings.TWILIO_WHATSAPP_FROM]):
+        logger.warning("Twilio WhatsApp credentials not configured")
+        return False
+
+    try:
+        from twilio.rest import Client
+
+        client = Client(settings.TWILIO_ACCOUNT_SID, settings.TWILIO_AUTH_TOKEN)
+
+        # Ensure phone numbers are in WhatsApp format
+        from_number = settings.TWILIO_WHATSAPP_FROM
+        if not from_number.startswith("whatsapp:"):
+            from_number = f"whatsapp:{from_number}"
+
+        if not to_number.startswith("whatsapp:"):
+            to_number = f"whatsapp:{to_number}"
+
+        message_obj = client.messages.create(
+            body=message,
+            from_=from_number,
+            to=to_number
+        )
+
+        logger.info(f"WhatsApp message sent successfully. SID: {message_obj.sid}")
+        return True
+
+    except ImportError:
+        logger.error("Twilio package not installed. Run: pip install twilio")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to send WhatsApp message: {e}")
+        return False
 
 def parse_intent(text: str) -> dict:
     """Parse user intent from WhatsApp message"""
