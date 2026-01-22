@@ -2,9 +2,10 @@
 from __future__ import annotations
 
 import logging
+import re
 from datetime import datetime
 import io
-from typing import Iterable, List
+from typing import Iterable, List, Tuple, Optional
 from urllib.parse import urljoin, urlparse, unquote
 
 import httpx
@@ -141,6 +142,104 @@ def _extract_document_text(url: str, client: httpx.Client) -> str:
         return text[:MAX_DESCRIPTION_CHARS]
     except Exception:
         return ""
+
+
+def _extract_salary_from_text(text: str) -> Tuple[Optional[float], Optional[float], Optional[str]]:
+    """
+    Extract salary information from text content.
+    Returns (salary_min, salary_max, currency)
+
+    Minimum salary threshold: 5,000 KES (very basic minimum)
+    Maximum salary threshold: 50,000,000 KES (reasonable upper limit)
+    """
+    if not text:
+        return None, None, None
+
+    # Minimum realistic salary thresholds
+    MIN_SALARY_KES = 5000  # Minimum realistic monthly salary
+    MAX_SALARY_KES = 50000000  # Maximum reasonable salary
+    MIN_SALARY_USD = 50  # Minimum USD salary
+    MAX_SALARY_USD = 500000  # Maximum reasonable USD salary
+
+    # Salary patterns for Kenyan job postings - ordered by specificity
+    patterns = [
+        # Kenyan format with /= suffix: Kshs. 157,427 – Kshs. 234,431/=
+        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)(?:/=)?\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)(?:/=)?', 'KES', False),
+        # K notation range: KES 80k-120k (requires 'k' after number)
+        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)\s*k\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*(\d+)\s*k', 'KES', True),
+        # Standard KSH range: KSH 50,000 - 100,000 (require comma for larger numbers)
+        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)\s*[-–to]+\s*([\d,]+)', 'KES', False),
+        # Salary range pattern: "salary of between X and Y"
+        (r'salary\s+(?:of\s+)?(?:between\s+)?(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)\s*(?:and|to|-|–)\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)', 'KES', False),
+        # Single Kenyan value with /= suffix (more specific - must have /=)
+        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)/=', 'KES', False),
+        # K notation single with explicit 'k': KES 80k
+        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)\s*k\b', 'KES', True),
+        # USD range
+        (r'\$\s*([\d,]+)\s*[-–to]+\s*\$?\s*([\d,]+)', 'USD', False),
+        # "Salary: X to Y" format (requires explicit "salary" keyword)
+        (r'salary[:\s]+([\d,]+)\s*[-–to]+\s*([\d,]+)', 'KES', False),
+        # "Salary: X" format with comma (requires comma for validity)
+        (r'salary[:\s]+([\d,]+)', 'KES', False),
+    ]
+
+    def clean_value(val: str) -> float:
+        cleaned = val.replace(' ', '').replace(',', '').replace('/=', '')
+        return float(cleaned)
+
+    def is_valid_salary(val: float, currency: str) -> bool:
+        """Check if salary value is within reasonable bounds."""
+        if currency == 'USD':
+            return MIN_SALARY_USD <= val <= MAX_SALARY_USD
+        else:  # KES
+            return MIN_SALARY_KES <= val <= MAX_SALARY_KES
+
+    for pattern, currency, is_k_notation in patterns:
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            groups = match.groups()
+            try:
+                if len(groups) >= 2 and groups[1]:
+                    # Range
+                    val1 = clean_value(groups[0])
+                    val2 = clean_value(groups[1])
+                    if is_k_notation:
+                        val1 *= 1000
+                        val2 *= 1000
+                    if is_valid_salary(val1, currency) and is_valid_salary(val2, currency):
+                        return min(val1, val2), max(val1, val2), currency
+                elif len(groups) >= 1 and groups[0]:
+                    # Single value
+                    val = clean_value(groups[0])
+                    if is_k_notation:
+                        val *= 1000
+                    if is_valid_salary(val, currency):
+                        return val, val, currency
+            except (ValueError, AttributeError):
+                continue
+
+    return None, None, None
+
+
+def _extract_seniority_from_text(title: str, description: str) -> Optional[str]:
+    """Extract seniority level from title and description."""
+    combined_text = f"{title} {description}".lower()
+
+    seniority_mapping = {
+        'entry': ['entry level', 'entry-level', 'junior', 'graduate', 'trainee', 'intern', 'attachment'],
+        'mid': ['mid level', 'mid-level', 'intermediate', 'experienced'],
+        'senior': ['senior', 'lead', 'principal', 'sr.', 'sr '],
+        'management': ['manager', 'supervisor', 'team lead', 'head of', 'head,'],
+        'executive': ['director', 'executive', 'c-level', 'ceo', 'cfo', 'cto', 'chief'],
+    }
+
+    for seniority, keywords in seniority_mapping.items():
+        for keyword in keywords:
+            if keyword in combined_text:
+                return seniority
+
+    # Default to mid if no specific level found
+    return 'mid'
 
 
 def ingest_gov_careers(db: Session, **src) -> int:
@@ -281,6 +380,11 @@ def ingest_gov_careers(db: Session, **src) -> int:
                     else:
                         description = _extract_document_text(link_url, client)
                         detail_fetches += 1
+
+                # Extract salary and seniority from description
+                salary_min, salary_max, currency = _extract_salary_from_text(description)
+                seniority = _extract_seniority_from_text(title, description)
+
                 jp = JobPost(
                     source="gov_careers",
                     url=link_url,
@@ -290,6 +394,10 @@ def ingest_gov_careers(db: Session, **src) -> int:
                     location_id=location.id if location else None,
                     description_raw=description,
                     attachment_flag=is_doc,
+                    salary_min=salary_min,
+                    salary_max=salary_max,
+                    currency=currency,
+                    seniority=seniority,
                 )
                 db.add(jp)
                 added += 1
@@ -305,6 +413,11 @@ def ingest_gov_careers(db: Session, **src) -> int:
                     if not existing:
                         title = page_title or org_name or "Career opportunity"
                         description = page_text[:MAX_DESCRIPTION_CHARS]
+
+                        # Extract salary and seniority from description
+                        salary_min, salary_max, currency = _extract_salary_from_text(description)
+                        seniority = _extract_seniority_from_text(title, description)
+
                         jp = JobPost(
                             source="gov_careers",
                             url=list_url,
@@ -313,6 +426,10 @@ def ingest_gov_careers(db: Session, **src) -> int:
                             org_id=org.id if org else None,
                             location_id=location.id if location else None,
                             description_raw=description,
+                            salary_min=salary_min,
+                            salary_max=salary_max,
+                            currency=currency,
+                            seniority=seniority,
                         )
                         db.add(jp)
                         added += 1

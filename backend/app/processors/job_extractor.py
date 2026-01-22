@@ -118,17 +118,37 @@ class JobDataExtractor:
         
     async def _extract_brightermonday(self, soup: BeautifulSoup, url: str, html_content: str) -> Dict:
         """Extract job details from BrighterMonday"""
+        # BrighterMonday uses article.job__details for job description
+        description = self._safe_extract(soup, ['article.job__details', '.job-description', '.description', '.job-content'], 'html')
+
+        # Also try to extract salary from meta or content
+        salary_text = self._safe_extract(soup, ['.salary', '.job-salary', '.compensation', '[data-salary]'], 'text')
+
+        # If no explicit salary, try to find it in the description
+        if not salary_text and description:
+            # Look for salary patterns in description
+            import re
+            salary_patterns = [
+                r'(?:KSH|KSh|Kshs?|KES)\.?\s*[\d,]+(?:\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*[\d,]+)?',
+                r'salary[:\s]+(?:KSH|KSh|Kshs?|KES)?\.?\s*[\d,]+',
+            ]
+            for pattern in salary_patterns:
+                match = re.search(pattern, description, re.IGNORECASE)
+                if match:
+                    salary_text = match.group(0)
+                    break
+
         return {
             'url': url,
             'source': 'brightermonday',
-            'title': self._safe_extract(soup, ['h1.job-title', '.job-header h1', 'h1'], 'text'),
-            'company': self._safe_extract(soup, ['.company-name', '.employer-name', '.job-company'], 'text'),
-            'location': self._safe_extract(soup, ['.job-location', '.location', '.job-meta .location'], 'text'),
-            'description': self._safe_extract(soup, ['.job-description', '.description', '.job-content'], 'html'),
+            'title': self._safe_extract(soup, ['h1.job-title', 'h1.job__header-title', '.job-header h1', 'h1'], 'text'),
+            'company': self._safe_extract(soup, ['.company-name', '.employer-name', '.job-company', 'a[data-cy="job-company"]'], 'text'),
+            'location': self._safe_extract(soup, ['.job-location', '.location', '.job-meta .location', '[data-cy="job-location"]'], 'text'),
+            'description': description,
             'requirements': self._safe_extract(soup, ['.job-requirements', '.requirements', '.job-specs'], 'html'),
-            'salary_text': self._safe_extract(soup, ['.salary', '.job-salary', '.compensation'], 'text'),
-            'employment_type': self._safe_extract(soup, ['.employment-type', '.job-type', '.contract-type'], 'text'),
-            'posted_date': self._safe_extract(soup, ['.posted-date', '.date-posted', '.job-date'], 'text'),
+            'salary_text': salary_text,
+            'employment_type': self._safe_extract(soup, ['.employment-type', '.job-type', '.contract-type', '[data-cy="job-type"]'], 'text'),
+            'posted_date': self._safe_extract(soup, ['.posted-date', '.date-posted', '.job-date', '[data-cy="job-date"]'], 'text'),
             'application_deadline': self._safe_extract(soup, ['.deadline', '.closing-date', '.expires'], 'text'),
             'contact_info': self._safe_extract(soup, ['.contact-info', '.contact', '.apply-info'], 'text'),
             'raw_html': html_content,
