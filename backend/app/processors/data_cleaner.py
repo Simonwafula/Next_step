@@ -17,13 +17,25 @@ class JobDataCleaner:
     """
     
     def __init__(self):
+        # Enhanced salary patterns for Kenyan job postings
+        # Handles: Kshs. 157,427 – Kshs. 234,431/=, KSH 50,000, KES 80k-120k
         self.salary_patterns = [
-            r'ksh?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*-\s*ksh?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
-            r'(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*-\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*ksh?',
-            r'ksh?\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
-            r'(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*ksh?',
-            r'\$\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)\s*-\s*\$\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
-            r'\$\s*(\d{1,3}(?:,\d{3})*(?:\.\d{2})?)',
+            # Kenyan format with /= suffix: Kshs. 157,427 – Kshs. 234,431/=
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,\s]+)(?:/=)?\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,\s]+)(?:/=)?',
+            # K notation range: KES 80k-120k
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)k?\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*(\d+)k',
+            # Standard KSH range: KSH 50,000 - 100,000
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)\s*[-–to]+\s*([\d,]+)',
+            # Single Kenyan value with optional /=
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,\s]+)(?:/=)?',
+            # K notation single: KES 80k
+            r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)k',
+            # USD range
+            r'\$\s*([\d,]+)\s*[-–to]+\s*\$?\s*([\d,]+)',
+            # USD single
+            r'\$\s*([\d,]+)',
+            # Negotiable salary indicators (capture for flagging)
+            r'(negotiable|competitive|attractive)\s*(?:salary|package)?',
         ]
         
         self.employment_type_mapping = {
@@ -123,7 +135,14 @@ class JobDataCleaner:
             
             # Parse dates
             cleaned_data['posted_date'] = self._parse_date(raw_data.get('posted_date', ''))
-            cleaned_data['application_deadline'] = self._parse_date(raw_data.get('application_deadline', ''))
+
+            # Extract deadline - try explicit field first, then extract from content
+            explicit_deadline = raw_data.get('application_deadline', '')
+            if explicit_deadline:
+                cleaned_data['application_deadline'] = self._parse_date(explicit_deadline)
+            else:
+                # Try to extract deadline from description
+                cleaned_data['application_deadline'] = self._extract_deadline_from_text(combined_text)
             
             # Clean contact info
             cleaned_data['contact_info'] = self._clean_text(raw_data.get('contact_info', ''))
@@ -272,23 +291,52 @@ class JobDataCleaner:
         # Extract salary amounts
         salary_min = None
         salary_max = None
-        
-        for pattern in self.salary_patterns:
+
+        def clean_salary_value(val: str) -> float:
+            """Clean and convert salary value to float."""
+            # Remove spaces, commas, /= suffix
+            cleaned = val.replace(' ', '').replace(',', '').replace('/=', '')
+            return float(cleaned)
+
+        def handle_k_notation(val: str) -> float:
+            """Convert K notation (80k) to actual value."""
+            cleaned = val.replace(' ', '').replace(',', '')
+            if cleaned.lower().endswith('k'):
+                return float(cleaned[:-1]) * 1000
+            return float(cleaned)
+
+        for i, pattern in enumerate(self.salary_patterns):
             match = re.search(pattern, salary_clean, re.IGNORECASE)
             if match:
                 groups = match.groups()
-                if len(groups) == 2:  # Range
-                    try:
-                        salary_min = float(groups[0].replace(',', ''))
-                        salary_max = float(groups[1].replace(',', ''))
-                    except ValueError:
-                        continue
-                elif len(groups) == 1:  # Single value
-                    try:
-                        salary_min = float(groups[0].replace(',', ''))
+
+                # Check for negotiable/competitive salary
+                if groups[0] and groups[0].lower() in ['negotiable', 'competitive', 'attractive']:
+                    return {
+                        'salary_min': None,
+                        'salary_max': None,
+                        'currency': currency,
+                        'salary_period': salary_period,
+                        'salary_negotiable': True,
+                    }
+
+                try:
+                    if len(groups) == 2 and groups[1]:  # Range
+                        # Check if this is K notation pattern
+                        if 'k' in pattern.lower():
+                            salary_min = handle_k_notation(groups[0])
+                            salary_max = handle_k_notation(groups[1])
+                        else:
+                            salary_min = clean_salary_value(groups[0])
+                            salary_max = clean_salary_value(groups[1])
+                    elif len(groups) >= 1 and groups[0]:  # Single value
+                        if 'k' in pattern.lower() and not groups[0].lower() in ['negotiable', 'competitive', 'attractive']:
+                            salary_min = handle_k_notation(groups[0])
+                        else:
+                            salary_min = clean_salary_value(groups[0])
                         salary_max = salary_min
-                    except ValueError:
-                        continue
+                except (ValueError, AttributeError):
+                    continue
                 break
                 
         return {
@@ -377,11 +425,54 @@ class JobDataCleaner:
                 
         return None
         
+    def _extract_deadline_from_text(self, text: str) -> Optional[datetime]:
+        """
+        Extract application deadline from job description text.
+
+        Looks for patterns like:
+        - "Deadline: 31st January 2026"
+        - "Apply by January 31, 2026"
+        - "Closing date: 31/01/2026"
+        - "Applications close on 31 January 2026"
+        """
+        if not text:
+            return None
+
+        text_lower = text.lower()
+
+        # Deadline indicator patterns
+        deadline_patterns = [
+            # "Deadline: January 31, 2026" or "Deadline: 31/01/2026"
+            r'deadline\s*[:;-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+\w+\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})',
+            # "Apply by January 31, 2026"
+            r'apply\s+by\s*[:;-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+\w+\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})',
+            # "Closing date: 31 January 2026"
+            r'closing\s+date\s*[:;-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+\w+\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})',
+            # "Applications close on 31 January 2026"
+            r'applications?\s+close[sd]?\s+(?:on\s+)?(\d{1,2}(?:st|nd|rd|th)?\s+\w+\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})',
+            # "Expires: 31 January 2026"
+            r'expires?\s*[:;-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+\w+\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})',
+            # "Valid until 31 January 2026"
+            r'valid\s+until\s*[:;-]?\s*(\d{1,2}(?:st|nd|rd|th)?\s+\w+\s+\d{4}|\d{1,2}[/-]\d{1,2}[/-]\d{2,4}|\w+\s+\d{1,2},?\s+\d{4})',
+        ]
+
+        for pattern in deadline_patterns:
+            match = re.search(pattern, text_lower, re.IGNORECASE)
+            if match:
+                date_str = match.group(1)
+                # Clean ordinal suffixes
+                date_str = re.sub(r'(\d+)(st|nd|rd|th)', r'\1', date_str)
+                parsed = self._parse_date(date_str)
+                if parsed:
+                    return parsed
+
+        return None
+
     def _extract_education(self, text: str) -> Optional[str]:
         """Extract education requirements from text"""
         if not text:
             return None
-            
+
         text_lower = text.lower()
         
         # Education levels
