@@ -17,6 +17,11 @@ const adminGateMessage = document.getElementById('adminGateMessage');
 const adminSignOut = document.getElementById('adminSignOut');
 const adminActionProgress = document.getElementById('adminActionProgress');
 const adminActionLabel = document.getElementById('adminActionLabel');
+const summaryDimension = document.getElementById('summaryDimension');
+const summaryTableBody = document.getElementById('summaryTableBody');
+const summaryModal = document.getElementById('summaryModal');
+const summaryModalTitle = document.getElementById('summaryModalTitle');
+const summaryModalBody = document.getElementById('summaryModalBody');
 
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
@@ -302,6 +307,119 @@ const pollAutomationStatus = (processType, token, limitMs = 90000) => {
     }, 5000);
 };
 
+const renderSummaryTable = (items = []) => {
+    if (!summaryTableBody) {
+        return;
+    }
+    if (!items.length) {
+        summaryTableBody.innerHTML = `
+            <tr>
+                <td colspan="3" class="panel-note">No data available.</td>
+            </tr>
+        `;
+        return;
+    }
+    summaryTableBody.innerHTML = items
+        .map(
+            (item) => `
+                <tr>
+                    <td class="summary-value">${item.value}</td>
+                    <td>${item.count}</td>
+                    <td>
+                        <button class="summary-action" type="button" data-summary-value="${item.value}">View</button>
+                    </td>
+                </tr>
+            `
+        )
+        .join('');
+};
+
+const openSummaryModal = (title, jobs = []) => {
+    if (!summaryModal || !summaryModalBody || !summaryModalTitle) {
+        return;
+    }
+    summaryModalTitle.textContent = title;
+    if (!jobs.length) {
+        summaryModalBody.innerHTML = '<p class="panel-note">No jobs found.</p>';
+    } else {
+        summaryModalBody.innerHTML = jobs
+            .map(
+                (job) => `
+                    <div class="data-row">
+                        <div>
+                            <strong>${job.title}</strong>
+                            <span>${job.organization || 'Unknown'} · ${job.location || 'Unspecified'}</span>
+                        </div>
+                        <a class="result-link" href="${job.url}" target="_blank" rel="noopener">Open</a>
+                    </div>
+                `
+            )
+            .join('');
+    }
+    summaryModal.classList.add('active');
+};
+
+const closeSummaryModal = () => {
+    if (!summaryModal) {
+        return;
+    }
+    summaryModal.classList.remove('active');
+};
+
+const fetchSummaries = async (dimension, token) => {
+    if (!summaryTableBody) {
+        return;
+    }
+    summaryTableBody.innerHTML = `
+        <tr>
+            <td colspan="3" class="panel-note">Loading...</td>
+        </tr>
+    `;
+    const payload = await requestJson(`${apiBase}/admin/summaries?dimension=${dimension}&limit=12`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    renderSummaryTable(payload.items || []);
+};
+
+const wireSummaryActions = (token) => {
+    if (summaryDimension) {
+        summaryDimension.addEventListener('change', (event) => {
+            fetchSummaries(event.target.value, token).catch(() => {
+                renderSummaryTable([]);
+            });
+        });
+    }
+
+    if (summaryTableBody) {
+        summaryTableBody.addEventListener('click', async (event) => {
+            const button = event.target.closest('[data-summary-value]');
+            if (!button) {
+                return;
+            }
+            const value = button.dataset.summaryValue;
+            const dimension = summaryDimension ? summaryDimension.value : 'title';
+            const payload = await requestJson(
+                `${apiBase}/admin/summaries/${dimension}/jobs?value=${encodeURIComponent(value)}&limit=20`,
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            const titleMap = {
+                title: 'Job title',
+                skill: 'Skill',
+                education: 'Education / degree',
+            };
+            openSummaryModal(`${titleMap[dimension]}: ${value}`, payload.jobs || []);
+        });
+    }
+
+    if (summaryModal) {
+        summaryModal.addEventListener('click', (event) => {
+            if (event.target.matches('[data-modal-close]')) {
+                closeSummaryModal();
+            }
+        });
+    }
+};
+
 const wireActions = (token) => {
     document.querySelectorAll('[data-admin-action]').forEach((button) => {
         button.addEventListener('click', async () => {
@@ -421,6 +539,11 @@ const boot = async () => {
         }
         if (operationsPayload && !operationsPayload.error) {
             renderAutomationActivity(operationsPayload);
+        }
+
+        if (summaryDimension) {
+            await fetchSummaries(summaryDimension.value, auth.access_token);
+            wireSummaryActions(auth.access_token);
         }
 
         if (adminSignOut) {

@@ -16,6 +16,7 @@ from ..db.models import (
     Location,
     Organization,
     ProcessingLog,
+    Skill,
     SavedJob,
     SearchHistory,
     User,
@@ -275,4 +276,108 @@ def admin_operations(
             }
             for process_type, log in latest_by_type.items()
         },
+    }
+
+
+@router.get("/summaries")
+def admin_summaries(
+    dimension: str = Query("title"),
+    limit: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    if dimension not in {"title", "skill", "education"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="dimension must be one of: title, skill, education",
+        )
+
+    if dimension == "title":
+        stmt = (
+            select(JobPost.title_raw, func.count(JobPost.id))
+            .where(JobPost.title_raw.is_not(None))
+            .group_by(JobPost.title_raw)
+            .order_by(desc(func.count(JobPost.id)))
+            .limit(limit)
+        )
+        rows = db.execute(stmt).all()
+    elif dimension == "skill":
+        stmt = (
+            select(Skill.name, func.count(JobSkill.id))
+            .join(JobSkill, JobSkill.skill_id == Skill.id)
+            .group_by(Skill.name)
+            .order_by(desc(func.count(JobSkill.id)))
+            .limit(limit)
+        )
+        rows = db.execute(stmt).all()
+    else:
+        stmt = (
+            select(JobPost.education, func.count(JobPost.id))
+            .where(JobPost.education.is_not(None))
+            .group_by(JobPost.education)
+            .order_by(desc(func.count(JobPost.id)))
+            .limit(limit)
+        )
+        rows = db.execute(stmt).all()
+
+    return {
+        "dimension": dimension,
+        "items": [
+            {"value": value, "count": count}
+            for value, count in rows
+            if value
+        ],
+    }
+
+
+@router.get("/summaries/{dimension}/jobs")
+def admin_summary_jobs(
+    dimension: str,
+    value: str = Query(...),
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    if dimension not in {"title", "skill", "education"}:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="dimension must be one of: title, skill, education",
+        )
+
+    stmt = (
+        select(JobPost, Organization, Location)
+        .outerjoin(Organization, Organization.id == JobPost.org_id)
+        .outerjoin(Location, Location.id == JobPost.location_id)
+        .order_by(desc(JobPost.first_seen))
+        .limit(limit)
+    )
+
+    if dimension == "title":
+        stmt = stmt.where(JobPost.title_raw == value)
+    elif dimension == "skill":
+        stmt = (
+            stmt.join(JobSkill, JobSkill.job_post_id == JobPost.id)
+            .join(Skill, Skill.id == JobSkill.skill_id)
+            .where(Skill.name == value)
+        )
+    else:
+        stmt = stmt.where(JobPost.education == value)
+
+    rows = db.execute(stmt).all()
+    return {
+        "dimension": dimension,
+        "value": value,
+        "jobs": [
+            {
+                "id": job.id,
+                "title": job.title_raw,
+                "organization": org.name if org else None,
+                "location": location.raw if location else None,
+                "source": job.source,
+                "url": job.url,
+                "first_seen": job.first_seen.isoformat() if job.first_seen else None,
+            }
+            for job, org, location in rows
+        ],
+        "total": len(rows),
     }
