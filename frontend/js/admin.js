@@ -7,6 +7,7 @@ const pipelineStats = document.getElementById('pipelineStats');
 const adminUsers = document.getElementById('adminUsers');
 const adminJobs = document.getElementById('adminJobs');
 const adminSources = document.getElementById('adminSources');
+const adminActivity = document.getElementById('adminActivity');
 const salaryCoverage = document.getElementById('salaryCoverage');
 const salaryCoverageBar = document.getElementById('salaryCoverageBar');
 const skillsCoverage = document.getElementById('skillsCoverage');
@@ -14,6 +15,8 @@ const skillsCoverageBar = document.getElementById('skillsCoverageBar');
 const coverageUpdated = document.getElementById('coverageUpdated');
 const adminGateMessage = document.getElementById('adminGateMessage');
 const adminSignOut = document.getElementById('adminSignOut');
+const adminActionProgress = document.getElementById('adminActionProgress');
+const adminActionLabel = document.getElementById('adminActionLabel');
 
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
@@ -35,6 +38,22 @@ const clearAuth = () => {
 const setStatus = (message, isError = false) => {
     adminStatus.textContent = message || '';
     adminStatus.classList.toggle('auth-error', isError);
+};
+
+const setActionLoading = (isLoading, message) => {
+    if (!adminActionProgress) {
+        return;
+    }
+    adminActionProgress.hidden = !isLoading;
+    if (adminActionLabel) {
+        adminActionLabel.textContent = message || '';
+    }
+};
+
+const setActionButtonsDisabled = (isDisabled) => {
+    document.querySelectorAll('[data-admin-action]').forEach((button) => {
+        button.disabled = isDisabled;
+    });
 };
 
 const requestJson = async (url, options = {}) => {
@@ -189,26 +208,124 @@ const renderSourceList = (sources) => {
         .join('');
 };
 
+const formatRunTimestamp = (value) => {
+    if (!value) {
+        return 'Not run yet';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return value;
+    }
+    return date.toLocaleString();
+};
+
+const summarizeOperation = (operation) => {
+    if (!operation) {
+        return 'No recent run';
+    }
+    const details = operation.details || {};
+    if (operation.process_type === 'ingest_all' || operation.process_type === 'ingest_government') {
+        const count = details.sources_ingested ?? 0;
+        return `${count} sources`;
+    }
+    if (operation.process_type === 'test_scrapers') {
+        const summary = details.summary || {};
+        const total = summary.total_scrapers ?? 0;
+        const ok = summary.successful_scrapers ?? 0;
+        return `${ok}/${total} scrapers ok`;
+    }
+    if (operation.process_type === 'generate_insights' || operation.process_type === 'daily_insights') {
+        return operation.status === 'error' ? 'Failed' : 'Completed';
+    }
+    if (operation.process_type === 'daily_workflow') {
+        return operation.status === 'error' ? 'Failed' : 'Completed';
+    }
+    return operation.message || operation.status || 'Updated';
+};
+
+const renderAutomationActivity = (payload) => {
+    if (!adminActivity) {
+        return;
+    }
+    const latest = payload?.latest_by_type || {};
+    const items = [
+        { key: 'ingest_all', label: 'Ingest all sources' },
+        { key: 'ingest_government', label: 'Government ingest' },
+        { key: 'test_scrapers', label: 'Scraper tests' },
+        { key: 'generate_insights', label: 'Insights generation' },
+        { key: 'daily_workflow', label: 'Automated workflow' },
+        { key: 'daily_insights', label: 'Daily insights job' },
+    ];
+
+    adminActivity.innerHTML = items
+        .map((item) => {
+            const entry = latest[item.key];
+            const status = entry?.status || 'unknown';
+            const summary = summarizeOperation(entry);
+            const lastRun = formatRunTimestamp(entry?.processed_at);
+            return `
+                <div class="data-row">
+                    <div>
+                        <strong>${item.label}</strong>
+                        <span>${summary} · ${lastRun}</span>
+                    </div>
+                    <span class="badge">${status}</span>
+                </div>
+            `;
+        })
+        .join('');
+};
+
+const refreshAutomationActivity = async (token) => {
+    const payload = await requestJson(`${apiBase}/admin/operations?limit=20`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    renderAutomationActivity(payload);
+    return payload;
+};
+
+const pollAutomationStatus = (processType, token, limitMs = 90000) => {
+    const start = Date.now();
+    const interval = setInterval(async () => {
+        try {
+            const payload = await refreshAutomationActivity(token);
+            const entry = payload?.latest_by_type?.[processType];
+            if (entry && entry.status && entry.status !== 'started') {
+                clearInterval(interval);
+            }
+        } catch (error) {
+            clearInterval(interval);
+        }
+        if (Date.now() - start > limitMs) {
+            clearInterval(interval);
+        }
+    }, 5000);
+};
+
 const wireActions = (token) => {
     document.querySelectorAll('[data-admin-action]').forEach((button) => {
         button.addEventListener('click', async () => {
             const action = button.dataset.adminAction;
             setStatus('');
+            setActionButtonsDisabled(true);
             try {
                 let response;
                 if (action === 'ingest') {
+                    setActionLoading(true, 'Queueing ingestion sources…');
                     response = await requestJson(`${apiBase}/admin/ingest`, {
                         method: 'POST',
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     setStatus(`Ingest started. ${response.ingested || 0} sources queued.`);
                 } else if (action === 'ingest-government') {
+                    setActionLoading(true, 'Queueing government ingestion…');
                     response = await requestJson(`${apiBase}/admin/ingest/government`, {
                         method: 'POST',
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     setStatus(`Gov ingest started. ${response.ingested || 0} sources queued.`);
                 } else if (action === 'test-scrapers') {
+                    setActionLoading(true, 'Running scraper diagnostics…');
                     response = await requestJson(`${apiBase}/workflow/test-scrapers`, {
                         method: 'POST',
                         headers: { Authorization: `Bearer ${token}` },
@@ -218,14 +335,20 @@ const wireActions = (token) => {
                         `Scraper test complete. ${summary.successful_scrapers || 0}/${summary.total_scrapers || 0} ok.`
                     );
                 } else if (action === 'generate-insights') {
+                    setActionLoading(true, 'Generating insights…');
                     await requestJson(`${apiBase}/workflow/generate-insights`, {
                         method: 'POST',
                         headers: { Authorization: `Bearer ${token}` },
                     });
                     setStatus('Insights generation started.');
+                    pollAutomationStatus('generate_insights', token);
                 }
+                await refreshAutomationActivity(token);
             } catch (error) {
                 setStatus(error.message, true);
+            } finally {
+                setActionLoading(false, '');
+                setActionButtonsDisabled(false);
             }
         });
     });
@@ -257,7 +380,7 @@ const boot = async () => {
         showAdminApp();
         wireActions(auth.access_token);
 
-        const [overview, usersPayload, jobsPayload, sourcesPayload] = await Promise.all([
+        const [overview, usersPayload, jobsPayload, sourcesPayload, operationsPayload] = await Promise.all([
             requestJson(`${apiBase}/admin/overview`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
             }).catch((error) => ({ error })),
@@ -268,6 +391,9 @@ const boot = async () => {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
             }).catch((error) => ({ error })),
             requestJson(`${apiBase}/admin/sources?source_type=government`, {
+                headers: { Authorization: `Bearer ${auth.access_token}` },
+            }).catch((error) => ({ error })),
+            requestJson(`${apiBase}/admin/operations?limit=20`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
             }).catch((error) => ({ error })),
         ]);
@@ -292,6 +418,9 @@ const boot = async () => {
         }
         if (sourcesPayload && !sourcesPayload.error) {
             renderSourceList(sourcesPayload.sources || []);
+        }
+        if (operationsPayload && !operationsPayload.error) {
+            renderAutomationActivity(operationsPayload);
         }
 
         if (adminSignOut) {

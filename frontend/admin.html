@@ -50,6 +50,12 @@
                     <button class="ghost-btn" type="button" data-admin-action="test-scrapers">Test scrapers</button>
                     <button class="ghost-btn" type="button" data-admin-action="generate-insights">Generate insights</button>
                 </div>
+                <div class="action-progress" id="adminActionProgress" hidden>
+                    <div class="action-progress-track">
+                        <div class="action-progress-bar" id="adminActionBar" aria-hidden="true"></div>
+                    </div>
+                    <span class="action-progress-label" id="adminActionLabel">Working…</span>
+                </div>
                 <p class="auth-message" id="adminStatus"></p>
             </div>
         </section>
@@ -135,6 +141,12 @@
                             <h3>Sources snapshot</h3>
                         </div>
                         <div class="data-list" id="adminSources"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Automation activity</h3>
+                        </div>
+                        <div class="data-list" id="adminActivity"></div>
                     </article>
                 </div>
             </div>

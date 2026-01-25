@@ -3,14 +3,48 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, Optional
 import logging
 
-from ..db.database import get_db
+from ..db.database import get_db, SessionLocal
 from ..services.automated_workflow_service import automated_workflow_service
 from ..services.auth_service import get_current_user
+from ..services.processing_log_service import (
+    log_processing_event_async,
+    update_processing_event,
+)
 from ..db.models import User
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api/workflow", tags=["workflow"])
+
+
+async def _run_insights_async() -> Dict[str, Any]:
+    async for db in get_db():
+        try:
+            return await automated_workflow_service._generate_insights(db)
+        finally:
+            await db.close()
+
+
+def _run_insights_with_log(log_id: int) -> None:
+    db = SessionLocal()
+    try:
+        result = asyncio.run(_run_insights_async())
+        update_processing_event(
+            db,
+            log_id=log_id,
+            status="success",
+            message="Insights generation completed",
+            details={"result": result},
+        )
+    except Exception as exc:
+        update_processing_event(
+            db,
+            log_id=log_id,
+            status="error",
+            message=str(exc),
+        )
+    finally:
+        db.close()
 
 @router.post("/run-complete")
 async def run_complete_workflow(
@@ -27,6 +61,14 @@ async def run_complete_workflow(
     5. Generate insights
     """
     try:
+        log = await log_processing_event_async(
+            db,
+            process_type="run_complete_workflow",
+            status="started",
+            message="Complete workflow queued by admin",
+            details={"triggered_by": current_user.email},
+        )
+
         # Run workflow in background
         background_tasks.add_task(
             automated_workflow_service.run_complete_workflow,
@@ -36,6 +78,7 @@ async def run_complete_workflow(
         return {
             "status": "started",
             "message": "Complete automated workflow has been started in the background",
+            "log_id": log.id,
             "workflow_stages": [
                 "scraper_testing_and_execution",
                 "data_processing_and_cleaning", 
@@ -145,7 +188,7 @@ async def test_scrapers(
         total_scrapers = len(test_results)
         successful_scrapers = sum(1 for result in test_results.values() if result["status"] == "success")
         
-        return {
+        response = {
             "status": "completed",
             "summary": {
                 "total_scrapers": total_scrapers,
@@ -154,6 +197,17 @@ async def test_scrapers(
             },
             "detailed_results": test_results
         }
+        await log_processing_event_async(
+            db,
+            process_type="test_scrapers",
+            status="success",
+            message="Scraper test completed",
+            details={
+                "summary": response["summary"],
+                "triggered_by": current_user.email,
+            },
+        )
+        return response
         
     except Exception as e:
         logger.error(f"Failed to test scrapers: {str(e)}")
@@ -189,14 +243,20 @@ async def generate_insights(
     Generate market insights and daily metrics
     """
     try:
-        background_tasks.add_task(
-            automated_workflow_service._generate_insights,
-            db
+        log = await log_processing_event_async(
+            db,
+            process_type="generate_insights",
+            status="started",
+            message="Insights generation queued by admin",
+            details={"triggered_by": current_user.email},
         )
+
+        background_tasks.add_task(_run_insights_with_log, log.id)
         
         return {
             "status": "started",
             "message": "Insights generation has been started in the background",
+            "log_id": log.id,
             "stage": "insights_generation"
         }
         

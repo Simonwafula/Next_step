@@ -15,6 +15,7 @@ from ..db.models import (
     JobAlert,
     Location,
     Organization,
+    ProcessingLog,
     SavedJob,
     SearchHistory,
     User,
@@ -234,4 +235,44 @@ def admin_sources(
     return {
         "sources": sources,
         "total": len(sources),
+    }
+
+
+@router.get("/operations")
+def admin_operations(
+    limit: int = Query(20, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    stmt = select(ProcessingLog).order_by(desc(ProcessingLog.processed_at)).limit(limit)
+    logs = db.execute(stmt).scalars().all()
+
+    latest_by_type = {}
+    for log in logs:
+        if log.process_type not in latest_by_type:
+            latest_by_type[log.process_type] = log
+
+    return {
+        "operations": [
+            {
+                "id": log.id,
+                "process_type": log.process_type,
+                "status": (log.results or {}).get("status"),
+                "message": (log.results or {}).get("message"),
+                "details": (log.results or {}).get("details"),
+                "processed_at": log.processed_at.isoformat() if log.processed_at else None,
+            }
+            for log in logs
+        ],
+        "latest_by_type": {
+            process_type: {
+                "id": log.id,
+                "process_type": log.process_type,
+                "status": (log.results or {}).get("status"),
+                "message": (log.results or {}).get("message"),
+                "details": (log.results or {}).get("details"),
+                "processed_at": log.processed_at.isoformat() if log.processed_at else None,
+            }
+            for process_type, log in latest_by_type.items()
+        },
     }

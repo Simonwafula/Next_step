@@ -1,3 +1,4 @@
+from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
 from ..schemas.base import JobPostOut, RecommendOut
@@ -10,6 +11,7 @@ from ..services.lmi import (
 )
 from ..services.scraper_service import scraper_service
 from ..services.auth_service import get_current_user_optional, require_admin
+from ..services.processing_log_service import log_processing_event
 from ..normalization.titles import get_careers_for_degree, normalize_title
 from ..ingestion.runner import run_all_sources, run_government_sources
 from .auth_routes import router as auth_router
@@ -320,8 +322,31 @@ def admin_ingest(
     current_user = Depends(require_admin()),
 ):
     """Run job ingestion from all configured sources."""
-    count = run_all_sources(db)
-    return {"ingested": count}
+    started_at = datetime.utcnow()
+    try:
+        count = run_all_sources(db)
+        duration = (datetime.utcnow() - started_at).total_seconds()
+        log_processing_event(
+            db,
+            process_type="ingest_all",
+            status="success",
+            message="Ingestion completed",
+            details={
+                "sources_ingested": count,
+                "duration_seconds": round(duration, 2),
+                "triggered_by": current_user.email,
+            },
+        )
+        return {"ingested": count}
+    except Exception as exc:
+        log_processing_event(
+            db,
+            process_type="ingest_all",
+            status="error",
+            message=str(exc),
+            details={"triggered_by": current_user.email},
+        )
+        raise
 
 @api_router.post("/admin/ingest/government")
 def admin_ingest_government(
@@ -329,5 +354,28 @@ def admin_ingest_government(
     current_user = Depends(require_admin()),
 ):
     """Run job ingestion from government sources only."""
-    count = run_government_sources(db)
-    return {"ingested": count}
+    started_at = datetime.utcnow()
+    try:
+        count = run_government_sources(db)
+        duration = (datetime.utcnow() - started_at).total_seconds()
+        log_processing_event(
+            db,
+            process_type="ingest_government",
+            status="success",
+            message="Government ingestion completed",
+            details={
+                "sources_ingested": count,
+                "duration_seconds": round(duration, 2),
+                "triggered_by": current_user.email,
+            },
+        )
+        return {"ingested": count}
+    except Exception as exc:
+        log_processing_event(
+            db,
+            process_type="ingest_government",
+            status="error",
+            message=str(exc),
+            details={"triggered_by": current_user.email},
+        )
+        raise

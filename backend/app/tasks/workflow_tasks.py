@@ -6,8 +6,9 @@ from datetime import datetime
 from typing import Dict, Any
 
 from ..core.celery_app import celery_app
-from ..db.database import get_db
+from ..db.database import get_db, SessionLocal
 from ..services.automated_workflow_service import automated_workflow_service
+from ..services.processing_log_service import log_processing_event
 
 logger = logging.getLogger(__name__)
 
@@ -36,10 +37,31 @@ def run_daily_workflow(self):
             }
         )
         
+        db = SessionLocal()
+        try:
+            log_processing_event(
+                db,
+                process_type="daily_workflow",
+                status="success",
+                message="Daily workflow completed",
+                details={"result": result},
+            )
+        finally:
+            db.close()
         return result
         
     except Exception as e:
         logger.error(f"Daily workflow failed: {str(e)}")
+        db = SessionLocal()
+        try:
+            log_processing_event(
+                db,
+                process_type="daily_workflow",
+                status="error",
+                message=str(e),
+            )
+        finally:
+            db.close()
         self.update_state(
             state='FAILURE',
             meta={'status': f'Daily workflow failed: {str(e)}', 'progress': 0}
@@ -164,10 +186,31 @@ def generate_daily_insights(self):
             }
         )
         
+        db = SessionLocal()
+        try:
+            log_processing_event(
+                db,
+                process_type="daily_insights",
+                status="success",
+                message="Daily insights completed",
+                details={"result": result},
+            )
+        finally:
+            db.close()
         return result
         
     except Exception as e:
         logger.error(f"Insights generation failed: {str(e)}")
+        db = SessionLocal()
+        try:
+            log_processing_event(
+                db,
+                process_type="daily_insights",
+                status="error",
+                message=str(e),
+            )
+        finally:
+            db.close()
         self.update_state(
             state='FAILURE',
             meta={'status': f'Insights generation failed: {str(e)}', 'progress': 0}
