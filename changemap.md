@@ -12,8 +12,9 @@
   - [ ] (T-000e) Commit + push scan baseline
 
 ## 1. Ingestion & Normalization (Partially Implemented)
-- [/] (T-100) Build/verify jobs_normalized table
-  - [x] (T-101) Title normalize (`backend/app/normalization/titles.py`)
+- [x] (T-100) Database Implementation (Alembic/Postgres)
+  - [x] (T-101) Set up Alembic for migrations
+  - [x] (T-102) Create initial production schema (B3 in plan)
   - [ ] (T-102) Company normalize
   - [ ] (T-103) Location normalize
   - [ ] (T-104) Salary parser
@@ -61,13 +62,13 @@
 - [ ] (T-604) runbook docs
 
 ## 7. Production Readiness (NEW - ML/DB Transition)
-- [ ] (T-010-PLAN) Integrate production roadmap into control plane
-- [ ] (T-700-PROD) Postgres 14.20 + pgvector baseline
-  - [ ] (T-701) Install/verify extensions (vector, pg_trgm, unaccent)
-  - [ ] (T-702) Schema design & SQL DDL (tables B3, indexes B4)
-- [ ] (T-710-PROD) Alembic Migrations
-  - [ ] (T-711) Initialize Alembic in `backend/`
-  - [ ] (T-712) Generate initial migration from models
+- [x] (T-010-PLAN) Integrate production roadmap into control plane
+- [/] (T-700-PROD) Postgres 14.20 + pgvector baseline
+  - [x] (T-701) Install/verify extensions (vector, pg_trgm, unaccent) in migration
+  - [x] (T-702) Schema design & SQL DDL (tables B3, indexes B4)
+- [x] (T-710-PROD) Alembic Migrations
+  - [x] (T-711) Initialize Alembic in `backend/`
+  - [x] (T-712) Generate initial migration from models
 - [ ] (T-720-PROD) Bulk Load & Artifacts
   - [ ] (T-721) CSV/Parquet export scripts for initial bootstrap
   - [ ] (T-722) COPY command templates for VPS load
@@ -79,6 +80,9 @@
 
 ### 2026-01-25
 - (T-000-SCAN) Initial baseline scan completed.
+- (T-010-PLAN) Integrated ML/DB production transition plan into control plane.
+- (T-100/T-710) Initialized Alembic and implemented production schema baseline.
+- Enhanced migration with Postgres extensions (pgvector/pg_trgm/unaccent) and HNSW indexes.
 - Identified existing normalization, extraction, and embedding modules.
 - Fixed smoke test collision by renaming root `scripts/smoke_test.py` to `scripts/repo_smoke_test.py`.
 - Verified 17 tests passing in `backend/`.
