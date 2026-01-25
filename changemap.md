@@ -39,13 +39,13 @@
   - [x] (T-301) vector index abstraction (`backend/app/ml/embeddings.py`)
   - [x] (T-302) profile embedding builder (integrated in `generate_embeddings.py`)
   - [x] (T-303) matching (`backend/app/services/search.py`, `backend/app/services/recommend.py`)
-  - [ ] (T-304) explanation generator
+  - [x] (T-304) explanation generator (`backend/app/services/search.py`)
   - [x] (T-305) tests for deterministic retrieval (`backend/test_integration.py`)
 
 ## 4. Intelligence analytics (planned)
-- [ ] (T-400) skill trends
-- [ ] (T-401) role evolution
-- [ ] (T-402) adjacency roles
+- [x] (T-400) skill trends (`backend/app/services/analytics.py`)
+- [x] (T-401) role evolution (`backend/app/services/analytics.py`)
+- [x] (T-402) adjacency roles (`backend/app/services/analytics.py`)
 - [ ] (T-403) dashboards endpoints
 
 ## 5. Signals (planned)
@@ -55,7 +55,7 @@
 - [ ] (T-503) evidence + confidence tracking
 
 ## 6. Hardening (planned)
-- [ ] (T-600) orchestration CLI
+- [x] (T-600) orchestration CLI (`backend/cli.py`)
 - [ ] (T-601) incremental updates
 - [ ] (T-602) monitoring + drift checks
 - [ ] (T-603) regression tests
@@ -88,6 +88,11 @@
 - Implemented advanced extractors for education, experience, and seniority.
 - Generated full baseline artifacts (500 jobs) with `e5-small-v2` embeddings and SHA256 checksums.
 - Verified 17 tests passing in `backend/` and added normalization/extraction validation scripts.
+- (T-400/T-600) Implemented end-to-end integration:
+  - Refactored `search.py` and `recommend.py` for `pgvector` compatibility and semantic explanations.
+  - Implemented `analytics.py` service for skill trends and role evolution.
+  - Built `backend/cli.py` orchestration tool for simplified ingestion/processing/analytics.
+  - Verified end-to-end flow with a 500-job local smoke test.
 
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
