@@ -71,8 +71,8 @@ async def log_processing_event_async(
         processed_at=datetime.utcnow(),
     )
     db.add(log)
-    await db.commit()
-    await db.refresh(log)
+    await _maybe_await(db.commit())
+    await _maybe_await(db.refresh(log))
     return log
 
 
@@ -88,6 +88,10 @@ async def update_processing_event_async(
         return None
     log.results = _build_payload(status, message, details)
     log.processed_at = datetime.utcnow()
-    await db.commit()
-    await db.refresh(log)
+    await _maybe_await(db.commit())
+    await _maybe_await(db.refresh(log))
     return log
+async def _maybe_await(result: Any) -> Any:
+    if hasattr(result, "__await__"):
+        return await result
+    return result
