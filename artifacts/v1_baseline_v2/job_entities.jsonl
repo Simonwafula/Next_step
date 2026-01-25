@@ -1,0 +1,100 @@
+{"job_id": 1, "skills": ["customer service"], "confidence": {"customer service": 0.9}}
+{"job_id": 2, "skills": ["gcp", "finance", "hr", "communication"], "confidence": {"gcp": 0.9, "finance": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 3, "skills": ["excel", "machine learning", "java", "javascript", "php", "html/css", "hr", "communication"], "confidence": {"excel": 0.9, "machine learning": 0.9, "java": 0.9, "javascript": 0.9, "php": 0.9, "html/css": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 4, "skills": ["sales", "marketing", "hr"], "confidence": {"sales": 0.9, "marketing": 0.9, "hr": 0.9}}
+{"job_id": 5, "skills": ["power bi", "marketing", "hr", "healthcare", "communication"], "confidence": {"power bi": 0.9, "marketing": 0.9, "hr": 0.9, "healthcare": 0.9, "communication": 0.9}}
+{"job_id": 6, "skills": [], "confidence": {}}
+{"job_id": 7, "skills": ["procurement", "logistics"], "confidence": {"procurement": 0.9, "logistics": 0.9}}
+{"job_id": 8, "skills": ["sales", "marketing", "procurement", "communication"], "confidence": {"sales": 0.9, "marketing": 0.9, "procurement": 0.9, "communication": 0.9}}
+{"job_id": 9, "skills": ["sales", "communication"], "confidence": {"sales": 0.9, "communication": 0.9}}
+{"job_id": 10, "skills": ["customer service", "communication"], "confidence": {"customer service": 0.9, "communication": 0.9}}
+{"job_id": 11, "skills": ["sql", "excel", "data analysis", "communication"], "confidence": {"sql": 0.9, "excel": 0.9, "data analysis": 0.9, "communication": 0.9}}
+{"job_id": 12, "skills": ["excel", "procurement", "logistics", "communication"], "confidence": {"excel": 0.9, "procurement": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 13, "skills": ["excel", "hr", "communication"], "confidence": {"excel": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 14, "skills": ["sql", "javascript", "aws", "docker", "project management", "agile", "communication"], "confidence": {"sql": 0.9, "javascript": 0.9, "aws": 0.9, "docker": 0.9, "project management": 0.9, "agile": 0.9, "communication": 0.9}}
+{"job_id": 15, "skills": ["java", "javascript", "html/css", "aws", "docker", "kubernetes", "communication"], "confidence": {"java": 0.9, "javascript": 0.9, "html/css": 0.9, "aws": 0.9, "docker": 0.9, "kubernetes": 0.9, "communication": 0.9}}
+{"job_id": 16, "skills": ["excel", "accounting", "finance", "communication"], "confidence": {"excel": 0.9, "accounting": 0.9, "finance": 0.9, "communication": 0.9}}
+{"job_id": 33, "skills": ["excel", "project management", "sales", "finance", "hr", "procurement", "communication"], "confidence": {"excel": 0.9, "project management": 0.9, "sales": 0.9, "finance": 0.9, "hr": 0.9, "procurement": 0.9, "communication": 0.9}}
+{"job_id": 34, "skills": ["sql", "java", "azure", "gcp", "hr"], "confidence": {"sql": 0.9, "java": 0.9, "azure": 0.9, "gcp": 0.9, "hr": 0.9}}
+{"job_id": 35, "skills": ["sales", "hr"], "confidence": {"sales": 0.9, "hr": 0.9}}
+{"job_id": 36, "skills": ["customer service", "hr", "logistics", "communication"], "confidence": {"customer service": 0.9, "hr": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 37, "skills": ["logistics", "communication"], "confidence": {"logistics": 0.9, "communication": 0.9}}
+{"job_id": 38, "skills": ["excel", "sales", "marketing", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "communication": 0.9}}
+{"job_id": 39, "skills": ["excel", "sales", "marketing", "finance", "logistics", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "finance": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 40, "skills": ["sales", "hr", "communication"], "confidence": {"sales": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 41, "skills": ["agile", "teaching", "communication"], "confidence": {"agile": 0.9, "teaching": 0.9, "communication": 0.9}}
+{"job_id": 42, "skills": ["excel", "sales", "marketing", "finance", "hr", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "finance": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 43, "skills": ["hr", "procurement", "communication"], "confidence": {"hr": 0.9, "procurement": 0.9, "communication": 0.9}}
+{"job_id": 44, "skills": ["excel", "communication"], "confidence": {"excel": 0.9, "communication": 0.9}}
+{"job_id": 45, "skills": ["excel", "sales", "marketing", "hr", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 46, "skills": ["teaching", "communication"], "confidence": {"teaching": 0.9, "communication": 0.9}}
+{"job_id": 47, "skills": ["excel", "accounting", "finance", "communication"], "confidence": {"excel": 0.9, "accounting": 0.9, "finance": 0.9, "communication": 0.9}}
+{"job_id": 48, "skills": ["excel", "logistics", "communication"], "confidence": {"excel": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 49, "skills": ["hr"], "confidence": {"hr": 0.9}}
+{"job_id": 50, "skills": ["excel", "finance", "hr", "procurement", "communication"], "confidence": {"excel": 0.9, "finance": 0.9, "hr": 0.9, "procurement": 0.9, "communication": 0.9}}
+{"job_id": 51, "skills": ["excel", "machine learning", "sales", "marketing", "customer service", "finance", "communication"], "confidence": {"excel": 0.9, "machine learning": 0.9, "sales": 0.9, "marketing": 0.9, "customer service": 0.9, "finance": 0.9, "communication": 0.9}}
+{"job_id": 52, "skills": ["excel", "marketing", "hr", "monitoring & evaluation", "communication"], "confidence": {"excel": 0.9, "marketing": 0.9, "hr": 0.9, "monitoring & evaluation": 0.9, "communication": 0.9}}
+{"job_id": 53, "skills": ["logistics"], "confidence": {"logistics": 0.9}}
+{"job_id": 54, "skills": ["customer service", "communication"], "confidence": {"customer service": 0.9, "communication": 0.9}}
+{"job_id": 55, "skills": ["excel", "marketing", "customer service", "hr", "logistics", "communication"], "confidence": {"excel": 0.9, "marketing": 0.9, "customer service": 0.9, "hr": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 56, "skills": ["marketing", "accounting", "finance", "hr", "communication"], "confidence": {"marketing": 0.9, "accounting": 0.9, "finance": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 57, "skills": ["excel", "accounting", "finance", "hr", "teaching", "communication"], "confidence": {"excel": 0.9, "accounting": 0.9, "finance": 0.9, "hr": 0.9, "teaching": 0.9, "communication": 0.9}}
+{"job_id": 58, "skills": ["sales"], "confidence": {"sales": 0.9}}
+{"job_id": 59, "skills": ["excel", "accounting", "finance", "hr", "logistics", "communication"], "confidence": {"excel": 0.9, "accounting": 0.9, "finance": 0.9, "hr": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 60, "skills": ["sales", "marketing", "communication"], "confidence": {"sales": 0.9, "marketing": 0.9, "communication": 0.9}}
+{"job_id": 61, "skills": ["javascript", "hr", "healthcare"], "confidence": {"javascript": 0.9, "hr": 0.9, "healthcare": 0.9}}
+{"job_id": 62, "skills": ["excel", "data analysis", "project management", "finance", "hr", "communication"], "confidence": {"excel": 0.9, "data analysis": 0.9, "project management": 0.9, "finance": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 63, "skills": ["hr", "healthcare", "communication"], "confidence": {"hr": 0.9, "healthcare": 0.9, "communication": 0.9}}
+{"job_id": 64, "skills": ["data analysis", "data visualization", "hr", "healthcare", "teaching"], "confidence": {"data analysis": 0.9, "data visualization": 0.9, "hr": 0.9, "healthcare": 0.9, "teaching": 0.9}}
+{"job_id": 65, "skills": ["excel", "hr", "procurement", "logistics", "communication"], "confidence": {"excel": 0.9, "hr": 0.9, "procurement": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 66, "skills": ["hr"], "confidence": {"hr": 0.9}}
+{"job_id": 67, "skills": ["sales"], "confidence": {"sales": 0.9}}
+{"job_id": 68, "skills": ["sales", "hr", "communication"], "confidence": {"sales": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 69, "skills": ["excel"], "confidence": {"excel": 0.9}}
+{"job_id": 70, "skills": [], "confidence": {}}
+{"job_id": 71, "skills": ["excel", "project management", "hr", "procurement", "communication"], "confidence": {"excel": 0.9, "project management": 0.9, "hr": 0.9, "procurement": 0.9, "communication": 0.9}}
+{"job_id": 72, "skills": ["sales", "customer service", "hr"], "confidence": {"sales": 0.9, "customer service": 0.9, "hr": 0.9}}
+{"job_id": 73, "skills": ["sql", "excel", "customer service", "finance", "communication"], "confidence": {"sql": 0.9, "excel": 0.9, "customer service": 0.9, "finance": 0.9, "communication": 0.9}}
+{"job_id": 74, "skills": ["excel", "teaching", "communication"], "confidence": {"excel": 0.9, "teaching": 0.9, "communication": 0.9}}
+{"job_id": 75, "skills": ["excel", "teaching", "communication"], "confidence": {"excel": 0.9, "teaching": 0.9, "communication": 0.9}}
+{"job_id": 76, "skills": ["sales", "marketing", "communication"], "confidence": {"sales": 0.9, "marketing": 0.9, "communication": 0.9}}
+{"job_id": 77, "skills": ["marketing", "hr", "communication"], "confidence": {"marketing": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 78, "skills": ["excel", "communication"], "confidence": {"excel": 0.9, "communication": 0.9}}
+{"job_id": 79, "skills": ["hr"], "confidence": {"hr": 0.9}}
+{"job_id": 80, "skills": ["excel", "sales", "customer service", "hr", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "customer service": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 81, "skills": ["sales", "hr"], "confidence": {"sales": 0.9, "hr": 0.9}}
+{"job_id": 82, "skills": ["excel", "accounting", "finance", "communication"], "confidence": {"excel": 0.9, "accounting": 0.9, "finance": 0.9, "communication": 0.9}}
+{"job_id": 83, "skills": ["excel", "sales", "hr", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 84, "skills": ["sales", "marketing"], "confidence": {"sales": 0.9, "marketing": 0.9}}
+{"job_id": 85, "skills": ["accounting", "finance", "hr"], "confidence": {"accounting": 0.9, "finance": 0.9, "hr": 0.9}}
+{"job_id": 86, "skills": ["excel", "sales", "marketing", "procurement", "logistics", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "procurement": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 87, "skills": ["excel", "sales", "marketing", "customer service", "logistics", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "customer service": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 88, "skills": ["excel", "data analysis", "project management", "hr", "monitoring & evaluation", "communication"], "confidence": {"excel": 0.9, "data analysis": 0.9, "project management": 0.9, "hr": 0.9, "monitoring & evaluation": 0.9, "communication": 0.9}}
+{"job_id": 89, "skills": ["sales", "marketing", "customer service", "hr", "communication"], "confidence": {"sales": 0.9, "marketing": 0.9, "customer service": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 90, "skills": ["sales"], "confidence": {"sales": 0.9}}
+{"job_id": 91, "skills": ["excel", "customer service", "finance", "procurement", "communication"], "confidence": {"excel": 0.9, "customer service": 0.9, "finance": 0.9, "procurement": 0.9, "communication": 0.9}}
+{"job_id": 92, "skills": ["sales", "customer service", "hr", "logistics", "communication"], "confidence": {"sales": 0.9, "customer service": 0.9, "hr": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 93, "skills": ["excel", "sales", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "communication": 0.9}}
+{"job_id": 94, "skills": ["excel", "sales", "marketing", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "communication": 0.9}}
+{"job_id": 95, "skills": ["excel", "finance", "logistics", "communication"], "confidence": {"excel": 0.9, "finance": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 96, "skills": ["excel", "sales", "marketing", "healthcare", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "healthcare": 0.9, "communication": 0.9}}
+{"job_id": 97, "skills": ["sales", "marketing"], "confidence": {"sales": 0.9, "marketing": 0.9}}
+{"job_id": 98, "skills": ["excel", "accounting", "finance", "communication"], "confidence": {"excel": 0.9, "accounting": 0.9, "finance": 0.9, "communication": 0.9}}
+{"job_id": 99, "skills": [], "confidence": {}}
+{"job_id": 100, "skills": ["sales", "communication"], "confidence": {"sales": 0.9, "communication": 0.9}}
+{"job_id": 101, "skills": ["healthcare", "teaching", "communication"], "confidence": {"healthcare": 0.9, "teaching": 0.9, "communication": 0.9}}
+{"job_id": 102, "skills": ["excel", "marketing", "hr", "communication"], "confidence": {"excel": 0.9, "marketing": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 103, "skills": ["excel", "sales", "marketing", "accounting", "finance", "hr", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "accounting": 0.9, "finance": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 104, "skills": ["excel", "sales", "marketing"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9}}
+{"job_id": 105, "skills": ["marketing", "hr", "communication"], "confidence": {"marketing": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 106, "skills": ["sales", "marketing", "hr"], "confidence": {"sales": 0.9, "marketing": 0.9, "hr": 0.9}}
+{"job_id": 107, "skills": ["excel", "communication"], "confidence": {"excel": 0.9, "communication": 0.9}}
+{"job_id": 108, "skills": ["excel", "sales", "marketing", "customer service", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "customer service": 0.9, "communication": 0.9}}
+{"job_id": 109, "skills": ["sales", "marketing", "customer service", "hr", "logistics", "communication"], "confidence": {"sales": 0.9, "marketing": 0.9, "customer service": 0.9, "hr": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 110, "skills": ["sales", "marketing", "customer service", "communication"], "confidence": {"sales": 0.9, "marketing": 0.9, "customer service": 0.9, "communication": 0.9}}
+{"job_id": 111, "skills": ["sales", "hr", "communication"], "confidence": {"sales": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 112, "skills": ["data analysis", "hr", "logistics", "communication"], "confidence": {"data analysis": 0.9, "hr": 0.9, "logistics": 0.9, "communication": 0.9}}
+{"job_id": 113, "skills": ["sales", "customer service", "communication"], "confidence": {"sales": 0.9, "customer service": 0.9, "communication": 0.9}}
+{"job_id": 114, "skills": ["excel", "sales", "marketing", "finance", "hr", "communication"], "confidence": {"excel": 0.9, "sales": 0.9, "marketing": 0.9, "finance": 0.9, "hr": 0.9, "communication": 0.9}}
+{"job_id": 115, "skills": ["procurement", "communication"], "confidence": {"procurement": 0.9, "communication": 0.9}}
+{"job_id": 116, "skills": ["sales", "marketing", "communication"], "confidence": {"sales": 0.9, "marketing": 0.9, "communication": 0.9}}
