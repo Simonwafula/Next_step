@@ -4,8 +4,11 @@
 - Skill and course-based job search with filters.
 - Job ingestion from ATS boards (Greenhouse, Lever) and RSS feeds.
 - Government career-page monitoring pipeline (HTML ingest + scheduled workers).
-- Title normalization and basic skill extraction.
-- Job deduplication logic and URL hashing.
+- **High-Precision Normalization**: Production-ready modules for Titles, Companies, Locations, and Skills.
+- **Deduplication Engine**: MinHash + LSH based deduplication for clean datasets.
+- **Production Schema**: Migrated to PostgreSQL with `pgvector`, `pg_trgm`, and `unaccent` support.
+- **Semantic Embeddings**: Full integration with `intfloat/e5-small-v2` for high-quality retrieval.
+- **Data Parsers**: Robust salary and date standardization logic.
 - FastAPI endpoints for search, recommendations, and admin ingestion.
 - Email/password auth with JWT tokens.
 - Google OAuth sign-in and password reset flow.
@@ -18,7 +21,6 @@
 - Personalized recommendations (basic matching; deeper personalization pending).
 - Automated workflows and scrapers (operational but needs broader coverage).
 - Notifications (email/WhatsApp hooks exist; delivery logic is stubbed).
-- Embeddings (hash fallback available; real model integration optional).
 
 ## Planned / Future
 - Full NLP skill extraction and richer role matching.
