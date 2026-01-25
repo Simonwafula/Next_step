@@ -1,56 +1,54 @@
-# Repository Guidelines
+# Agents Operating Manual (Next Step)
 
-## Project Structure & Module Organization
-- `backend/`: FastAPI service, SQLAlchemy models, ingestion jobs, API endpoints.
-- `backend/app/`: core application modules (models, services, ingestion, normalization, ML stubs).
-- `backend/app/ingestion/government_sources.yaml`: source list for national + county + assembly career pages.
-- `backend/app/ingestion/connectors/gov_careers.py`: government career page HTML ingest logic.
-- `backend/app/tasks/gov_monitor_tasks.py`: Celery worker that monitors government sources.
-- `scripts/generate_government_sources.py`: regenerate the government source list from the seed spreadsheet.
-- `backend/test_*.py`: pytest suites for workflow and processors.
-- `frontend/`: static UI (`index.html`, `styles/`, `js/`).
-- `dbt/`: dbt project for LMI aggregates.
-- `docker-compose.yml` and `docker-compose.prod.yml`: local and prod orchestration.
+## Mission
+Build Next Step: job matching + labor market intelligence from jobs.sqlite3.
 
-## Build, Test, and Development Commands
-- `docker compose up --build`: build and start the full stack (API, Postgres, Metabase).
-- `docker compose logs -f backend`: tail backend logs while developing.
-- `DATABASE_URL=sqlite:///./var/nextstep.sqlite pytest backend/test_automated_workflow.py -q`: fast local test run against SQLite.
-- `dbt debug`, `dbt run`, `dbt test` from `dbt/`: validate and build analytics models (requires `~/.dbt/profiles.yml`).
+## Ralph Wiggum Loop Rules
+- Work iteratively: implement → test → fix → retest → document → commit → push.
+- Never stop after one pass.
+- If blocked, write a BLOCKED entry to changemap.md with exact error + what you tried + next plan.
 
-## Coding Style & Naming Conventions
-- Python: follow PEP8, 4-space indentation, `snake_case` for functions/modules, `PascalCase` for classes.
-- Frontend: 4-space indentation in HTML/CSS/JS, `kebab-case` for CSS classes, `camelCase` for JS methods.
-- No repo-wide formatter is enforced; keep style consistent with adjacent files.
+## Definition of Done (for every task)
+- ruff check passes
+- ruff format passes
+- pytest passes
+- docs updated when relevant
+- changemap.md updated with status change + logs + tests run
+- handoff.md and handoff.jsonl updated at session end
+- commit with task id in message
+- pushed to GitHub
 
-## Testing Guidelines
-- Use `pytest` with `backend/test_*.py` naming; add tests for new endpoints, data transforms, or ingestion logic.
-- Prefer SQLite for fast unit tests; run the full Docker stack when changes depend on Postgres/pgvector.
-- If you change dbt models, run `dbt test` to catch schema or logic regressions.
+## Branching & Commits
+- Use feature branches: feat/<task-id>-short-name
+- Commit message format:
+  [<task-id>] <imperative summary>
+- Push after each DONE task/feature.
 
-## Government Jobs Monitoring (Immediate Priority)
-- Keep national, parastatal, county government, and county assembly sources updated in `backend/app/ingestion/government_sources.yaml`.
-- When adding new sources, supply career/vacancies URLs (or PDFs) and keep notes/status current.
-- The monitor uses keyword-based link detection; add source-specific keywords in the YAML if a site uses unusual labels.
-- Regenerate the source list with `python scripts/generate_government_sources.py <xlsx>`.
-- Manual trigger: `POST /admin/ingest/government`.
+## Repo Conventions (Discovered)
+- `backend/`: FastAPI service, SQLAlchemy models, ingestion jobs.
+- `frontend/`: static UI (HTML/JS/CSS).
+- `dbt/`: analytics models.
+- Default jobs DB: `jobs.sqlite3` (root, 1.2GB) or `backend/jobs.sqlite3` (sample/dev).
+- App DB: `backend/var/nextstep.sqlite`.
+- Virtual Env: `backend/venv3.11`.
+- Tool paths:
+  - `backend/venv3.11/bin/ruff`
+  - `backend/venv3.11/bin/pytest`
 
-## Commit & Pull Request Guidelines
-- Commit messages follow a Conventional Commits pattern such as `feat:`, `fix:`, or `chore:`.
-- Use `PR_DESCRIPTION.md` as the PR template; include a concise summary, test commands run, and note any config or schema changes.
-- Add UI screenshots or short clips when modifying `frontend/`.
+## Code Quality
+- Small functions, typed interfaces where possible.
+- Add tests for each parser/extractor/pipeline stage.
+- Prefer deterministic, auditable extraction.
+- Every extractor must return: value, confidence, evidence span/snippet.
 
-## Security & Configuration Tips
-- Copy `.env.example` to `.env` and keep secrets out of version control.
-- Respect robots.txt and source TOS for ingestion; prefer official APIs and RSS feeds.
+## Data Handling
+- Do not commit jobs.sqlite3 or large outputs.
+- Commit only anonymized samples in data/samples/.
 
-## Quality
-This codebase will outlive you. Every shortcut you take becomes
-someone else's burden. Every hack compounds into technical debt
-that slows the whole team down.
+## Logging
+- Pipelines must log: rows in/out, duplicates removed, confidence stats, runtime.
+- Logs must be reproducible and deterministic.
 
-You are not just writing code. You are shaping the future of this
-project. The patterns you establish will be copied. The corners
-you cut will be cut again.
-
-Fight entropy. Leave the codebase better than you found it.
+## Safety / Privacy
+- Scraped text may contain sensitive info.
+- Redact personal data before committing samples.

@@ -81,3 +81,4 @@ node_modules/
 
 # Deployment scripts with secrets
 deploy_secrets.sh
+agent-work.md
