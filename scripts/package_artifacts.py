@@ -72,4 +72,6 @@ def package_artifacts(artifact_dir):
     print(f"Artifacts packaged. README_PROD.md and checksums.txt created.")
 
 if __name__ == "__main__":
-    package_artifacts("artifacts/v1_baseline_v2")
+    import sys
+    target_dir = sys.argv[1] if len(sys.argv) > 1 else "artifacts/v1_baseline_v2"
+    package_artifacts(target_dir)

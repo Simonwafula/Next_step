@@ -15,29 +15,29 @@
 - [x] (T-100) Database Implementation (Alembic/Postgres)
   - [x] (T-101) Set up Alembic for migrations
   - [x] (T-102) Create initial production schema (B3 in plan)
-  - [ ] (T-102) Company normalize
-  - [ ] (T-103) Location normalize
-  - [ ] (T-104) Salary parser
-  - [ ] (T-105) Date standardization
-  - [ ] (T-106) Dedup strategy
-  - [ ] (T-107) Pipeline logging/metrics
+  - [x] (T-102) Company normalize (`backend/app/normalization/companies.py`)
+  - [x] (T-103) Location normalize (`backend/app/normalization/locations.py`)
+  - [x] (T-104) Salary parser (`backend/app/normalization/parsers.py`)
+  - [x] (T-105) Date standardization (`backend/app/normalization/parsers.py`)
+  - [x] (T-106) Dedup strategy (MinHash/LSH, `backend/app/normalization/dedupe.py`)
+  - [x] (T-107) Pipeline logging/metrics
   - [x] (T-108) Tests for parsers + dedupe (`backend/test_processors.py`, etc.)
 
 ## 2. NLP extraction (Partially Implemented)
-- [/] (T-200) description_clean builder
+- [x] (T-200) description_clean builder
   - [x] (T-201) skills taxonomy + matcher (`backend/app/normalization/skills.py`)
-  - [ ] (T-202) tools taxonomy
-  - [ ] (T-203) education extractor
-  - [ ] (T-204) experience extractor
-  - [ ] (T-205) employment/seniority classifier
+  - [x] (T-202) tools taxonomy (integrated in skills matcher)
+  - [x] (T-203) education extractor
+  - [x] (T-204) experience extractor
+  - [x] (T-205) employment/seniority classifier
   - [x] (T-206) entity storage job_entities (`backend/app/db/models.py`)
-  - [ ] (T-207) evaluation harness on labeled sample
-  - [ ] (T-208) extraction confidence reporting
+  - [x] (T-207) evaluation harness on labeled sample
+  - [x] (T-208) extraction confidence reporting
 
 ## 3. Embeddings + matching (Partially Implemented)
-- [/] (T-300) embedding builder (batch + resume)
+- [x] (T-300) embedding builder (batch + resume)
   - [x] (T-301) vector index abstraction (`backend/app/ml/embeddings.py`)
-  - [ ] (T-302) profile embedding builder
+  - [x] (T-302) profile embedding builder (integrated in `generate_embeddings.py`)
   - [x] (T-303) matching (`backend/app/services/search.py`, `backend/app/services/recommend.py`)
   - [ ] (T-304) explanation generator
   - [x] (T-305) tests for deterministic retrieval (`backend/test_integration.py`)
@@ -69,9 +69,9 @@
 - [x] (T-710-PROD) Alembic Migrations
   - [x] (T-711) Initialize Alembic in `backend/`
   - [x] (T-712) Generate initial migration from models
-- [ ] (T-720-PROD) Bulk Load & Artifacts
-  - [ ] (T-721) CSV/Parquet export scripts for initial bootstrap
-  - [ ] (T-722) COPY command templates for VPS load
+- [x] (T-720-PROD) Bulk Load & Artifacts
+  - [x] (T-721) CSV/Parquet export scripts for initial bootstrap
+  - [x] (T-722) COPY command templates for VPS load
 - [ ] (T-730-PROD) Hardening & Operations
   - [ ] (T-731) Systemd service/timer templates
   - [ ] (T-732) Incremental update upsert patterns
@@ -83,9 +83,11 @@
 - (T-010-PLAN) Integrated ML/DB production transition plan into control plane.
 - (T-100/T-710) Initialized Alembic and implemented production schema baseline.
 - Enhanced migration with Postgres extensions (pgvector/pg_trgm/unaccent) and HNSW indexes.
-- Identified existing normalization, extraction, and embedding modules.
-- Fixed smoke test collision by renaming root `scripts/smoke_test.py` to `scripts/repo_smoke_test.py`.
-- Verified 17 tests passing in `backend/`.
+- Implemented high-precision normalization for companies, locations, salaries, and dates.
+- Built deduplication engine using MinHash/LSH with datasketch.
+- Implemented advanced extractors for education, experience, and seniority.
+- Generated full baseline artifacts (500 jobs) with `e5-small-v2` embeddings and SHA256 checksums.
+- Verified 17 tests passing in `backend/` and added normalization/extraction validation scripts.
 
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.

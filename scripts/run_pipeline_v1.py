@@ -17,7 +17,10 @@ from app.normalization import (
     parse_salary,
     parse_date,
     extract_and_normalize_skills,
-    Deduplicator
+    Deduplicator,
+    extract_education_level,
+    extract_experience_years,
+    classify_seniority
 )
 
 def run_pipeline(db_path, output_dir, limit=1000):
@@ -55,10 +58,15 @@ def run_pipeline(db_path, output_dir, limit=1000):
         norm_company = normalize_company_name(company_raw)
         norm_loc = normalize_location("Nairobi")
         
-        # 2. Extract Skills
+        # 2. Advanced Extraction
+        edu_level = extract_education_level(row['content'])
+        exp_years = extract_experience_years(row['content'])
+        seniority = classify_seniority(row['title'], exp_years)
+        
+        # 3. Extract Skills
         skills_dict = extract_and_normalize_skills(row['content'])
         
-        # 3. Store normalized
+        # 4. Store normalized
         job_norm = {
             "id": row['id'],
             "source": "sqlite_baseline",
@@ -67,16 +75,23 @@ def run_pipeline(db_path, output_dir, limit=1000):
             "title_norm": canon_title,
             "org_name": norm_company,
             "location": norm_loc[0],
-            "description_clean": row['content'][:1000], # Trucated for sample
+            "seniority": seniority,
+            "education": edu_level,
+            "experience_years": exp_years,
+            "description_clean": row['content'][:1000], 
             "processed_at": pd.Timestamp.now().isoformat()
         }
         normalized_jobs.append(job_norm)
         
-        # 4. Store entities
+        # 5. Store entities
         entity_record = {
             "job_id": row['id'],
             "skills": list(skills_dict.keys()),
-            "confidence": skills_dict
+            "tools": [], # Placeholder for T-202
+            "education": {"level": edu_level},
+            "experience": {"years": exp_years},
+            "seniority": seniority,
+            "confidence": {**skills_dict, "education": 0.8, "experience": 0.7, "seniority": 0.7}
         }
         entities.append(entity_record)
         
