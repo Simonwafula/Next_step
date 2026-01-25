@@ -28,6 +28,7 @@ Build Next Step: job matching + labor market intelligence from jobs.sqlite3.
 - `backend/`: FastAPI service, SQLAlchemy models, ingestion jobs.
 - `frontend/`: static UI (HTML/JS/CSS).
 - `dbt/`: analytics models.
+- **Production Plan**: See [docs/ml-db-production-plan.md](file:///Users/hp/Library/CloudStorage/OneDrive-Personal/Codes/Next_step/docs/ml-db-production-plan.md) for ML/DB transition and VPS deployment rules.
 - Default jobs DB: `jobs.sqlite3` (root, 1.2GB) or `backend/jobs.sqlite3` (sample/dev).
 - App DB: `backend/var/nextstep.sqlite`.
 - Virtual Env: `backend/venv3.11`.

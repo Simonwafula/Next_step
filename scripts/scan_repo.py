@@ -2,7 +2,14 @@ import os, subprocess, sqlite3, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-DB_PATH = os.getenv("JOBS_DB_PATH", str(REPO / "data" / "raw" / "jobs.sqlite3"))
+DB_PATH = os.getenv("JOBS_DB_PATH")
+if not DB_PATH:
+    for p in [REPO / "jobs.sqlite3", REPO / "backend" / "var" / "nextstep.sqlite", REPO / "backend" / "jobs.sqlite3"]:
+        if p.exists():
+            DB_PATH = str(p)
+            break
+if not DB_PATH:
+    DB_PATH = str(REPO / "jobs.sqlite3") # Fallback default
 OUT = REPO / "repo_state.md"
 
 def sh(cmd):

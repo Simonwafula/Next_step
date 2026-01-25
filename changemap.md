@@ -60,6 +60,21 @@
 - [ ] (T-603) regression tests
 - [ ] (T-604) runbook docs
 
+## 7. Production Readiness (NEW - ML/DB Transition)
+- [ ] (T-010-PLAN) Integrate production roadmap into control plane
+- [ ] (T-700-PROD) Postgres 14.20 + pgvector baseline
+  - [ ] (T-701) Install/verify extensions (vector, pg_trgm, unaccent)
+  - [ ] (T-702) Schema design & SQL DDL (tables B3, indexes B4)
+- [ ] (T-710-PROD) Alembic Migrations
+  - [ ] (T-711) Initialize Alembic in `backend/`
+  - [ ] (T-712) Generate initial migration from models
+- [ ] (T-720-PROD) Bulk Load & Artifacts
+  - [ ] (T-721) CSV/Parquet export scripts for initial bootstrap
+  - [ ] (T-722) COPY command templates for VPS load
+- [ ] (T-730-PROD) Hardening & Operations
+  - [ ] (T-731) Systemd service/timer templates
+  - [ ] (T-732) Incremental update upsert patterns
+
 ## Logs
 
 ### 2026-01-25

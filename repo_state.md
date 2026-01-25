@@ -1,6 +1,6 @@
 # Repo State Snapshot
 
-Generated: 2026-01-25 15:59:10
+Generated: 2026-01-25 16:56:07
 
 Repo: /Users/hp/Library/CloudStorage/OneDrive-Personal/Codes/Next_step
 
@@ -10,25 +10,11 @@ Repo: /Users/hp/Library/CloudStorage/OneDrive-Personal/Codes/Next_step
 ```text
 (rc=0)
 ## feat/T-000-scan-reconcile
- M .claude/ralph-loop.local.md
- M .gitignore
  M AGENTS.md
- M agent-work.md
  M changemap.md
- D scripts/smoke_test.py
-?? AGENT.md
-?? backend/.claude/
-?? backend/=0.5.0
-?? backend/backups/
-?? backend/scripts/backfill_brightermonday_metadata.py
-?? backend/scripts/smoke_test.py
-?? backend/venv3.11/bin/ruff
-?? claude.md
-?? handoff.jsonl
-?? handoff.md
-?? repo_state.md
-?? scripts/repo_smoke_test.py
-?? scripts/scan_repo.py
+ M repo_state.md
+ M scripts/scan_repo.py
+?? docs/ml-db-production-plan.md
 ```
 
 
@@ -36,6 +22,8 @@ Repo: /Users/hp/Library/CloudStorage/OneDrive-Personal/Codes/Next_step
 
 ```text
 (rc=0)
+0fe0651 [T-000-SCAN] update handoff logs
+eb892dd [T-000-SCAN] repo scan + control plane baseline
 e20bb81 feat: add education mappings UI and improve extraction filters
 0eed686 feat: add normalized education mapping and dual summary columns
 1bca420 feat: add admin summary drilldowns
@@ -54,8 +42,6 @@ fce026f feat: Enhance salary extraction with validation thresholds
 7e5662d feat: P1.2 Data quality + P1.1 documentation and scripts
 18b1c73 feat: P1 production hardening - rate limiting, API auth, logging, BrighterMonday
 22e5bd4 feat: Enhance embedding generation with transformer model support and fallback mechanism
-3a8e4a9 feat: Enhance job extraction and search functionality with structured data updates
-9d3f342 Refactor scrapers and improve data extraction
 ```
 
 
@@ -67,6 +53,7 @@ fce026f feat: Enhance salary extraction with validation thresholds
   feature/async-db-embeddings-fallback
   main
   remotes/origin/HEAD -> origin/main
+  remotes/origin/feat/T-000-scan-reconcile
   remotes/origin/feature/async-db-embeddings-fallback
   remotes/origin/main
 ```
@@ -270,6 +257,7 @@ docker-compose.yml
 docs
 docs/ingestion-workflows.md
 docs/integrations.md
+docs/ml-db-production-plan.md
 docs/operations.md
 docs/product.md
 features.md
@@ -294,7 +282,6 @@ handoff.jsonl
 handoff.md
 jobs.sqlite3
 repo_state.md
-scan_output.log
 scripts
 scripts/__pycache__
 scripts/__pycache__/repo_smoke_test.cpython-311-pytest-8.2.2.pyc
@@ -3733,7 +3720,7 @@ scripts/repo_smoke_test.py::test_ingestion_pipeline
 ERROR backend/scripts/smoke_test.py::test_api_health
 ERROR backend/scripts/smoke_test.py::test_api_search
 ERROR backend/scripts/smoke_test.py::test_api_ingestion_status
-17 passed, 12 skipped, 27 warnings, 3 errors in 15.19s
+17 passed, 12 skipped, 27 warnings, 3 errors in 63.64s (0:01:03)
 ```
 
 
@@ -3750,9 +3737,14 @@ bash: mypy: command not found
 ## SQLite summary
 
 ```text
-DB: jobs.sqlite3
+DB: /Users/hp/Library/CloudStorage/OneDrive-Personal/Codes/Next_step/jobs.sqlite3
 Tables (2): jobs_data, sqlite_sequence
 Primary jobs table guess: jobs_data
 Row count: 102170
 Columns: id, full_link, title, content
 ```
+
+## Usage & Maintenance
+- This file is regenerated via `python3 scripts/scan_repo.py`.
+- It serves as the baseline for all agents to understand the current DB schema and project structure.
+- Always run the scan after major schema changes or refactors.
