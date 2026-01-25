@@ -34,6 +34,9 @@ class JobDatabaseSaver:
         """
         db = SessionLocal()
         try:
+            if cleaned_data.get('skip_reason'):
+                logger.info(f"Skipping job due to {cleaned_data['skip_reason']}: {cleaned_data.get('title_raw')}")
+                return None
             # Get or create organization
             org_id = self._get_or_create_organization(db, cleaned_data.get('company_name', ''))
             

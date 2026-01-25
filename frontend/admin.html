@@ -181,6 +181,31 @@
                             </table>
                         </div>
                     </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Education mappings</h3>
+                        </div>
+                        <div class="panel-body">
+                            <form class="mapping-form" id="educationMappingForm">
+                                <div class="mapping-grid">
+                                    <label>
+                                        <span>Specific value</span>
+                                        <input type="text" id="educationRaw" placeholder="e.g. BSc Computer Science" required>
+                                    </label>
+                                    <label>
+                                        <span>Normalized value</span>
+                                        <input type="text" id="educationNormalized" placeholder="e.g. bachelors in computer science" required>
+                                    </label>
+                                </div>
+                                <label>
+                                    <span>Notes (optional)</span>
+                                    <input type="text" id="educationNotes" placeholder="e.g. matches CS / IT">
+                                </label>
+                                <button class="solid-btn" type="submit">Save mapping</button>
+                            </form>
+                            <div class="data-list" id="educationMappingList"></div>
+                        </div>
+                    </article>
                 </div>
             </div>
         </section>

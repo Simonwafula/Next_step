@@ -72,6 +72,21 @@ class JobDataCleaner:
             'executive': 'executive',
             'c-level': 'executive',
         }
+
+        self.title_blocklist = [
+            'promotion', 'promotions', 'transfer', 'transfers', 'deployment',
+            'notice', 'circular', 'memo', 'minutes', 'agenda',
+            'tender', 'tenders', 'procurement', 'prequalification', 'bid',
+            'expression of interest', 'eoi', 'auction', 'advertisement',
+            'press release', 'announcement', 'statement', 'gazette',
+        ]
+        self.title_job_keywords = [
+            'officer', 'assistant', 'manager', 'director', 'coordinator',
+            'analyst', 'specialist', 'engineer', 'technician', 'clerk',
+            'consultant', 'advisor', 'supervisor', 'intern', 'trainee',
+            'developer', 'accountant', 'lecturer', 'teacher', 'nurse',
+            'doctor', 'surveyor', 'planner', 'auditor', 'architect',
+        ]
         
     def clean_job_data(self, raw_data: Dict) -> Dict:
         """
@@ -93,6 +108,10 @@ class JobDataCleaner:
             
             # Clean and normalize title
             title_raw = self._clean_text(raw_data.get('title', ''))
+            if not self._is_valid_title(title_raw):
+                cleaned_data['title_raw'] = title_raw
+                cleaned_data['skip_reason'] = 'non_job_title'
+                return cleaned_data
             title_family, title_canonical = normalize_title(title_raw)
             cleaned_data.update({
                 'title_raw': title_raw,
@@ -155,6 +174,17 @@ class JobDataCleaner:
         except Exception as e:
             logger.error(f"Error cleaning job data: {e}")
             return raw_data
+
+    def _is_valid_title(self, title: str) -> bool:
+        if not title:
+            return False
+        lowered = title.lower()
+        if len(lowered) < 4:
+            return False
+        if any(term in lowered for term in self.title_blocklist):
+            if not any(keyword in lowered for keyword in self.title_job_keywords):
+                return False
+        return True
             
     def _clean_text(self, text: str) -> str:
         """Clean and normalize text"""
@@ -503,6 +533,25 @@ class JobDataCleaner:
             return None
 
         text_lower = text.lower()
+
+        field_match = re.search(
+            r'(phd|doctorate|doctoral|masters|master\'s|msc|mba|ma|bachelors|bachelor\'s|degree|bsc|ba|diploma|certificate)\s+(?:in|of)\s+([a-z\s&/]+)',
+            text_lower
+        )
+        if field_match:
+            level = field_match.group(1)
+            field = field_match.group(2).strip()
+            field = re.sub(r'\s{2,}', ' ', field)
+            if level in ['phd', 'doctorate', 'doctoral']:
+                return f'doctorate in {field}'
+            if level in ['masters', 'master\'s', 'msc', 'mba', 'ma']:
+                return f'masters in {field}'
+            if level in ['bachelors', 'bachelor\'s', 'degree', 'bsc', 'ba']:
+                return f'bachelors in {field}'
+            if level in ['diploma']:
+                return f'diploma in {field}'
+            if level in ['certificate']:
+                return f'certificate in {field}'
         
         # Education levels
         education_levels = [

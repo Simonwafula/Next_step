@@ -22,6 +22,11 @@ const summaryTableBody = document.getElementById('summaryTableBody');
 const summaryModal = document.getElementById('summaryModal');
 const summaryModalTitle = document.getElementById('summaryModalTitle');
 const summaryModalBody = document.getElementById('summaryModalBody');
+const educationMappingForm = document.getElementById('educationMappingForm');
+const educationMappingList = document.getElementById('educationMappingList');
+const educationRaw = document.getElementById('educationRaw');
+const educationNormalized = document.getElementById('educationNormalized');
+const educationNotes = document.getElementById('educationNotes');
 
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
@@ -421,6 +426,76 @@ const wireSummaryActions = (token) => {
     }
 };
 
+const renderEducationMappings = (mappings = []) => {
+    if (!educationMappingList) {
+        return;
+    }
+    if (!mappings.length) {
+        educationMappingList.innerHTML = '<p class="panel-note">No mappings yet.</p>';
+        return;
+    }
+    educationMappingList.innerHTML = mappings
+        .map(
+            (mapping) => `
+                <div class="data-row">
+                    <div>
+                        <strong>${mapping.raw_value}</strong>
+                        <span>${mapping.normalized_value}${mapping.notes ? ` · ${mapping.notes}` : ''}</span>
+                    </div>
+                    <button class="summary-action" type="button" data-edu-edit="${mapping.raw_value}" data-edu-normalized="${mapping.normalized_value}" data-edu-notes="${mapping.notes || ''}">Edit</button>
+                </div>
+            `
+        )
+        .join('');
+};
+
+const fetchEducationMappings = async (token) => {
+    const payload = await requestJson(`${apiBase}/admin/education-mappings?limit=100`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    renderEducationMappings(payload.mappings || []);
+    return payload;
+};
+
+const wireEducationMappingForm = (token) => {
+    if (!educationMappingForm) {
+        return;
+    }
+    educationMappingForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const rawValue = educationRaw ? educationRaw.value.trim() : '';
+        const normalizedValue = educationNormalized ? educationNormalized.value.trim() : '';
+        if (!rawValue || !normalizedValue) {
+            setStatus('Education mapping needs both values.', true);
+            return;
+        }
+        await requestJson(`${apiBase}/admin/education-mappings`, {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                raw_value: rawValue,
+                normalized_value: normalizedValue,
+                notes: educationNotes ? educationNotes.value.trim() : '',
+            }),
+        });
+        if (educationRaw) educationRaw.value = '';
+        if (educationNormalized) educationNormalized.value = '';
+        if (educationNotes) educationNotes.value = '';
+        await fetchEducationMappings(token);
+    });
+
+    if (educationMappingList) {
+        educationMappingList.addEventListener('click', (event) => {
+            const button = event.target.closest('[data-edu-edit]');
+            if (!button) {
+                return;
+            }
+            if (educationRaw) educationRaw.value = button.dataset.eduEdit || '';
+            if (educationNormalized) educationNormalized.value = button.dataset.eduNormalized || '';
+            if (educationNotes) educationNotes.value = button.dataset.eduNotes || '';
+        });
+    }
+};
 const wireActions = (token) => {
     document.querySelectorAll('[data-admin-action]').forEach((button) => {
         button.addEventListener('click', async () => {
@@ -545,6 +620,10 @@ const boot = async () => {
         if (summaryDimension) {
             await fetchSummaries(summaryDimension.value, auth.access_token);
             wireSummaryActions(auth.access_token);
+        }
+        if (educationMappingForm) {
+            await fetchEducationMappings(auth.access_token);
+            wireEducationMappingForm(auth.access_token);
         }
 
         if (adminSignOut) {
