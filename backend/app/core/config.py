@@ -1,6 +1,13 @@
 import os
 from typing import List, Optional
 from pydantic import BaseModel
+from dotenv import load_dotenv
+
+# Load environment variables from .env file (assuming it's in the project root)
+# The current file is at backend/app/core/config.py
+# Root is three levels up
+env_path = os.path.join(os.path.dirname(__file__), "../../../.env")
+load_dotenv(env_path)
 
 class Settings(BaseModel):
     # App Configuration
@@ -26,6 +33,9 @@ class Settings(BaseModel):
     
     @property
     def DATABASE_URL(self) -> str:
+        env_url = os.getenv("DATABASE_URL")
+        if env_url:
+            return env_url
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
     
     # Authentication & Security

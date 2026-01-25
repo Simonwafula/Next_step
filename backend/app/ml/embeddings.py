@@ -19,7 +19,7 @@ def _get_model():
         try:
             import torch
             from transformers import AutoTokenizer, AutoModel
-            model_name = 'sentence-transformers/all-MiniLM-L6-v2'
+            model_name = 'intfloat/e5-small-v2'
             _tokenizer = AutoTokenizer.from_pretrained(model_name)
             _transformer_model = AutoModel.from_pretrained(model_name)
             _transformer_model.eval()  # Set to evaluation mode

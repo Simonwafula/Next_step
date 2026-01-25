@@ -80,24 +80,35 @@ def search_jobs(db: Session, q: str = "", location: str | None = None, seniority
         stmt = stmt.where(*conditions)
     
     # Execute query
+    # In production (Postgres), we use pgvector <-> or <=> operators
+    # For now, we keep the SQLAlchemy base query but prepare for vector retrieval
     rows = db.execute(stmt.limit(20)).all()
     
     # Process results with explanations
     results = []
-    query_embedding = embed_text(q) if q else None
+    query_embedding = embed_text(f"query: {q}") if q else None
     
     for jp, org, loc, title_norm in rows:
-        # Calculate semantic similarity if we have embeddings
+        # Calculate semantic similarity
         similarity_score = 0.0
-        if query_embedding and jp.embedding:
+        
+        # Get embedding from the specialized job_embeddings table
+        from ..db.models import JobEmbedding, JobEntities
+        emb_record = db.execute(select(JobEmbedding).where(JobEmbedding.job_id == jp.id)).scalar_one_or_none()
+        
+        if query_embedding and emb_record and emb_record.vector_json:
             try:
-                job_embedding = eval(jp.embedding) if isinstance(jp.embedding, str) else jp.embedding
-                similarity_score = cosine_similarity(query_embedding, job_embedding)
+                # In Postgres this would be a real vector; in SQLite it's JSON
+                job_vec = emb_record.vector_json
+                similarity_score = cosine_similarity(query_embedding, job_vec)
             except:
                 similarity_score = 0.0
         
+        # Fetch entities for better explanation
+        entities = db.execute(select(JobEntities).where(JobEntities.job_id == jp.id)).scalar_one_or_none()
+        
         # Generate explanation
-        why_match = generate_match_explanation(q, jp, title_norm, similarity_score)
+        why_match = generate_match_explanation(q, jp, title_norm, similarity_score, entities)
         
         results.append({
             "id": jp.id,
@@ -109,7 +120,8 @@ def search_jobs(db: Session, q: str = "", location: str | None = None, seniority
             "tenure": jp.tenure,
             "seniority": jp.seniority,
             "why_match": why_match,
-            "similarity_score": round(similarity_score * 100, 1) if similarity_score > 0 else None
+            "similarity_score": round(similarity_score * 100, 1) if similarity_score > 0 else None,
+            "skills_found": entities.skills if entities else []
         })
     
     # Sort by similarity score if available
@@ -244,31 +256,31 @@ def suggest_alternatives(db: Session, original_query: str, location: str | None 
         "is_suggestion": True
     }]
 
-def generate_match_explanation(query: str, job_post: JobPost, title_norm: TitleNorm | None, similarity_score: float) -> str:
+def generate_match_explanation(query: str, job_post: JobPost, title_norm: TitleNorm | None, similarity_score: float, entities: any = None) -> str:
     """Generate explanation for why a job matches the search"""
     
     explanations = []
     
     # Title match
     if query.lower() in job_post.title_raw.lower():
-        explanations.append("title contains search term")
+        explanations.append("title matches search")
+    
+    # Entity/Skill match
+    if entities and query.lower() in [s.lower() for s in entities.skills]:
+        explanations.append(f"requires {query} skill")
     
     # Normalized title match
     if title_norm and query.lower() in title_norm.canonical_title.lower():
-        explanations.append(f"matches {title_norm.canonical_title} role family")
+        explanations.append(f"major {title_norm.canonical_title} role")
     
     # Semantic similarity
     if similarity_score > 0.7:
-        explanations.append(f"high semantic similarity ({similarity_score*100:.0f}%)")
+        explanations.append(f"high semantic match ({similarity_score*100:.0f}%)")
     elif similarity_score > 0.5:
-        explanations.append(f"good semantic match ({similarity_score*100:.0f}%)")
-    
-    # Description match
-    if query and job_post.description_raw and query.lower() in job_post.description_raw.lower():
-        explanations.append("mentioned in job description")
+        explanations.append(f"related concept ({similarity_score*100:.0f}%)")
     
     if not explanations:
-        explanations.append("general relevance")
+        explanations.append("general match")
     
     return "; ".join(explanations[:3])  # Limit to top 3 explanations
 

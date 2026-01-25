@@ -3,11 +3,8 @@ from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from ..core.config import settings
 
-# Allow overriding the database URL via environment for testing (e.g. SQLite)
-DATABASE_URL = os.getenv("DATABASE_URL") or (
-    f"postgresql://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}"
-    f"@{settings.POSTGRES_HOST}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
-)
+# Use centralized settings for DATABASE_URL
+DATABASE_URL = settings.DATABASE_URL
 
 # Support async engines when DATABASE_URL indicates an async dialect
 if "+async" in DATABASE_URL or DATABASE_URL.startswith("sqlite+aiosqlite"):
