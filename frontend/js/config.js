@@ -1,10 +1,43 @@
+const getApiBaseUrl = () => {
+    if (typeof document !== 'undefined' && document.body) {
+        const dataApiBase = document.body.dataset.apiBase;
+        if (dataApiBase) {
+            return dataApiBase;
+        }
+    }
+
+    if (typeof window !== 'undefined' && window.location) {
+        const host = window.location.hostname;
+        if (host === 'localhost' || host === '127.0.0.1') {
+            return 'http://localhost:8000/api';
+        }
+        return `${window.location.origin}/api`;
+    }
+
+    if (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production') {
+        return 'https://api.nextstep.co.ke/api';
+    }
+
+    return 'http://localhost:8000/api';
+};
+
+const getWhatsappUrl = (apiBaseUrl) => {
+    if (!apiBaseUrl) {
+        return 'http://localhost:8000/whatsapp';
+    }
+    const base = apiBaseUrl.endsWith('/api') ? apiBaseUrl.slice(0, -4) : apiBaseUrl;
+    return `${base}/whatsapp`;
+};
+
+const runtimeApiBaseUrl = getApiBaseUrl();
+
 // Configuration settings for the frontend application
 const CONFIG = {
     // API Base URL - adjust this based on your backend deployment
-    API_BASE_URL: process.env.NODE_ENV === 'production' ? 'https://api.nextstep.co.ke/api' : 'http://localhost:8000/api',
+    API_BASE_URL: runtimeApiBaseUrl,
     
     // WhatsApp webhook URL
-    WHATSAPP_URL: process.env.NODE_ENV === 'production' ? 'https://api.nextstep.co.ke/whatsapp' : 'http://localhost:8000/whatsapp',
+    WHATSAPP_URL: getWhatsappUrl(runtimeApiBaseUrl),
     
     // Application settings
     APP_NAME: 'NextStep',
