@@ -337,9 +337,11 @@ class AutomatedWorkflowService:
     async def _get_scraper_configs(self) -> Dict[str, Any]:
         """Get scraper configurations from config file"""
         import yaml
+        from pathlib import Path
         
         try:
-            with open("backend/app/scrapers/config.yaml", "r") as f:
+            config_path = Path(__file__).resolve().parents[1] / "scrapers" / "config.yaml"
+            with config_path.open("r") as f:
                 config = yaml.safe_load(f)
                 return config.get("sites", {})
         except Exception as e:
