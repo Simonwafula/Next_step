@@ -314,7 +314,7 @@ const renderSummaryTable = (items = []) => {
     if (!items.length) {
         summaryTableBody.innerHTML = `
             <tr>
-                <td colspan="3" class="panel-note">No data available.</td>
+                <td colspan="4" class="panel-note">No data available.</td>
             </tr>
         `;
         return;
@@ -323,10 +323,11 @@ const renderSummaryTable = (items = []) => {
         .map(
             (item) => `
                 <tr>
-                    <td class="summary-value">${item.value}</td>
+                    <td class="summary-value">${item.specific_value ?? item.value}</td>
+                    <td>${item.normalized_value ?? item.specific_value ?? item.value}</td>
                     <td>${item.count}</td>
                     <td>
-                        <button class="summary-action" type="button" data-summary-value="${item.value}">View</button>
+                        <button class="summary-action" type="button" data-summary-value="${item.specific_value ?? item.value}">View</button>
                     </td>
                 </tr>
             `
@@ -372,7 +373,7 @@ const fetchSummaries = async (dimension, token) => {
     }
     summaryTableBody.innerHTML = `
         <tr>
-            <td colspan="3" class="panel-note">Loading...</td>
+            <td colspan="4" class="panel-note">Loading...</td>
         </tr>
     `;
     const payload = await requestJson(`${apiBase}/admin/summaries?dimension=${dimension}&limit=12`, {

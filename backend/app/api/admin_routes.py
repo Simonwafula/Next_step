@@ -16,7 +16,9 @@ from ..db.models import (
     Location,
     Organization,
     ProcessingLog,
+    EducationNormalization,
     Skill,
+    TitleNorm,
     SavedJob,
     SearchHistory,
     User,
@@ -294,9 +296,10 @@ def admin_summaries(
 
     if dimension == "title":
         stmt = (
-            select(JobPost.title_raw, func.count(JobPost.id))
+            select(JobPost.title_raw, TitleNorm.canonical_title, func.count(JobPost.id))
+            .outerjoin(TitleNorm, TitleNorm.id == JobPost.title_norm_id)
             .where(JobPost.title_raw.is_not(None))
-            .group_by(JobPost.title_raw)
+            .group_by(JobPost.title_raw, TitleNorm.canonical_title)
             .order_by(desc(func.count(JobPost.id)))
             .limit(limit)
         )
@@ -312,9 +315,10 @@ def admin_summaries(
         rows = db.execute(stmt).all()
     else:
         stmt = (
-            select(JobPost.education, func.count(JobPost.id))
+            select(JobPost.education, EducationNormalization.normalized_value, func.count(JobPost.id))
+            .outerjoin(EducationNormalization, EducationNormalization.raw_value == JobPost.education)
             .where(JobPost.education.is_not(None))
-            .group_by(JobPost.education)
+            .group_by(JobPost.education, EducationNormalization.normalized_value)
             .order_by(desc(func.count(JobPost.id)))
             .limit(limit)
         )
@@ -323,8 +327,16 @@ def admin_summaries(
     return {
         "dimension": dimension,
         "items": [
-            {"value": value, "count": count}
-            for value, count in rows
+            {
+                "specific_value": value,
+                "normalized_value": normalized,
+                "count": count,
+            }
+            for value, normalized, count in (
+                [(value, value, count) for value, count in rows]
+                if dimension == "skill"
+                else rows
+            )
             if value
         ],
     }
@@ -380,4 +392,65 @@ def admin_summary_jobs(
             for job, org, location in rows
         ],
         "total": len(rows),
+    }
+
+
+@router.get("/education-mappings")
+def list_education_mappings(
+    limit: int = Query(50, ge=1, le=200),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    stmt = select(EducationNormalization).order_by(EducationNormalization.raw_value).limit(limit)
+    mappings = db.execute(stmt).scalars().all()
+    return {
+        "mappings": [
+            {
+                "id": mapping.id,
+                "raw_value": mapping.raw_value,
+                "normalized_value": mapping.normalized_value,
+                "notes": mapping.notes,
+            }
+            for mapping in mappings
+        ],
+        "total": len(mappings),
+    }
+
+
+@router.post("/education-mappings")
+def upsert_education_mapping(
+    payload: Dict[str, Any],
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    raw_value = str(payload.get("raw_value", "")).strip()
+    normalized_value = str(payload.get("normalized_value", "")).strip()
+    notes = payload.get("notes")
+    if not raw_value or not normalized_value:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="raw_value and normalized_value are required",
+        )
+
+    mapping = db.execute(
+        select(EducationNormalization).where(EducationNormalization.raw_value == raw_value)
+    ).scalar_one_or_none()
+    if mapping:
+        mapping.normalized_value = normalized_value
+        mapping.notes = notes
+    else:
+        mapping = EducationNormalization(
+            raw_value=raw_value,
+            normalized_value=normalized_value,
+            notes=notes,
+        )
+        db.add(mapping)
+    db.commit()
+    db.refresh(mapping)
+
+    return {
+        "id": mapping.id,
+        "raw_value": mapping.raw_value,
+        "normalized_value": mapping.normalized_value,
+        "notes": mapping.notes,
     }

@@ -49,6 +49,13 @@ class Skill(Base):
     taxonomy_ref: Mapped[str | None] = mapped_column(String(120))
     aliases: Mapped[dict] = mapped_column(JSONB, default=dict)
 
+class EducationNormalization(Base):
+    __tablename__ = "education_normalization"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    raw_value: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    normalized_value: Mapped[str] = mapped_column(String(120), index=True)
+    notes: Mapped[str | None] = mapped_column(String(255))
+
 class JobPost(Base):
     __tablename__ = "job_post"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
