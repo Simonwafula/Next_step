@@ -3,12 +3,35 @@
     {
       "value": "phd",
       "rank": 5,
-      "aliases": ["phd", "ph.d", "doctorate", "doctoral"]
+      "aliases": [
+        "phd",
+        "ph.d",
+        "doctorate",
+        "doctoral",
+        "doctor of philosophy"
+      ]
     },
     {
       "value": "master",
       "rank": 4,
-      "aliases": ["master", "masters", "msc", "m.sc", "mba", "ma", "m.a", "mtech"]
+      "aliases": [
+        "master",
+        "masters",
+        "msc",
+        "m.sc",
+        "mba",
+        "ma",
+        "m.a",
+        "mtech",
+        "m.tech",
+        "m.eng",
+        "meng",
+        "ms",
+        "m.s",
+        "postgraduate",
+        "post graduate",
+        "post-graduate"
+      ]
     },
     {
       "value": "bachelor",
@@ -20,24 +43,56 @@
         "b.sc",
         "ba",
         "b.a",
+        "beng",
+        "b.eng",
+        "btech",
+        "b.tech",
+        "bcom",
+        "b.com",
         "undergraduate",
+        "under graduate",
+        "under-graduate",
         "degree"
       ]
     },
     {
       "value": "diploma",
       "rank": 2,
-      "aliases": ["diploma", "higher national diploma", "hnd", "national diploma"]
+      "aliases": [
+        "diploma",
+        "higher national diploma",
+        "hnd",
+        "national diploma",
+        "postgraduate diploma",
+        "pgdip",
+        "pg dip"
+      ]
     },
     {
       "value": "certificate",
       "rank": 1,
-      "aliases": ["certificate", "certification", "certified", "cert"]
+      "aliases": [
+        "certificate",
+        "certification",
+        "certified",
+        "cert",
+        "short course",
+        "professional certificate"
+      ]
     },
     {
       "value": "high school",
       "rank": 0,
-      "aliases": ["high school", "secondary school", "kcse", "school leaver"]
+      "aliases": [
+        "high school",
+        "secondary school",
+        "kcse",
+        "school leaver",
+        "a-level",
+        "a level",
+        "o-level",
+        "o level"
+      ]
     }
   ]
 }

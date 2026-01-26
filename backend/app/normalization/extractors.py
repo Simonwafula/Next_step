@@ -74,12 +74,16 @@ def extract_experience_years_detailed(text: str) -> Dict[str, Any] | None:
         return None
 
     patterns = [
-        (r"at least\s*(\d+)\s*years?", 0.85),
-        (r"minimum\s*(?:of)?\s*(\d+)\s*years?", 0.82),
-        (r"min\s*(\d+)\s*years?", 0.78),
-        (r"(\d+)\s*\+?\s*years?", 0.72),
-        (r"(\d+)\s*-\s*(\d+)\s*years?", 0.7),
-        (r"(\d+)\s*to\s*(\d+)\s*years?", 0.7),
+        (r"at least\s*(\d+)\s*years?", 0.88),
+        (r"minimum\s*(?:of)?\s*(\d+)\s*years?", 0.86),
+        (r"min(?:imum)?\s*(\d+)\s*years?", 0.84),
+        (r"(\d+)\s*\+?\s*years?", 0.78),
+        (r"(\d+)\s*-\s*(\d+)\s*years?", 0.76),
+        (r"(\d+)\s*to\s*(\d+)\s*years?", 0.76),
+        (r"(\d+)\s*yrs?", 0.74),
+        (r"(\d+)\s*years?\s*experience", 0.82),
+        (r"(\d+)\s*months?", 0.55),
+        (r"(\d+)\s*-\s*(\d+)\s*months?", 0.5),
     ]
 
     candidates: List[Dict[str, Any]] = []
@@ -90,6 +94,8 @@ def extract_experience_years_detailed(text: str) -> Dict[str, Any] | None:
             if not nums:
                 continue
             value = min(nums)
+            if "month" in match.group(0):
+                value = max(1, round(value / 12))
             window = lowered[max(0, match.start() - 40) : match.end() + 40]
             confidence = min(base_conf + _score_modifier(window), 0.9)
             candidates.append(
@@ -141,10 +147,23 @@ def classify_seniority_detailed(
 
     # Title keyword cues
     title_keywords = [
-        ("Executive", ["executive", "c-level", "chief", "vp", "vice president"], 0.9),
-        ("Executive", ["director", "head of", "principal"], 0.85),
-        ("Senior", ["senior", "lead", "sr.", "sr "], 0.8),
-        ("Senior", ["manager", "supervisor"], 0.75),
+        (
+            "Executive",
+            [
+                "executive",
+                "c-level",
+                "chief",
+                "vp",
+                "vice president",
+                "founder",
+                "co-founder",
+            ],
+            0.9,
+        ),
+        ("Executive", ["director", "head of", "principal", "partner"], 0.85),
+        ("Senior", ["senior", "lead", "sr.", "sr ", "staff", "architect"], 0.8),
+        ("Senior", ["manager", "supervisor", "consultant", "specialist"], 0.75),
+        ("Mid-Level", ["associate", "intermediate", "mid-level", "mid level"], 0.65),
         (
             "Entry",
             ["junior", "entry", "intern", "graduate", "trainee", "assistant"],
@@ -199,12 +218,15 @@ def extract_task_statements(text: str) -> list[dict]:
     verbs = {
         "analyze",
         "build",
+        "configure",
         "design",
         "develop",
+        "deploy",
         "maintain",
         "manage",
         "coordinate",
         "deliver",
+        "document",
         "monitor",
         "support",
         "implement",
@@ -213,6 +235,13 @@ def extract_task_statements(text: str) -> list[dict]:
         "review",
         "test",
         "collaborate",
+        "evaluate",
+        "research",
+        "troubleshoot",
+        "operate",
+        "own",
+        "lead",
+        "improve",
     }
 
     candidates = []
