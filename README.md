@@ -24,6 +24,26 @@ A starter scaffold for a system that:
 3. Visit FastAPI docs: http://localhost:8000/docs
 4. Visit Metabase: http://localhost:3000 (create admin, add Postgres using env values).
 
+## Local dev (no Docker)
+1. Copy `.env.example` to `.env` and adjust values.
+2. Create the virtual environment and install deps:
+   - `python3.11 -m venv backend/venv3.11`
+   - `backend/venv3.11/bin/pip install -r backend/requirements.txt`
+3. Run the dev helper:
+   - `./scripts/dev-start.sh`
+4. Open:
+   - Frontend: http://127.0.0.1:5173
+   - API docs: http://127.0.0.1:8000/docs
+5. SQLite vs Postgres:
+   - Use SQLite for quick local dev: set `USE_POSTGRES=false` or `DATABASE_URL=sqlite:///./var/nextstep.sqlite` in `.env`.
+   - Use Postgres: set `DATABASE_URL=postgresql://user:pass@localhost:5432/nextstep` (and ensure Postgres is running).
+
+## Troubleshooting (local dev)
+- Missing `.env`: copy from `.env.example` in the repo root.
+- Backend venv missing: create it at `backend/venv3.11` and install `backend/requirements.txt`.
+- SQLite file path errors: ensure `DATABASE_URL` uses `sqlite:///./var/nextstep.sqlite` or an absolute path.
+- Postgres connection errors: confirm Postgres is running and `DATABASE_URL` credentials are correct.
+
 ## Data model (simplified)
 See `backend/app/models/` for SQLAlchemy models. Key tables:
 - `job_post`, `organization`, `location`, `title_norm`, `skill`, `job_skill`
