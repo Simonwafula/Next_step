@@ -20,9 +20,7 @@ def get_session(retries: int = 3, backoff: float = 0.3) -> requests.Session:
     """
     session = requests.Session()
     retry_strategy = Retry(
-        total=retries,
-        backoff_factor=backoff,
-        status_forcelist=[500, 502, 503, 504]
+        total=retries, backoff_factor=backoff, status_forcelist=[500, 502, 503, 504]
     )
     adapter = HTTPAdapter(max_retries=retry_strategy)
     session.mount("http://", adapter)
@@ -32,7 +30,9 @@ def get_session(retries: int = 3, backoff: float = 0.3) -> requests.Session:
 
 @sleep_and_retry
 @limits(calls=REQUESTS_PER_MINUTE, period=ONE_MINUTE)
-def rate_limited_get(session: requests.Session, url: str, **kwargs) -> requests.Response:
+def rate_limited_get(
+    session: requests.Session, url: str, **kwargs
+) -> requests.Response:
     """
     Perform a GET request using the provided session, obeying rate limits.
     Raises HTTPError on non-200.

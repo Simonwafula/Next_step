@@ -14,6 +14,8 @@ const recommendationsList = document.getElementById('recommendationsList');
 const savedJobsList = document.getElementById('savedJobsList');
 const applicationsList = document.getElementById('applicationsList');
 const notificationsList = document.getElementById('notificationsList');
+const marketPulseList = document.getElementById('marketPulseList');
+const roleEvolutionList = document.getElementById('roleEvolutionList');
 
 const adviceForm = document.getElementById('adviceForm');
 const adviceQuery = document.getElementById('adviceQuery');
@@ -183,6 +185,40 @@ const boot = async () => {
             })),
             'No notifications yet.'
         );
+
+        if (marketPulseList || roleEvolutionList) {
+            const [skillTrends, roleEvolution] = await Promise.all([
+                requestJson(`${apiBase}/analytics/skill-trends?months=3&limit=5`).catch(() => ({ items: [] })),
+                requestJson(`${apiBase}/analytics/role-evolution?months=3&limit=5`).catch(() => ({ items: [] })),
+            ]);
+
+            if (marketPulseList) {
+                renderList(
+                    marketPulseList,
+                    (skillTrends.items || []).map((item) => ({
+                        title: item.skill,
+                        subtitle: `${item.role_family || 'all roles'} · ${item.count} mentions`,
+                        link: null,
+                    })),
+                    'No market trends yet.'
+                );
+            }
+
+            if (roleEvolutionList) {
+                renderList(
+                    roleEvolutionList,
+                    (roleEvolution.items || []).map((item) => {
+                        const skills = item.top_skills ? Object.keys(item.top_skills).slice(0, 3) : [];
+                        return {
+                            title: item.role_family || 'role family',
+                            subtitle: skills.length ? `Top skills: ${skills.join(', ')}` : 'No skills captured',
+                            link: null,
+                        };
+                    }),
+                    'No role evolution data yet.'
+                );
+            }
+        }
 
         if (adviceForm && isPaid) {
             adviceForm.addEventListener('submit', async (event) => {

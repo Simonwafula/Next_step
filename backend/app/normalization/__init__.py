@@ -4,7 +4,11 @@ from .companies import normalize_company_name
 from .locations import normalize_location
 from .parsers import parse_salary, parse_date
 from .dedupe import Deduplicator, is_near_duplicate
-from .extractors import extract_education_level, extract_experience_years, classify_seniority
+from .extractors import (
+    extract_education_level,
+    extract_experience_years,
+    classify_seniority,
+)
 
 __all__ = [
     "normalize_title",
@@ -19,5 +23,5 @@ __all__ = [
     "is_near_duplicate",
     "extract_education_level",
     "extract_experience_years",
-    "classify_seniority"
+    "classify_seniority",
 ]

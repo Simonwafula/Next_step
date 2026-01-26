@@ -24,3 +24,49 @@ Each session appends:
   - backend/venv3.11/bin/pytest -q
   - backend/venv3.11/bin/ruff check .
 - next step: T-100 (Normalization pipeline). Verify jobs_normalized table and fill gaps in company/location normalization.
+## 2026-01-25 19:57 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-000-scan-reconcile
+- last commit: 60c552da258bf567a7724a552a20ba1be0574d8c
+- DONE:
+  - Scoped T-403/T-500/T-600 work in changemap and docs
+  - Added runbook draft and referenced it from operations
+  - Updated feature and ingestion workflow docs for upcoming analytics/signals/hardening
+- IN_PROGRESS:
+  - T-403 dashboards endpoints
+  - T-500 to T-503 signals pipeline
+  - T-601 to T-604 hardening
+- BLOCKED: None
+- commands run:
+  - rg --files
+  - rg -n "T\\d{3}" -S
+  - sed -n '1,240p' changemap.md
+  - date +%Y-%m-%d
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+  - git status -sb
+  - git rev-parse HEAD
+- next step: Implement T-403 dashboard endpoints and wire analytics API contracts.
+## 2026-01-25 20:24 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-403-analytics-signals
+- last commit: 60c552da258bf567a7724a552a20ba1be0574d8c
+- DONE:
+  - Added analytics read endpoints and wired admin/user dashboards
+  - Added tender/task signals scaffolding and incremental ingestion state tracking
+  - Added drift check API + CLI command and runbook updates
+- IN_PROGRESS:
+  - T-403d analytics endpoint tests
+  - T-601c incremental dedupe/embeddings refresh
+  - T-602c alerting hooks
+- BLOCKED:
+  - ruff check backend: pre-existing lint failures (E402/F401/E712/F541/etc.)
+  - pytest backend: aborts when importing torch in `backend/scripts/smoke_test.py`
+- commands run:
+  - backend/venv3.11/bin/ruff format backend
+  - backend/venv3.11/bin/ruff check backend
+  - backend/venv3.11/bin/pytest backend
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+  - git checkout -b feat/T-403-analytics-signals
+  - git status -sb
+  - git rev-parse HEAD
+- next step: Decide whether to fix repo-wide ruff violations and isolate/skip torch-dependent smoke tests.

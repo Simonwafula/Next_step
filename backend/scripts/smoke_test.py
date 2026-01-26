@@ -254,7 +254,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--api-url",
         default=None,
-        help="API base URL for API tests (e.g., http://localhost:8000)"
+        help="API base URL for API tests (e.g., http://localhost:8000)",
     )
     args = parser.parse_args()
 

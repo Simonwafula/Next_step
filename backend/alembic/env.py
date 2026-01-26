@@ -25,6 +25,7 @@ backend_dir = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(backend_dir))
 
 from app.db.models import Base
+
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
@@ -49,7 +50,7 @@ def run_migrations_offline() -> None:
     url = os.getenv("DATABASE_URL")
     if not url:
         url = config.get_main_option("sqlalchemy.url")
-    
+
     context.configure(
         url=url,
         target_metadata=target_metadata,
@@ -81,9 +82,7 @@ def run_migrations_online() -> None:
     )
 
     with connectable.connect() as connection:
-        context.configure(
-            connection=connection, target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()

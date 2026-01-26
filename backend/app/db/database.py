@@ -9,6 +9,7 @@ DATABASE_URL = settings.DATABASE_URL
 # Support async engines when DATABASE_URL indicates an async dialect
 if "+async" in DATABASE_URL or DATABASE_URL.startswith("sqlite+aiosqlite"):
     from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
+
     engine = create_async_engine(DATABASE_URL, future=True)
     SessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     USE_ASYNC = True
@@ -22,12 +23,15 @@ else:
 if DATABASE_URL.startswith("sqlite"):
     try:
         from .models import Base  # noqa: F401
+
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         import traceback
+
         traceback.print_exc()
         # If model import or create_all fails for any reason, surface the error
         # to aid debugging (tests will still proceed but with missing tables).
+
 
 def init_db():
     # Ensure pgvector extension (Postgres only)
@@ -37,7 +41,9 @@ def init_db():
             conn.commit()
     # Create tables
     from .models import Base  # noqa
+
     Base.metadata.create_all(bind=engine)
+
 
 async def get_db():
     """Async generator that yields a Session compatible with sync + async usage.
@@ -54,6 +60,7 @@ async def get_db():
         def __await__(self):
             async def _wrap():
                 return self._result
+
             return _wrap().__await__()
 
         def __getattr__(self, item):
@@ -82,6 +89,7 @@ async def get_db():
     if DATABASE_URL.startswith("sqlite"):
         try:
             from .models import Base  # noqa: F401
+
             Base.metadata.create_all(bind=engine)
         except Exception:
             pass

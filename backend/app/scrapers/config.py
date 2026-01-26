@@ -5,8 +5,7 @@ import yaml
 
 # Determine path to YAML config (override via JOB_CONFIG env var)
 _CONFIG_PATH = os.getenv(
-    "JOB_CONFIG",
-    os.path.join(os.path.dirname(__file__), "config.yaml")
+    "JOB_CONFIG", os.path.join(os.path.dirname(__file__), "config.yaml")
 )
 
 # Load YAML configuration
@@ -14,18 +13,15 @@ with open(_CONFIG_PATH, "r") as cfg_file:
     _cfg = yaml.safe_load(cfg_file)
 
 # Default settings (can be overridden via environment variables)
-DB_PATH             = os.getenv(
-    "JOB_DB_PATH",
-    _cfg.get("default", {}).get("db_path", "db/jobs.sqlite3")
+DB_PATH = os.getenv(
+    "JOB_DB_PATH", _cfg.get("default", {}).get("db_path", "db/jobs.sqlite3")
 )
-TABLE_NAME          = os.getenv(
-    "JOB_TABLE",
-    _cfg.get("default", {}).get("table_name", "jobs_data")
+TABLE_NAME = os.getenv(
+    "JOB_TABLE", _cfg.get("default", {}).get("table_name", "jobs_data")
 )
-REQUESTS_PER_MINUTE = int(os.getenv(
-    "JOB_RPM",
-    _cfg.get("default", {}).get("requests_per_minute", 60)
-))
+REQUESTS_PER_MINUTE = int(
+    os.getenv("JOB_RPM", _cfg.get("default", {}).get("requests_per_minute", 60))
+)
 
 # Database type configuration
 USE_POSTGRES = os.getenv("USE_POSTGRES", "true").lower() == "true"

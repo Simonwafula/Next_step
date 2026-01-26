@@ -91,6 +91,23 @@ async def update_processing_event_async(
     await _maybe_await(db.commit())
     await _maybe_await(db.refresh(log))
     return log
+
+
+def log_monitoring_event(
+    db: Session,
+    status: str,
+    message: Optional[str] = None,
+    details: Optional[Dict[str, Any]] = None,
+) -> ProcessingLog:
+    return log_processing_event(
+        db,
+        process_type="monitoring",
+        status=status,
+        message=message,
+        details=details,
+    )
+
+
 async def _maybe_await(result: Any) -> Any:
     if hasattr(result, "__await__"):
         return await result

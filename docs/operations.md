@@ -2,6 +2,10 @@
 
 Consolidated documentation.
 
+## Runbook
+
+Operational procedures and triage steps live in `docs/runbook.md`. Keep it in sync with incremental update, monitoring, and regression-test changes (T-601 to T-604).
+
 ## NextStep Career Platform - CyberPanel Deployment Guide
 
 This guide provides deployment instructions for the NextStep Career Platform on a VPS with CyberPanel already configured.

@@ -21,8 +21,7 @@ from pathlib import Path
 
 # Setup logging
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
@@ -60,8 +59,8 @@ def backup_sqlite(db_path: str, output_dir: Path, compress: bool = False) -> Pat
         compressed_path = backup_path.with_suffix(".sqlite.gz")
         logger.info(f"Compressing backup to: {compressed_path}")
 
-        with open(backup_path, 'rb') as f_in:
-            with gzip.open(compressed_path, 'wb') as f_out:
+        with open(backup_path, "rb") as f_in:
+            with gzip.open(compressed_path, "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
         # Remove uncompressed backup
@@ -72,7 +71,9 @@ def backup_sqlite(db_path: str, output_dir: Path, compress: bool = False) -> Pat
     return backup_path
 
 
-def backup_postgres(database_url: str, output_dir: Path, compress: bool = False) -> Path:
+def backup_postgres(
+    database_url: str, output_dir: Path, compress: bool = False
+) -> Path:
     """
     Backup PostgreSQL database using pg_dump.
 
@@ -93,6 +94,7 @@ def backup_postgres(database_url: str, output_dir: Path, compress: bool = False)
     # Parse database URL
     # postgresql://user:pass@host:port/dbname
     from urllib.parse import urlparse
+
     parsed = urlparse(database_url)
 
     env = os.environ.copy()
@@ -101,12 +103,18 @@ def backup_postgres(database_url: str, output_dir: Path, compress: bool = False)
 
     pg_dump_args = [
         "pg_dump",
-        "-h", parsed.hostname or "localhost",
-        "-p", str(parsed.port or 5432),
-        "-U", parsed.username or "postgres",
-        "-d", parsed.path.lstrip("/"),
-        "-F", "p",  # Plain text format
-        "-f", str(backup_path)
+        "-h",
+        parsed.hostname or "localhost",
+        "-p",
+        str(parsed.port or 5432),
+        "-U",
+        parsed.username or "postgres",
+        "-d",
+        parsed.path.lstrip("/"),
+        "-F",
+        "p",  # Plain text format
+        "-f",
+        str(backup_path),
     ]
 
     try:
@@ -119,8 +127,8 @@ def backup_postgres(database_url: str, output_dir: Path, compress: bool = False)
         compressed_path = backup_path.with_suffix(".sql.gz")
         logger.info(f"Compressing backup to: {compressed_path}")
 
-        with open(backup_path, 'rb') as f_in:
-            with gzip.open(compressed_path, 'wb') as f_out:
+        with open(backup_path, "rb") as f_in:
+            with gzip.open(compressed_path, "wb") as f_out:
                 shutil.copyfileobj(f_in, f_out)
 
         backup_path.unlink()
@@ -141,7 +149,7 @@ def cleanup_old_backups(output_dir: Path, keep_count: int = 10):
     backup_files = sorted(
         [f for f in output_dir.glob("nextstep_backup_*")],
         key=lambda x: x.stat().st_mtime,
-        reverse=True
+        reverse=True,
     )
 
     if len(backup_files) > keep_count:
@@ -156,24 +164,19 @@ def main():
         "--output-dir",
         type=Path,
         default=Path("backups"),
-        help="Directory to save backups (default: ./backups)"
+        help="Directory to save backups (default: ./backups)",
     )
     parser.add_argument(
-        "--compress",
-        action="store_true",
-        help="Compress backup with gzip"
+        "--compress", action="store_true", help="Compress backup with gzip"
     )
     parser.add_argument(
-        "--keep",
-        type=int,
-        default=10,
-        help="Number of backups to keep (default: 10)"
+        "--keep", type=int, default=10, help="Number of backups to keep (default: 10)"
     )
     parser.add_argument(
         "--database-url",
         type=str,
         default=None,
-        help="Database URL (overrides DATABASE_URL env var)"
+        help="Database URL (overrides DATABASE_URL env var)",
     )
 
     args = parser.parse_args()
@@ -183,7 +186,9 @@ def main():
 
     # Get database URL
     database_url = args.database_url or get_database_url()
-    logger.info(f"Database type: {'SQLite' if 'sqlite' in database_url else 'PostgreSQL'}")
+    logger.info(
+        f"Database type: {'SQLite' if 'sqlite' in database_url else 'PostgreSQL'}"
+    )
 
     try:
         if database_url.startswith("sqlite"):

@@ -21,6 +21,8 @@
 - Personalized recommendations (basic matching; deeper personalization pending).
 - Automated workflows and scrapers (operational but needs broader coverage).
 - Notifications (email/WhatsApp hooks exist; delivery logic is stubbed).
+- Analytics dashboards endpoints for admin/user views (T-403).
+- Incremental ingestion updates and drift monitoring (T-601/T-602).
 
 ## Planned / Future
 - Full NLP skill extraction and richer role matching.
@@ -29,6 +31,8 @@
 - Advanced analytics dashboards and benchmarking (Metabase + LMI).
 - Expanded data sources (private sector boards, international roles).
 - Subscription billing and premium tiers.
+- Signals pipeline (tenders, task→role mapping, hiring signals, evidence tracking).
+- Regression tests and operational runbook hardening.
 
 ## Proposed / Under Consideration
 - Source health monitoring with uptime checks, change detection, and auto-disable on repeated failures.

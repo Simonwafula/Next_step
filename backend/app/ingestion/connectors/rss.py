@@ -5,6 +5,7 @@ from datetime import datetime
 import httpx
 import re
 
+
 def ingest_rss(db: Session, **src) -> int:
     url = src.get("url")
     org_name = src.get("org")
@@ -20,7 +21,9 @@ def ingest_rss(db: Session, **src) -> int:
         org = db.query(Organization).filter(Organization.name == org_name).one_or_none()
         if not org:
             org = Organization(name=org_name, verified=False)
-            db.add(org); db.commit(); db.refresh(org)
+            db.add(org)
+            db.commit()
+            db.refresh(org)
     else:
         org = None
 
@@ -37,7 +40,8 @@ def ingest_rss(db: Session, **src) -> int:
         existing = db.query(JobPost).filter(JobPost.url == jurl).one_or_none()
         if existing:
             existing.last_seen = datetime.utcnow()
-            db.add(existing); continue
+            db.add(existing)
+            continue
 
         jp = JobPost(
             source="rss",
@@ -46,7 +50,8 @@ def ingest_rss(db: Session, **src) -> int:
             org_id=org.id if org else None,
             description_raw="",
         )
-        db.add(jp); added += 1
+        db.add(jp)
+        added += 1
 
     db.commit()
     return added

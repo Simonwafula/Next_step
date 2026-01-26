@@ -1,5 +1,6 @@
 # Very lightweight patterns; extend with NLP later
 import re
+
 SKILL_PATTERNS = {
     "sql": [" sql", "postgres", "mysql", "sqlserver", "tsql", "sqlite"],
     "python": [" python", "pandas", "numpy", "scikit-learn", "sklearn"],
@@ -29,7 +30,12 @@ SKILL_PATTERNS = {
     "accounting": [" accounting", "bookkeeping", "ifrs"],
     "finance": [" finance", "financial analysis", "budgeting"],
     "hr": [" human resources", "hr", "talent acquisition", "recruitment"],
-    "monitoring & evaluation": [" m&e", " monitoring and evaluation", " results framework", " logframe"],
+    "monitoring & evaluation": [
+        " m&e",
+        " monitoring and evaluation",
+        " results framework",
+        " logframe",
+    ],
     "procurement": [" procurement", "supply chain", "tendering"],
     "logistics": [" logistics", "inventory", "warehouse"],
     "healthcare": [" nursing", "clinical", "public health"],
@@ -64,6 +70,7 @@ def extract_skill_phrases(text: str) -> list[str]:
                     found.append(cleaned)
     return found
 
+
 def extract_skills(text: str) -> list[str]:
     t = (text or "").lower()
     found = []
@@ -86,7 +93,11 @@ def update_skill_mappings(new_mappings: dict) -> None:
     for k, needles in (new_mappings or {}).items():
         if k in SKILL_PATTERNS:
             existing = set(SKILL_PATTERNS[k])
-            existing.update(needles if isinstance(needles, (list, tuple)) else [needles])
+            existing.update(
+                needles if isinstance(needles, (list, tuple)) else [needles]
+            )
             SKILL_PATTERNS[k] = list(existing)
         else:
-            SKILL_PATTERNS[k] = list(needles) if isinstance(needles, (list, tuple)) else [needles]
+            SKILL_PATTERNS[k] = (
+                list(needles) if isinstance(needles, (list, tuple)) else [needles]
+            )

@@ -29,7 +29,9 @@ def send_email(to_address: str, subject: str, body: str) -> bool:
         return False
 
 
-def send_password_reset_email(to_address: str, reset_url: str, expires_minutes: int) -> bool:
+def send_password_reset_email(
+    to_address: str, reset_url: str, expires_minutes: int
+) -> bool:
     subject = "Reset your password"
     body = (
         "We received a request to reset your password.\\n\\n"

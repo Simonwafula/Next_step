@@ -4,11 +4,7 @@ import warnings
 from urllib3.exceptions import NotOpenSSLWarning
 
 # Suppress only the LibreSSL/OpenSSL compatibility warning before any urllib3 imports
-warnings.filterwarnings(
-    "ignore",
-    category=NotOpenSSLWarning,
-    module="urllib3"
-)
+warnings.filterwarnings("ignore", category=NotOpenSSLWarning, module="urllib3")
 
 import argparse
 import logging
@@ -20,9 +16,9 @@ from dataclasses import dataclass
 
 # Absolute imports assuming `scrapers/` is on PYTHONPATH
 from scrapers.config import SITES, get_site_cfg, USE_POSTGRES
-from scrapers.db     import Database
+from scrapers.db import Database
 from scrapers.postgres_db import PostgresJobDatabase
-from scrapers.utils  import get_session, rate_limited_get
+from scrapers.utils import get_session, rate_limited_get
 
 # Suppress generic InsecureRequestWarning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
@@ -49,10 +45,10 @@ class JobListing:
 class SiteSpider:
     def __init__(self, site_name: str):
         cfg = get_site_cfg(site_name)
-        self.base_url    = cfg["base_url"]
-        self.list_path   = cfg["listing_path"]
-        self.list_sel    = cfg["listing_selector"]
-        self.title_attr  = cfg["title_attribute"]
+        self.base_url = cfg["base_url"]
+        self.list_path = cfg["listing_path"]
+        self.list_sel = cfg["listing_selector"]
+        self.title_attr = cfg["title_attribute"]
         self.content_sel = cfg["content_selector"]
 
         self.session = get_session()
@@ -74,7 +70,7 @@ class SiteSpider:
         soup = BeautifulSoup(html, "html.parser")
         for a in soup.select(self.list_sel):
             title = (a.get(self.title_attr) or a.get_text()).strip()
-            href  = a.get("href", "")
+            href = a.get("href", "")
             if href:
                 yield title, urljoin(self.base_url, href)
 
@@ -93,7 +89,9 @@ class SiteSpider:
             url = self.base_url + self.list_path.format(page=page)
             resp = self.fetch(url)
             if not resp or resp.status_code != 200:
-                logging.info(f"Stopping at page {page} (HTTP {resp.status_code if resp else 'error'})")
+                logging.info(
+                    f"Stopping at page {page} (HTTP {resp.status_code if resp else 'error'})"
+                )
                 break
 
             html = resp.text
@@ -106,12 +104,18 @@ class SiteSpider:
             jobs.extend(listings)
             page += 1
 
-        logging.info(f"Total pages scraped: {page-1}, total jobs collected: {len(jobs)}")
+        logging.info(
+            f"Total pages scraped: {page - 1}, total jobs collected: {len(jobs)}"
+        )
 
         def worker(item):
             title, link = item
             resp = self.fetch(link)
-            content = self.parse_content(resp.text) if resp and resp.status_code == 200 else ""
+            content = (
+                self.parse_content(resp.text)
+                if resp and resp.status_code == 200
+                else ""
+            )
             return (title, link, content)
 
         with ThreadPoolExecutor(max_workers=5) as executor:

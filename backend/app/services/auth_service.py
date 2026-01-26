@@ -14,14 +14,17 @@ from ..db.models import User, UserProfile
 from ..db.database import get_db
 from ..core.config import settings
 
+
 def _password_schemes():
     try:
         import bcrypt as _bcrypt  # noqa: F401
+
         if not getattr(_bcrypt, "__about__", None):
             raise RuntimeError("bcrypt metadata unavailable")
         return ["bcrypt", "pbkdf2_sha256"]
     except Exception:
         return ["pbkdf2_sha256"]
+
 
 # Password hashing
 pwd_context = CryptContext(schemes=_password_schemes(), deprecated="auto")
@@ -36,19 +39,22 @@ PASSWORD_RESET_EXPIRE_MINUTES = settings.PASSWORD_RESET_EXPIRE_MINUTES
 # auto_error=False allows get_current_user_optional to work for unauthenticated users
 security = HTTPBearer(auto_error=False)
 
+
 class AuthService:
     def __init__(self):
         self.pwd_context = pwd_context
-    
+
     def verify_password(self, plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash."""
         return self.pwd_context.verify(plain_password, hashed_password)
-    
+
     def get_password_hash(self, password: str) -> str:
         """Hash a password."""
         return self.pwd_context.hash(password)
-    
-    def create_access_token(self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None) -> str:
+
+    def create_access_token(
+        self, data: Dict[str, Any], expires_delta: Optional[timedelta] = None
+    ) -> str:
         """Create a JWT access token."""
         to_encode = data.copy()
         if "sub" in to_encode:
@@ -57,11 +63,11 @@ class AuthService:
             expire = datetime.utcnow() + expires_delta
         else:
             expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
-        
+
         to_encode.update({"exp": expire, "type": "access"})
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
-    
+
     def create_refresh_token(self, data: Dict[str, Any]) -> str:
         """Create a JWT refresh token."""
         to_encode = data.copy()
@@ -71,7 +77,7 @@ class AuthService:
         to_encode.update({"exp": expire, "type": "refresh"})
         encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=ALGORITHM)
         return encoded_jwt
-    
+
     def verify_token(self, token: str) -> Dict[str, Any]:
         """Verify and decode a JWT token."""
         try:
@@ -104,18 +110,20 @@ class AuthService:
                 detail="Invalid reset token",
             )
         return payload
-    
+
     def get_user_by_email(self, db: Session, email: str) -> Optional[User]:
         """Get user by email."""
         stmt = select(User).where(User.email == email)
         return db.execute(stmt).scalar_one_or_none()
-    
+
     def get_user_by_id(self, db: Session, user_id: int) -> Optional[User]:
         """Get user by ID."""
         stmt = select(User).where(User.id == user_id)
         return db.execute(stmt).scalar_one_or_none()
-    
-    def authenticate_user(self, db: Session, email: str, password: str) -> Optional[User]:
+
+    def authenticate_user(
+        self, db: Session, email: str, password: str
+    ) -> Optional[User]:
         """Authenticate a user with email and password."""
         user = self.get_user_by_email(db, email)
         if not user:
@@ -123,17 +131,24 @@ class AuthService:
         if not self.verify_password(password, user.hashed_password):
             return None
         return user
-    
-    def create_user(self, db: Session, email: str, password: str, full_name: str, 
-                   phone: Optional[str] = None, whatsapp_number: Optional[str] = None) -> User:
+
+    def create_user(
+        self,
+        db: Session,
+        email: str,
+        password: str,
+        full_name: str,
+        phone: Optional[str] = None,
+        whatsapp_number: Optional[str] = None,
+    ) -> User:
         """Create a new user."""
         # Check if user already exists
         if self.get_user_by_email(db, email):
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email already registered"
+                detail="Email already registered",
             )
-        
+
         # Create user
         hashed_password = self.get_password_hash(password)
         user = User(
@@ -145,13 +160,13 @@ class AuthService:
             whatsapp_number=whatsapp_number or phone,
             is_active=True,
             is_verified=False,
-            subscription_tier="basic"
+            subscription_tier="basic",
         )
-        
+
         db.add(user)
         db.commit()
         db.refresh(user)
-        
+
         # Create user profile
         profile = UserProfile(
             user_id=user.id,
@@ -159,40 +174,40 @@ class AuthService:
             job_alert_preferences={
                 "enabled": True,
                 "frequency": "daily",
-                "methods": ["email"]
+                "methods": ["email"],
             },
             notification_preferences={
                 "job_alerts": True,
                 "career_advice": True,
-                "marketing": False
+                "marketing": False,
             },
             privacy_settings={
                 "profile_public": False,
-                "show_salary_expectations": False
-            }
+                "show_salary_expectations": False,
+            },
         )
-        
+
         db.add(profile)
         db.commit()
         db.refresh(profile)
-        
+
         return user
-    
+
     def _calculate_initial_completeness(self, user: User) -> float:
         """Calculate initial profile completeness."""
         completeness = 0.0
         total_fields = 8
-        
+
         if user.full_name:
             completeness += 1
         if user.email:
             completeness += 1
         if user.phone:
             completeness += 1
-        
+
         # Other fields will be added when profile is updated
         return (completeness / total_fields) * 100
-    
+
     def update_last_login(self, db: Session, user: User):
         """Update user's last login timestamp."""
         user.last_login = datetime.utcnow()
@@ -203,8 +218,10 @@ class AuthService:
         user.hashed_password = self.get_password_hash(new_password)
         db.commit()
 
+
 # Global auth service instance
 auth_service = AuthService()
+
 
 def is_admin_user(user: User) -> bool:
     admin_emails = {
@@ -216,10 +233,11 @@ def is_admin_user(user: User) -> bool:
         return False
     return user.email.lower() in admin_emails
 
+
 # Dependency to get current user
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> User:
     """Get current authenticated user."""
     if not credentials:
@@ -230,7 +248,7 @@ async def get_current_user(
         )
     token = credentials.credentials
     payload = auth_service.verify_token(token)
-    
+
     user_id_raw = payload.get("sub")
     if user_id_raw is None:
         raise HTTPException(
@@ -246,7 +264,7 @@ async def get_current_user(
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     user = auth_service.get_user_by_id(db, user_id=user_id)
     if user is None:
         raise HTTPException(
@@ -254,55 +272,61 @@ async def get_current_user(
             detail="Could not validate credentials",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    
+
     if not user.is_active:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Inactive user"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Inactive user"
         )
-    
+
     return user
+
 
 # Optional dependency for routes that work with or without authentication
 async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Optional[User]:
     """Get current user if authenticated, None otherwise."""
     if not credentials:
         return None
-    
+
     try:
         return await get_current_user(credentials, db)
     except HTTPException:
         return None
 
+
 # Dependency to check subscription tier
 def require_subscription(required_tier: str = "professional"):
     """Dependency to check if user has required subscription tier."""
-    async def check_subscription(current_user: User = Depends(get_current_user)) -> User:
+
+    async def check_subscription(
+        current_user: User = Depends(get_current_user),
+    ) -> User:
         tier_hierarchy = {"basic": 0, "professional": 1, "enterprise": 2}
-        
+
         user_tier_level = tier_hierarchy.get(current_user.subscription_tier, 0)
         required_tier_level = tier_hierarchy.get(required_tier, 1)
-        
+
         if user_tier_level < required_tier_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"This feature requires {required_tier} subscription"
+                detail=f"This feature requires {required_tier} subscription",
             )
-        
+
         # Check if subscription is still valid
-        if (current_user.subscription_expires and 
-            current_user.subscription_expires < datetime.utcnow()):
+        if (
+            current_user.subscription_expires
+            and current_user.subscription_expires < datetime.utcnow()
+        ):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Subscription has expired"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Subscription has expired"
             )
-        
+
         return current_user
-    
+
     return check_subscription
+
 
 # Dependency to enforce admin access
 def require_admin():
@@ -313,6 +337,7 @@ def require_admin():
                 detail="Admin access required",
             )
         return current_user
+
     return check_admin
 
 
@@ -322,7 +347,7 @@ def verify_api_key(api_key: str) -> bool:
     Verify API key against configured admin API key.
     Uses constant-time comparison to prevent timing attacks.
     """
-    configured_key = getattr(settings, 'ADMIN_API_KEY', None)
+    configured_key = getattr(settings, "ADMIN_API_KEY", None)
     if not configured_key:
         return False
 
@@ -332,7 +357,7 @@ def verify_api_key(api_key: str) -> bool:
 
 async def get_api_key_user(
     x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ) -> Optional[User]:
     """
     Authenticate via API key header for admin access.
@@ -365,14 +390,16 @@ def require_admin_or_api_key():
     Useful for admin endpoints that need to be accessible by both
     logged-in admins and automated scripts.
     """
+
     async def check_auth(
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
         x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
-        db: Session = Depends(get_db)
+        db: Session = Depends(get_db),
     ):
         # Try API key auth first
         if x_api_key:
             if verify_api_key(x_api_key):
+
                 class APIKeyUser:
                     id = 0
                     uuid = "api-key-admin"
@@ -382,10 +409,10 @@ def require_admin_or_api_key():
                     is_verified = True
                     subscription_tier = "enterprise"
                     subscription_expires = None
+
                 return APIKeyUser()
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid API key"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key"
             )
 
         # Fall back to JWT auth
@@ -399,8 +426,7 @@ def require_admin_or_api_key():
         user = await get_current_user(credentials, db)
         if not is_admin_user(user):
             raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Admin access required"
+                status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"
             )
         return user
 

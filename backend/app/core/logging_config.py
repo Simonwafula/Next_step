@@ -4,6 +4,7 @@ Structured logging configuration for the application.
 Provides JSON-formatted logs for production and human-readable logs for development.
 Includes request ID tracing for correlating logs across a request lifecycle.
 """
+
 import logging
 import sys
 import json
@@ -66,10 +67,10 @@ class ColoredFormatter(logging.Formatter):
     """Colored console formatter for development."""
 
     COLORS = {
-        "DEBUG": "\033[36m",     # Cyan
-        "INFO": "\033[32m",      # Green
-        "WARNING": "\033[33m",   # Yellow
-        "ERROR": "\033[31m",     # Red
+        "DEBUG": "\033[36m",  # Cyan
+        "INFO": "\033[32m",  # Green
+        "WARNING": "\033[33m",  # Yellow
+        "ERROR": "\033[31m",  # Red
         "CRITICAL": "\033[35m",  # Magenta
     }
     RESET = "\033[0m"
@@ -200,7 +201,7 @@ async def logging_middleware(request, call_next):
         logger.error(
             f"Request failed: {request.method} {request.url.path} "
             f"error={str(e)} duration={duration_ms:.2f}ms",
-            exc_info=True
+            exc_info=True,
         )
         raise
     finally:

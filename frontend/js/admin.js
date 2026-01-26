@@ -17,6 +17,10 @@ const adminGateMessage = document.getElementById('adminGateMessage');
 const adminSignOut = document.getElementById('adminSignOut');
 const adminActionProgress = document.getElementById('adminActionProgress');
 const adminActionLabel = document.getElementById('adminActionLabel');
+const adminSkillTrends = document.getElementById('adminSkillTrends');
+const adminRoleEvolution = document.getElementById('adminRoleEvolution');
+const adminSkillTrendsNote = document.getElementById('adminSkillTrendsNote');
+const adminDriftSummary = document.getElementById('adminDriftSummary');
 const summaryDimension = document.getElementById('summaryDimension');
 const summaryTableBody = document.getElementById('summaryTableBody');
 const summaryModal = document.getElementById('summaryModal');
@@ -216,6 +220,91 @@ const renderSourceList = (sources) => {
             `
         )
         .join('');
+};
+
+const renderAnalyticsList = (target, items, emptyMessage) => {
+    if (!target) {
+        return;
+    }
+    if (!items.length) {
+        target.innerHTML = `<p class="panel-note">${emptyMessage}</p>`;
+        return;
+    }
+    target.innerHTML = items
+        .map(
+            (item) => `
+                <div class="data-row">
+                    <div>
+                        <strong>${item.title}</strong>
+                        <span>${item.subtitle}</span>
+                    </div>
+                    ${item.meta ? `<span class="badge">${item.meta}</span>` : ''}
+                </div>
+            `
+        )
+        .join('');
+};
+
+const renderSkillTrends = (payload) => {
+    const items = (payload?.items || []).map((row) => ({
+        title: row.skill,
+        subtitle: `${row.role_family || 'all roles'} · ${row.count} mentions`,
+        meta: row.month || '',
+    }));
+    renderAnalyticsList(adminSkillTrends, items, 'No skill trends yet.');
+};
+
+const renderRoleEvolution = (payload) => {
+    const items = (payload?.items || []).map((row) => {
+        const topSkills = row.top_skills ? Object.keys(row.top_skills).slice(0, 3) : [];
+        return {
+            title: row.role_family || 'role family',
+            subtitle: topSkills.length ? `Top skills: ${topSkills.join(', ')}` : 'No skills captured',
+            meta: row.month || '',
+        };
+    });
+    renderAnalyticsList(adminRoleEvolution, items, 'No role evolution data yet.');
+};
+
+const renderDriftSummary = (payload) => {
+    if (!adminDriftSummary) {
+        return;
+    }
+    if (!payload || payload.status !== 'success') {
+        adminDriftSummary.innerHTML = '<p class="panel-note">No drift data available.</p>';
+        return;
+    }
+    adminDriftSummary.innerHTML = `
+        <div class="metric-row">
+            <span>Skill overlap</span>
+            <strong>${Math.round((payload.skills.overlap_ratio || 0) * 100)}%</strong>
+        </div>
+        <div class="metric-row">
+            <span>Title overlap</span>
+            <strong>${Math.round((payload.titles.overlap_ratio || 0) * 100)}%</strong>
+        </div>
+        <div class="metric-row">
+            <span>Salary delta</span>
+            <strong>${payload.salary.delta_ratio === null ? 'n/a' : `${Math.round(payload.salary.delta_ratio * 100)}%`}</strong>
+        </div>
+    `;
+};
+
+const fetchAnalyticsSnapshot = async (token) => {
+    const [skillPayload, evolutionPayload, driftPayload] = await Promise.all([
+        requestJson(`${apiBase}/admin/analytics/skill-trends?months=3&limit=6`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => ({ items: [] })),
+        requestJson(`${apiBase}/admin/analytics/role-evolution?months=3&limit=6`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => ({ items: [] })),
+        requestJson(`${apiBase}/admin/monitoring/drift?recent_days=30&baseline_days=180`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null),
+    ]);
+    renderSkillTrends(skillPayload);
+    renderRoleEvolution(evolutionPayload);
+    renderDriftSummary(driftPayload);
 };
 
 const formatRunTimestamp = (value) => {
@@ -615,6 +704,10 @@ const boot = async () => {
         }
         if (operationsPayload && !operationsPayload.error) {
             renderAutomationActivity(operationsPayload);
+        }
+
+        if (adminSkillTrends || adminRoleEvolution || adminDriftSummary) {
+            await fetchAnalyticsSnapshot(auth.access_token);
         }
 
         if (summaryDimension) {

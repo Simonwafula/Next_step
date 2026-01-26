@@ -46,13 +46,25 @@
 - [x] (T-400) skill trends (`backend/app/services/analytics.py`)
 - [x] (T-401) role evolution (`backend/app/services/analytics.py`)
 - [x] (T-402) adjacency roles (`backend/app/services/analytics.py`)
-- [ ] (T-403) dashboards endpoints
+- [/] (T-403) dashboards endpoints
+  - [x] (T-403a) define analytics read models + API contracts (`backend/app/services/analytics.py`)
+  - [x] (T-403b) add dashboard endpoints (`backend/app/api/admin_routes.py`, `backend/app/api/analytics_routes.py`)
+  - [x] (T-403c) wire admin/user dashboard UI to analytics endpoints (`frontend/js/dashboard-ui.js`, `frontend/js/admin.js`)
+  - [ ] (T-403d) dashboard endpoint tests (`backend/test_integration.py` or new analytics tests)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
 - [ ] (T-501) task→role mapping
 - [ ] (T-502) likely-hiring signals
 - [ ] (T-503) evidence + confidence tracking
+  - [x] (T-500a) define tender source schema + parser (`backend/app/ingestion/connectors/`, `backend/app/db/models.py`)
+  - [ ] (T-500b) normalize tender metadata + storage (`backend/app/db/models.py`)
+  - [x] (T-501a) task sentence extraction (`backend/app/normalization/extractors.py`)
+  - [x] (T-501b) mapping model/rules + storage (`backend/app/services/signals.py`, `backend/app/db/models.py`)
+  - [/] (T-502a) signal definitions + aggregation (repost_count, velocity, org activity)
+  - [x] (T-502b) API surface for signals (`backend/app/api/admin_routes.py`)
+  - [x] (T-503a) evidence schema + confidence scoring (`backend/app/db/models.py`)
+  - [ ] (T-503b) pipeline logging for evidence links (`backend/app/services/processing_log_service.py`)
 
 ## 6. Hardening (planned)
 - [x] (T-600) orchestration CLI (`backend/cli.py`)
@@ -60,6 +72,16 @@
 - [ ] (T-602) monitoring + drift checks
 - [ ] (T-603) regression tests
 - [ ] (T-604) runbook docs
+  - [x] (T-601a) watermark/state tracking table (`backend/app/db/models.py`)
+  - [x] (T-601b) incremental ingestion runner (`backend/app/ingestion/runner.py`)
+  - [ ] (T-601c) incremental dedupe + embeddings refresh (`backend/app/processors/`, `backend/app/ml/embeddings.py`)
+  - [/] (T-602a) monitoring metrics + thresholds (`backend/app/services/processing_log_service.py`)
+  - [x] (T-602b) drift detection checks (skills, titles, salary) (`backend/app/services/analytics.py`)
+  - [ ] (T-602c) alerting hooks (email/whatsapp) (`backend/app/services/notification_service.py`)
+  - [ ] (T-603a) regression fixture dataset (`data/samples/`)
+  - [ ] (T-603b) regression tests for extraction + analytics (`backend/test_*`)
+  - [x] (T-604a) runbook outline + SOPs (`docs/runbook.md`)
+  - [x] (T-604b) on-call checklist + rollback steps (`docs/operations.md`)
 
 ## 7. Production Readiness (NEW - ML/DB Transition)
 - [x] (T-010-PLAN) Integrate production roadmap into control plane
@@ -93,6 +115,10 @@
   - Implemented `analytics.py` service for skill trends and role evolution.
   - Built `backend/cli.py` orchestration tool for simplified ingestion/processing/analytics.
   - Verified end-to-end flow with a 500-job local smoke test.
+- (T-403/T-500/T-600) Scoped analytics dashboards, signals, and hardening work with file touchpoints.
+- (T-403/T-500/T-600) Implemented analytics read endpoints, tender/task signals scaffolding, and incremental/drift wiring.
+- (BLOCKED) ruff check backend failed with pre-existing lint violations (E402/F401/E712/F541 etc.); next: decide whether to run repo-wide fixes or scope lint to touched files.
+- (BLOCKED) pytest backend aborted importing torch during `backend/scripts/smoke_test.py::test_search_function`; next: isolate torch import or skip embedding-dependent smoke test in CI.
 
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.

@@ -6,11 +6,12 @@ from scrapers.config import DB_PATH, TABLE_NAME
 
 logging.basicConfig(level=logging.INFO)
 
+
 class Database:
     def __init__(self, db_path: str = DB_PATH, table: str = TABLE_NAME):
         self.db_path = db_path
-        self.table   = table
-        self.conn    = None
+        self.table = table
+        self.conn = None
 
     def connect(self):
         # Ensure directory exists
@@ -56,10 +57,13 @@ class Database:
         try:
             for title, link, content in rows:
                 try:
-                    cursor.execute(f"""
+                    cursor.execute(
+                        f"""
                         INSERT OR IGNORE INTO {self.table} (title, full_link, content)
                         VALUES (?, ?, ?)
-                    """, (title, link, content))
+                    """,
+                        (title, link, content),
+                    )
                     if cursor.rowcount:
                         inserted += 1
                 except sqlite3.Error as e:

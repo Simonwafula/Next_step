@@ -14,206 +14,204 @@ import json
 
 logger = logging.getLogger(__name__)
 
+
 class CareerToolsService:
     """
     Service for providing career development tools including CV building,
     cover letter generation, and personalized career advice
     """
-    
+
     def __init__(self):
         # Initialize OpenAI client with environment variables
-        openai.api_key = os.getenv('OPENAI_API_KEY')
-        self.model = os.getenv('OPENAI_MODEL', 'gpt-4o-mini')
-        self.max_tokens = int(os.getenv('OPENAI_MAX_TOKENS', '1000'))
-        self.temperature = float(os.getenv('OPENAI_TEMPERATURE', '0.7'))
-        
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+        self.model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+        self.max_tokens = int(os.getenv("OPENAI_MAX_TOKENS", "1000"))
+        self.temperature = float(os.getenv("OPENAI_TEMPERATURE", "0.7"))
+
         if not openai.api_key:
             logger.warning("OPENAI_API_KEY not found in environment variables")
-        
-    async def generate_cv_content(self, user_data: Dict, target_role: str = None) -> Dict:
+
+    async def generate_cv_content(
+        self, user_data: Dict, target_role: str = None
+    ) -> Dict:
         """
         Generate CV content based on user data and target role
-        
+
         Args:
             user_data: User profile information
             target_role: Optional target role to tailor CV for
-            
+
         Returns:
             Generated CV content with sections
         """
         try:
             # Prepare user information for CV generation
             cv_prompt = self._build_cv_prompt(user_data, target_role)
-            
+
             # Generate CV content using AI (mock implementation for now)
             cv_content = await self._generate_ai_content(cv_prompt, "cv")
-            
+
             # Structure the CV content
             structured_cv = self._structure_cv_content(cv_content, user_data)
-            
+
             # Save generated CV to database
             await self._save_career_document(
-                user_data.get('user_id'),
-                'cv',
-                structured_cv,
-                target_role
+                user_data.get("user_id"), "cv", structured_cv, target_role
             )
-            
+
             return {
                 "success": True,
                 "cv_content": structured_cv,
                 "target_role": target_role,
-                "generated_at": datetime.utcnow()
+                "generated_at": datetime.utcnow(),
             }
-            
+
         except Exception as e:
             logger.error(f"Error generating CV content: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-            
+            return {"success": False, "error": str(e)}
+
     async def generate_cover_letter(self, user_data: Dict, job_data: Dict) -> Dict:
         """
         Generate a personalized cover letter for a specific job
-        
+
         Args:
             user_data: User profile information
             job_data: Job posting information
-            
+
         Returns:
             Generated cover letter content
         """
         try:
             # Build cover letter prompt
             cover_letter_prompt = self._build_cover_letter_prompt(user_data, job_data)
-            
+
             # Generate cover letter using AI
-            cover_letter_content = await self._generate_ai_content(cover_letter_prompt, "cover_letter")
-            
+            cover_letter_content = await self._generate_ai_content(
+                cover_letter_prompt, "cover_letter"
+            )
+
             # Structure the cover letter
-            structured_letter = self._structure_cover_letter(cover_letter_content, user_data, job_data)
-            
+            structured_letter = self._structure_cover_letter(
+                cover_letter_content, user_data, job_data
+            )
+
             # Save generated cover letter
             await self._save_career_document(
-                user_data.get('user_id'),
-                'cover_letter',
+                user_data.get("user_id"),
+                "cover_letter",
                 structured_letter,
-                job_data.get('title')
+                job_data.get("title"),
             )
-            
+
             return {
                 "success": True,
                 "cover_letter": structured_letter,
-                "job_title": job_data.get('title'),
-                "company": job_data.get('company'),
-                "generated_at": datetime.utcnow()
+                "job_title": job_data.get("title"),
+                "company": job_data.get("company"),
+                "generated_at": datetime.utcnow(),
             }
-            
+
         except Exception as e:
             logger.error(f"Error generating cover letter: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-            
-    async def generate_why_work_with_statement(self, user_data: Dict, target_role: str = None) -> Dict:
+            return {"success": False, "error": str(e)}
+
+    async def generate_why_work_with_statement(
+        self, user_data: Dict, target_role: str = None
+    ) -> Dict:
         """
         Generate a "Why Work With Me" statement
-        
+
         Args:
             user_data: User profile information
             target_role: Optional target role context
-            
+
         Returns:
             Generated statement content
         """
         try:
             # Build statement prompt
             statement_prompt = self._build_statement_prompt(user_data, target_role)
-            
+
             # Generate statement using AI
-            statement_content = await self._generate_ai_content(statement_prompt, "statement")
-            
+            statement_content = await self._generate_ai_content(
+                statement_prompt, "statement"
+            )
+
             # Structure the statement
-            structured_statement = self._structure_statement(statement_content, user_data)
-            
+            structured_statement = self._structure_statement(
+                statement_content, user_data
+            )
+
             # Save generated statement
             await self._save_career_document(
-                user_data.get('user_id'),
-                'why_work_with',
+                user_data.get("user_id"),
+                "why_work_with",
                 structured_statement,
-                target_role
+                target_role,
             )
-            
+
             return {
                 "success": True,
                 "statement": structured_statement,
                 "target_role": target_role,
-                "generated_at": datetime.utcnow()
+                "generated_at": datetime.utcnow(),
             }
-            
+
         except Exception as e:
             logger.error(f"Error generating statement: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-            
+            return {"success": False, "error": str(e)}
+
     async def get_career_advice(self, user_data: Dict, query: str) -> Dict:
         """
         Provide personalized career advice based on user profile and query
-        
+
         Args:
             user_data: User profile information
             query: Specific career question or area of interest
-            
+
         Returns:
             Personalized career advice
         """
         try:
             # Build career advice prompt
             advice_prompt = self._build_advice_prompt(user_data, query)
-            
+
             # Generate advice using AI
             advice_content = await self._generate_ai_content(advice_prompt, "advice")
-            
+
             # Structure the advice
             structured_advice = self._structure_advice(advice_content, query)
-            
+
             return {
                 "success": True,
                 "advice": structured_advice,
                 "query": query,
-                "generated_at": datetime.utcnow()
+                "generated_at": datetime.utcnow(),
             }
-            
+
         except Exception as e:
             logger.error(f"Error generating career advice: {e}")
-            return {
-                "success": False,
-                "error": str(e)
-            }
-            
+            return {"success": False, "error": str(e)}
+
     def _build_cv_prompt(self, user_data: Dict, target_role: str = None) -> str:
         """Build prompt for CV generation"""
         prompt = f"""
 Generate a professional CV for the following candidate:
 
 Personal Information:
-- Name: {user_data.get('name', 'N/A')}
-- Email: {user_data.get('email', 'N/A')}
-- Phone: {user_data.get('phone', 'N/A')}
-- Location: {user_data.get('location', 'N/A')}
+- Name: {user_data.get("name", "N/A")}
+- Email: {user_data.get("email", "N/A")}
+- Phone: {user_data.get("phone", "N/A")}
+- Location: {user_data.get("location", "N/A")}
 
 Education:
-{user_data.get('education', 'Not specified')}
+{user_data.get("education", "Not specified")}
 
 Work Experience:
-{user_data.get('experience', 'Not specified')}
+{user_data.get("experience", "Not specified")}
 
 Skills:
-{user_data.get('skills', 'Not specified')}
+{user_data.get("skills", "Not specified")}
 
 {f"Target Role: {target_role}" if target_role else ""}
 
@@ -227,23 +225,23 @@ Please generate a professional CV with the following sections:
 Focus on quantifiable achievements and tailor content for the Kenyan job market.
 """
         return prompt
-        
+
     def _build_cover_letter_prompt(self, user_data: Dict, job_data: Dict) -> str:
         """Build prompt for cover letter generation"""
         prompt = f"""
 Generate a personalized cover letter for the following job application:
 
 Candidate Information:
-- Name: {user_data.get('name', 'N/A')}
-- Background: {user_data.get('background', 'N/A')}
-- Experience: {user_data.get('experience', 'N/A')}
-- Skills: {user_data.get('skills', 'N/A')}
+- Name: {user_data.get("name", "N/A")}
+- Background: {user_data.get("background", "N/A")}
+- Experience: {user_data.get("experience", "N/A")}
+- Skills: {user_data.get("skills", "N/A")}
 
 Job Information:
-- Title: {job_data.get('title', 'N/A')}
-- Company: {job_data.get('company', 'N/A')}
-- Description: {job_data.get('description', 'N/A')}
-- Requirements: {job_data.get('requirements', 'N/A')}
+- Title: {job_data.get("title", "N/A")}
+- Company: {job_data.get("company", "N/A")}
+- Description: {job_data.get("description", "N/A")}
+- Requirements: {job_data.get("requirements", "N/A")}
 
 Please generate a compelling cover letter that:
 1. Shows enthusiasm for the specific role and company
@@ -256,18 +254,18 @@ Please generate a compelling cover letter that:
 The letter should be 3-4 paragraphs long.
 """
         return prompt
-        
+
     def _build_statement_prompt(self, user_data: Dict, target_role: str = None) -> str:
         """Build prompt for "Why Work With Me" statement"""
         prompt = f"""
 Generate a compelling "Why Work With Me" statement for the following professional:
 
 Professional Information:
-- Background: {user_data.get('background', 'N/A')}
-- Experience: {user_data.get('experience', 'N/A')}
-- Skills: {user_data.get('skills', 'N/A')}
-- Achievements: {user_data.get('achievements', 'N/A')}
-- Values: {user_data.get('values', 'N/A')}
+- Background: {user_data.get("background", "N/A")}
+- Experience: {user_data.get("experience", "N/A")}
+- Skills: {user_data.get("skills", "N/A")}
+- Achievements: {user_data.get("achievements", "N/A")}
+- Values: {user_data.get("values", "N/A")}
 
 {f"Target Role Context: {target_role}" if target_role else ""}
 
@@ -283,19 +281,19 @@ Please generate a powerful statement that:
 The statement should be 2-3 paragraphs long and compelling.
 """
         return prompt
-        
+
     def _build_advice_prompt(self, user_data: Dict, query: str) -> str:
         """Build prompt for career advice"""
         prompt = f"""
 Provide personalized career advice for the following professional:
 
 Professional Profile:
-- Background: {user_data.get('background', 'N/A')}
-- Current Role: {user_data.get('current_role', 'N/A')}
-- Experience Level: {user_data.get('experience_level', 'N/A')}
-- Skills: {user_data.get('skills', 'N/A')}
-- Career Goals: {user_data.get('career_goals', 'N/A')}
-- Location: {user_data.get('location', 'Kenya')}
+- Background: {user_data.get("background", "N/A")}
+- Current Role: {user_data.get("current_role", "N/A")}
+- Experience Level: {user_data.get("experience_level", "N/A")}
+- Skills: {user_data.get("skills", "N/A")}
+- Career Goals: {user_data.get("career_goals", "N/A")}
+- Location: {user_data.get("location", "Kenya")}
 
 Career Question/Query:
 {query}
@@ -312,7 +310,7 @@ Please provide specific, actionable career advice that:
 Provide structured advice with clear action items.
 """
         return prompt
-        
+
     async def _generate_ai_content(self, prompt: str, content_type: str) -> str:
         """
         Generate content using AI (mock implementation)
@@ -383,59 +381,61 @@ LONG-TERM PLANNING (1-3 years):
 3. Strategic Networking: Build relationships with decision-makers in your target companies
 
 Remember, career growth is a marathon, not a sprint. Focus on consistent progress and stay adaptable to market changes.
-            """
+            """,
         }
-        
+
         return mock_responses.get(content_type, "Generated content would appear here.")
-        
+
     def _structure_cv_content(self, content: str, user_data: Dict) -> Dict:
         """Structure CV content into organized sections"""
         return {
             "personal_info": {
-                "name": user_data.get('name', ''),
-                "email": user_data.get('email', ''),
-                "phone": user_data.get('phone', ''),
-                "location": user_data.get('location', '')
+                "name": user_data.get("name", ""),
+                "email": user_data.get("email", ""),
+                "phone": user_data.get("phone", ""),
+                "location": user_data.get("location", ""),
             },
             "content": content,
             "sections": [
                 "Professional Summary",
-                "Key Skills", 
+                "Key Skills",
                 "Work Experience",
                 "Education",
-                "Additional Information"
+                "Additional Information",
             ],
             "format": "professional",
-            "length": "2-3 pages"
+            "length": "2-3 pages",
         }
-        
-    def _structure_cover_letter(self, content: str, user_data: Dict, job_data: Dict) -> Dict:
+
+    def _structure_cover_letter(
+        self, content: str, user_data: Dict, job_data: Dict
+    ) -> Dict:
         """Structure cover letter content"""
         return {
             "content": content,
-            "job_title": job_data.get('title', ''),
-            "company": job_data.get('company', ''),
-            "applicant_name": user_data.get('name', ''),
+            "job_title": job_data.get("title", ""),
+            "company": job_data.get("company", ""),
+            "applicant_name": user_data.get("name", ""),
             "date": datetime.utcnow().strftime("%B %d, %Y"),
             "format": "business_letter",
-            "length": "3-4 paragraphs"
+            "length": "3-4 paragraphs",
         }
-        
+
     def _structure_statement(self, content: str, user_data: Dict) -> Dict:
         """Structure "Why Work With Me" statement"""
         return {
             "content": content,
-            "applicant_name": user_data.get('name', ''),
+            "applicant_name": user_data.get("name", ""),
             "focus_areas": [
                 "Unique Value Proposition",
                 "Key Strengths",
                 "Professional Impact",
-                "Future Potential"
+                "Future Potential",
             ],
             "format": "narrative",
-            "length": "2-3 paragraphs"
+            "length": "2-3 paragraphs",
         }
-        
+
     def _structure_advice(self, content: str, query: str) -> Dict:
         """Structure career advice content"""
         return {
@@ -443,18 +443,20 @@ Remember, career growth is a marathon, not a sprint. Focus on consistent progres
             "query": query,
             "categories": [
                 "Immediate Actions",
-                "Medium-term Strategy", 
-                "Long-term Planning"
+                "Medium-term Strategy",
+                "Long-term Planning",
             ],
             "format": "structured_advice",
-            "actionable": True
+            "actionable": True,
         }
-        
-    async def _save_career_document(self, user_id: int, document_type: str, content: Dict, context: str = None):
+
+    async def _save_career_document(
+        self, user_id: int, document_type: str, content: Dict, context: str = None
+    ):
         """Save generated career document to database"""
         if not user_id:
             return
-            
+
         db = SessionLocal()
         try:
             document = CareerDocument(
@@ -462,7 +464,7 @@ Remember, career growth is a marathon, not a sprint. Focus on consistent progres
                 document_type=document_type,
                 content=json.dumps(content),
                 context=context,
-                created_at=datetime.utcnow()
+                created_at=datetime.utcnow(),
             )
             db.add(document)
             db.commit()
@@ -472,34 +474,37 @@ Remember, career growth is a marathon, not a sprint. Focus on consistent progres
             db.rollback()
         finally:
             db.close()
-            
-    async def get_user_documents(self, user_id: int, document_type: str = None) -> List[Dict]:
+
+    async def get_user_documents(
+        self, user_id: int, document_type: str = None
+    ) -> List[Dict]:
         """Get saved career documents for a user"""
         db = SessionLocal()
         try:
             query = db.query(CareerDocument).filter(CareerDocument.user_id == user_id)
-            
+
             if document_type:
                 query = query.filter(CareerDocument.document_type == document_type)
-                
+
             documents = query.order_by(CareerDocument.created_at.desc()).all()
-            
+
             return [
                 {
                     "id": doc.id,
                     "document_type": doc.document_type,
                     "content": json.loads(doc.content),
                     "context": doc.context,
-                    "created_at": doc.created_at
+                    "created_at": doc.created_at,
                 }
                 for doc in documents
             ]
-            
+
         except Exception as e:
             logger.error(f"Error getting user documents: {e}")
             return []
         finally:
             db.close()
+
 
 # Global service instance
 career_tools_service = CareerToolsService()

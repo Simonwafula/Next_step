@@ -24,26 +24,63 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 # Common Kenyan cities/locations
 KENYAN_LOCATIONS = [
-    'Nairobi', 'Mombasa', 'Kisumu', 'Nakuru', 'Eldoret', 'Thika', 'Malindi',
-    'Kitale', 'Garissa', 'Nyeri', 'Machakos', 'Meru', 'Lamu', 'Nanyuki',
-    'Kakamega', 'Kisii', 'Kericho', 'Naivasha', 'Embu', 'Isiolo',
-    'Kenya', 'Remote', 'Hybrid', 'Work From Home', 'WFH',
+    "Nairobi",
+    "Mombasa",
+    "Kisumu",
+    "Nakuru",
+    "Eldoret",
+    "Thika",
+    "Malindi",
+    "Kitale",
+    "Garissa",
+    "Nyeri",
+    "Machakos",
+    "Meru",
+    "Lamu",
+    "Nanyuki",
+    "Kakamega",
+    "Kisii",
+    "Kericho",
+    "Naivasha",
+    "Embu",
+    "Isiolo",
+    "Kenya",
+    "Remote",
+    "Hybrid",
+    "Work From Home",
+    "WFH",
 ]
 
 # Company suffixes to help identify company names
 COMPANY_SUFFIXES = [
-    'Ltd', 'Limited', 'LTD', 'LIMITED',
-    'Inc', 'INC', 'Incorporated',
-    'Co', 'CO', 'Company',
-    'Corp', 'Corporation',
-    'PLC', 'Plc',
-    'Group', 'GROUP',
-    'Services', 'SERVICES',
-    'Solutions', 'SOLUTIONS',
-    'Enterprises', 'ENTERPRISES',
-    'Kenya', 'KENYA',
-    'Africa', 'AFRICA',
-    'International', 'INTERNATIONAL',
+    "Ltd",
+    "Limited",
+    "LTD",
+    "LIMITED",
+    "Inc",
+    "INC",
+    "Incorporated",
+    "Co",
+    "CO",
+    "Company",
+    "Corp",
+    "Corporation",
+    "PLC",
+    "Plc",
+    "Group",
+    "GROUP",
+    "Services",
+    "SERVICES",
+    "Solutions",
+    "SOLUTIONS",
+    "Enterprises",
+    "ENTERPRISES",
+    "Kenya",
+    "KENYA",
+    "Africa",
+    "AFRICA",
+    "International",
+    "INTERNATIONAL",
 ]
 
 
@@ -64,18 +101,23 @@ def extract_company_from_description(description: str, title: str) -> Optional[s
     # Pattern: title followed by company name (ending with Ltd, Limited, etc.)
     for suffix in COMPANY_SUFFIXES:
         # Look for pattern: "Title CompanyName Suffix"
-        pattern = rf'{re.escape(title)}\s+(.+?\s+{re.escape(suffix)})\b'
+        pattern = rf"{re.escape(title)}\s+(.+?\s+{re.escape(suffix)})\b"
         match = re.search(pattern, header, re.IGNORECASE)
         if match:
             company = match.group(1).strip()
             # Clean up - remove category words that might be included
-            company = re.sub(r'\s+(Sales|Marketing|IT|HR|Finance|Admin|Engineering)\s*$', '', company, flags=re.IGNORECASE)
+            company = re.sub(
+                r"\s+(Sales|Marketing|IT|HR|Finance|Admin|Engineering)\s*$",
+                "",
+                company,
+                flags=re.IGNORECASE,
+            )
             if len(company) > 3 and len(company) < 100:
                 return company
 
     # Alternative: look for company suffixes in the header
     for suffix in COMPANY_SUFFIXES:
-        pattern = rf'([A-Z][A-Za-z\s&\-\.]+\s+{re.escape(suffix)})\b'
+        pattern = rf"([A-Z][A-Za-z\s&\-\.]+\s+{re.escape(suffix)})\b"
         match = re.search(pattern, header)
         if match:
             company = match.group(1).strip()
@@ -102,7 +144,9 @@ def extract_location_from_description(description: str) -> Optional[str]:
     # Look for known Kenyan locations
     for location in KENYAN_LOCATIONS:
         # Location typically appears before "Full Time" or "Part Time"
-        pattern = rf'\b({re.escape(location)})\s+(?:Full\s*Time|Part\s*Time|Contract|Remote)'
+        pattern = (
+            rf"\b({re.escape(location)})\s+(?:Full\s*Time|Part\s*Time|Contract|Remote)"
+        )
         match = re.search(pattern, header, re.IGNORECASE)
         if match:
             return location
@@ -123,11 +167,15 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
     db = SessionLocal()
     try:
         # Get BrighterMonday jobs with descriptions but missing org/location
-        jobs = db.query(JobPost).filter(
-            JobPost.source == 'brightermonday',
-            JobPost.description_raw.isnot(None),
-            JobPost.description_raw != ''
-        ).all()
+        jobs = (
+            db.query(JobPost)
+            .filter(
+                JobPost.source == "brightermonday",
+                JobPost.description_raw.isnot(None),
+                JobPost.description_raw != "",
+            )
+            .all()
+        )
 
         print(f"Found {len(jobs)} BrighterMonday jobs with descriptions")
 
@@ -142,16 +190,20 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
             # Extract company if missing
             if not job.org_id:
                 company_name = extract_company_from_description(
-                    job.description_raw, job.title_raw or ''
+                    job.description_raw, job.title_raw or ""
                 )
                 if company_name:
-                    companies_found[company_name] = companies_found.get(company_name, 0) + 1
+                    companies_found[company_name] = (
+                        companies_found.get(company_name, 0) + 1
+                    )
 
                     if not dry_run:
                         # Get or create organization
-                        org = db.query(Organization).filter(
-                            Organization.name == company_name
-                        ).first()
+                        org = (
+                            db.query(Organization)
+                            .filter(Organization.name == company_name)
+                            .first()
+                        )
                         if not org:
                             org = Organization(name=company_name, verified=False)
                             db.add(org)
@@ -164,16 +216,24 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
             if not job.location_id:
                 location_name = extract_location_from_description(job.description_raw)
                 if location_name:
-                    locations_found[location_name] = locations_found.get(location_name, 0) + 1
+                    locations_found[location_name] = (
+                        locations_found.get(location_name, 0) + 1
+                    )
 
                     if not dry_run:
                         # Get or create location
-                        loc = db.query(Location).filter(
-                            Location.country == 'Kenya',
-                            Location.city == location_name
-                        ).first()
+                        loc = (
+                            db.query(Location)
+                            .filter(
+                                Location.country == "Kenya",
+                                Location.city == location_name,
+                            )
+                            .first()
+                        )
                         if not loc:
-                            loc = Location(country='Kenya', city=location_name, raw=location_name)
+                            loc = Location(
+                                country="Kenya", city=location_name, raw=location_name
+                            )
                             db.add(loc)
                             db.flush()
                         job.location_id = loc.id
@@ -191,7 +251,9 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
         # Show top companies found
         if companies_found:
             print(f"\nTop companies found:")
-            for company, count in sorted(companies_found.items(), key=lambda x: -x[1])[:10]:
+            for company, count in sorted(companies_found.items(), key=lambda x: -x[1])[
+                :10
+            ]:
                 print(f"  {company}: {count}")
 
         # Show locations found
@@ -201,19 +263,25 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
                 print(f"  {loc}: {count}")
 
         # Final stats
-        jobs_with_org = db.query(JobPost).filter(
-            JobPost.source == 'brightermonday',
-            JobPost.org_id.isnot(None)
-        ).count()
-        jobs_with_loc = db.query(JobPost).filter(
-            JobPost.source == 'brightermonday',
-            JobPost.location_id.isnot(None)
-        ).count()
-        total_bm = db.query(JobPost).filter(JobPost.source == 'brightermonday').count()
+        jobs_with_org = (
+            db.query(JobPost)
+            .filter(JobPost.source == "brightermonday", JobPost.org_id.isnot(None))
+            .count()
+        )
+        jobs_with_loc = (
+            db.query(JobPost)
+            .filter(JobPost.source == "brightermonday", JobPost.location_id.isnot(None))
+            .count()
+        )
+        total_bm = db.query(JobPost).filter(JobPost.source == "brightermonday").count()
 
         print(f"\nBrighterMonday coverage:")
-        print(f"  With organization: {jobs_with_org}/{total_bm} ({jobs_with_org/total_bm*100:.1f}%)")
-        print(f"  With location: {jobs_with_loc}/{total_bm} ({jobs_with_loc/total_bm*100:.1f}%)")
+        print(
+            f"  With organization: {jobs_with_org}/{total_bm} ({jobs_with_org / total_bm * 100:.1f}%)"
+        )
+        print(
+            f"  With location: {jobs_with_loc}/{total_bm} ({jobs_with_loc / total_bm * 100:.1f}%)"
+        )
 
     except Exception as e:
         print(f"Error: {e}")
@@ -228,7 +296,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be updated without making changes"
+        help="Show what would be updated without making changes",
     )
     args = parser.parse_args()
 

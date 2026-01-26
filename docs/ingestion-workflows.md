@@ -526,6 +526,10 @@ logging.getLogger('app.processors').setLevel(logging.DEBUG)
 - **Data validation**: Advanced validation rules and data quality checks
 - **Performance optimization**: Caching and database indexing improvements
 - **Monitoring dashboard**: Real-time processing metrics and alerts
+- **Analytics dashboards**: Admin/user views for skill trends and role evolution (T-403)
+- **Signals pipeline**: Tender ingestion, task-to-role mapping, and hiring signals (T-500 to T-503)
+- **Incremental updates**: Watermark-based ingestion and partial refreshes (T-601)
+- **Drift checks**: Alerts on skill/title/salary distribution shifts (T-602)
 
 ## Automated Workflow System Documentation
 

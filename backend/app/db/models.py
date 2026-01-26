@@ -172,6 +172,71 @@ class TitleAdjacency(Base):  # B3.6.3 in plan
     similarity: Mapped[float] = mapped_column(Float)
 
 
+class TenderNotice(Base):  # T-500
+    __tablename__ = "tender_notice"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source: Mapped[str] = mapped_column(String(120), index=True)
+    external_id: Mapped[str | None] = mapped_column(String(120), index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    organization: Mapped[str | None] = mapped_column(String(255))
+    category: Mapped[str | None] = mapped_column(String(120))
+    location: Mapped[str | None] = mapped_column(String(120))
+    published_at: Mapped[datetime | None] = mapped_column(DateTime)
+    closing_at: Mapped[datetime | None] = mapped_column(DateTime)
+    url: Mapped[str | None] = mapped_column(Text)
+    description_raw: Mapped[str | None] = mapped_column(Text)
+    meta_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class SignalEvidence(Base):  # T-503
+    __tablename__ = "signal_evidence"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    evidence_type: Mapped[str] = mapped_column(String(120), index=True)
+    source: Mapped[str | None] = mapped_column(String(120))
+    source_url: Mapped[str | None] = mapped_column(Text)
+    snippet: Mapped[str | None] = mapped_column(Text)
+    confidence: Mapped[float] = mapped_column(Float, default=0.5)
+    meta_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class TaskRoleMapping(Base):  # T-501
+    __tablename__ = "task_role_mapping"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    task_text: Mapped[str] = mapped_column(Text)
+    role_family: Mapped[str] = mapped_column(String(120), index=True)
+    confidence: Mapped[float] = mapped_column(Float, default=0.5)
+    evidence_id: Mapped[int | None] = mapped_column(ForeignKey("signal_evidence.id"))
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class HiringSignal(Base):  # T-502
+    __tablename__ = "hiring_signal"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    signal_type: Mapped[str] = mapped_column(String(120), index=True)
+    role_family: Mapped[str | None] = mapped_column(String(120), index=True)
+    org_id: Mapped[int | None] = mapped_column(ForeignKey("organization.id"))
+    score: Mapped[float] = mapped_column(Float, default=0.0)
+    window_start: Mapped[datetime | None] = mapped_column(DateTime)
+    window_end: Mapped[datetime | None] = mapped_column(DateTime)
+    evidence_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    meta_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class IngestionState(Base):  # T-601
+    __tablename__ = "ingestion_state"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    source_key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    last_run_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_item_at: Mapped[datetime | None] = mapped_column(DateTime)
+    last_cursor: Mapped[str | None] = mapped_column(String(255))
+    last_count: Mapped[int] = mapped_column(Integer, default=0)
+    status: Mapped[str | None] = mapped_column(String(120))
+    meta_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+
 class JobSkill(Base):
     __tablename__ = "job_skill"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
