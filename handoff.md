@@ -109,6 +109,25 @@ Each session appends:
   - git push -u origin feat/T-210-evidence-extractors
   - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
 - next step: Open a PR for feat/T-210-evidence-extractors and review.
+## 2026-01-26 20:32 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-210-evidence-extractors
+- last commit: 5e567b4c62c22f52f6cc90714b7731407aafadfa
+- DONE:
+  - Clustered and committed remaining uncommitted changes by job (docs, smoke tests, lint cleanups, venv metadata)
+- IN_PROGRESS: None
+- BLOCKED: None
+- commands run:
+  - git status --short
+  - git diff --stat
+  - git commit -m "[T-210] ignore local venvs"
+  - git commit -m "[T-210] expand local dev docs"
+  - git commit -m "[T-210] make smoke tests skip safely"
+  - git commit -m "[T-210] apply lint cleanups"
+  - git commit -m "[T-210] update venv metadata"
+  - git push
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+- next step: Open PR and review clustered commits.
 ## 2026-01-26 20:16 (Africa/Nairobi)
 - tool/model: codex-gpt5
 - branch: feat/T-210-evidence-extractors
