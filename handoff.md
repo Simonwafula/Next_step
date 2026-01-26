@@ -96,6 +96,19 @@ Each session appends:
   - git rev-parse --abbrev-ref HEAD
   - git rev-parse HEAD
 - next step: Provide a task id, then commit and push with the required message format.
+## 2026-01-26 20:18 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-210-evidence-extractors
+- last commit: 2c43e90f389749b93d41392a86cb3b62ee82bb17
+- DONE:
+  - Committed and pushed SkillNER-style evidence extractors + mappings + tests
+- IN_PROGRESS: None
+- BLOCKED: None
+- commands run:
+  - git commit -m "[T-210] add evidence extractors for education and experience"
+  - git push -u origin feat/T-210-evidence-extractors
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+- next step: Open a PR for feat/T-210-evidence-extractors and review.
 ## 2026-01-26 20:16 (Africa/Nairobi)
 - tool/model: codex-gpt5
 - branch: feat/T-210-evidence-extractors
