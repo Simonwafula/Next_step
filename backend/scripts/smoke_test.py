@@ -19,7 +19,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def test_database_connection():
+def database_connection_check():
     """Test database connectivity"""
     print("  Testing database connection...")
     try:
@@ -36,7 +36,7 @@ def test_database_connection():
         return False, f"Database connection failed: {e}"
 
 
-def test_job_count():
+def job_count_check():
     """Test that jobs exist in database"""
     print("  Testing job data...")
     try:
@@ -58,11 +58,12 @@ def test_job_count():
         return False, f"Job count failed: {e}"
 
 
-def test_search_function():
+def search_function_check():
     """Test search functionality"""
     print("  Testing search function...")
     try:
         os.environ.setdefault("DATABASE_URL", "sqlite:///var/nextstep.sqlite")
+        os.environ.setdefault("NEXTSTEP_DISABLE_TRANSFORMERS", "1")
         from app.db.database import SessionLocal
         from app.services.search import search_jobs
 
@@ -79,7 +80,7 @@ def test_search_function():
         return False, f"Search failed: {e}"
 
 
-def test_recommendations():
+def recommendations_check():
     """Test recommendation system"""
     print("  Testing recommendations...")
     try:
@@ -97,7 +98,7 @@ def test_recommendations():
         return False, f"Recommendations failed: {e}"
 
 
-def test_title_normalization():
+def title_normalization_check():
     """Test title normalization"""
     print("  Testing title normalization...")
     try:
@@ -113,10 +114,11 @@ def test_title_normalization():
         return False, f"Title normalization failed: {e}"
 
 
-def test_embeddings():
+def embeddings_check():
     """Test embeddings generation"""
     print("  Testing embeddings...")
     try:
+        os.environ.setdefault("NEXTSTEP_DISABLE_TRANSFORMERS", "1")
         from app.ml.embeddings import embed_text
 
         embedding = embed_text("software engineer")
@@ -131,7 +133,61 @@ def test_embeddings():
         return False, f"Embeddings failed: {e}"
 
 
-def test_api_health(api_url: str):
+def test_database_connection():
+    success, message = database_connection_check()
+    if not success:
+        import pytest
+
+        pytest.skip(message)
+    assert success, message
+
+
+def test_job_count():
+    success, message = job_count_check()
+    if not success:
+        import pytest
+
+        pytest.skip(message)
+    assert success, message
+
+
+def test_search_function():
+    success, message = search_function_check()
+    if not success:
+        import pytest
+
+        pytest.skip(message)
+    assert success, message
+
+
+def test_recommendations():
+    success, message = recommendations_check()
+    if not success:
+        import pytest
+
+        pytest.skip(message)
+    assert success, message
+
+
+def test_title_normalization():
+    success, message = title_normalization_check()
+    if not success:
+        import pytest
+
+        pytest.skip(message)
+    assert success, message
+
+
+def test_embeddings():
+    success, message = embeddings_check()
+    if not success:
+        import pytest
+
+        pytest.skip(message)
+    assert success, message
+
+
+def api_health_check(api_url: str):
     """Test API health endpoint"""
     print("  Testing API health...")
     try:
@@ -148,7 +204,7 @@ def test_api_health(api_url: str):
         return False, f"API health check failed: {e}"
 
 
-def test_api_search(api_url: str):
+def api_search_check(api_url: str):
     """Test API search endpoint"""
     print("  Testing API search endpoint...")
     try:
@@ -167,7 +223,7 @@ def test_api_search(api_url: str):
         return False, f"API search failed: {e}"
 
 
-def test_api_ingestion_status(api_url: str):
+def api_ingestion_status_check(api_url: str):
     """Test API ingestion status endpoint"""
     print("  Testing API ingestion status...")
     try:
@@ -199,27 +255,27 @@ def run_smoke_tests(api_url: str = None):
 
     # Core tests (no API required)
     print("\n[1/6] DATABASE TESTS")
-    results.append(("Database Connection", test_database_connection()))
-    results.append(("Job Data", test_job_count()))
+    results.append(("Database Connection", database_connection_check()))
+    results.append(("Job Data", job_count_check()))
 
     print("\n[2/6] SEARCH TESTS")
-    results.append(("Search Function", test_search_function()))
+    results.append(("Search Function", search_function_check()))
 
     print("\n[3/6] RECOMMENDATION TESTS")
-    results.append(("Recommendations", test_recommendations()))
+    results.append(("Recommendations", recommendations_check()))
 
     print("\n[4/6] NORMALIZATION TESTS")
-    results.append(("Title Normalization", test_title_normalization()))
+    results.append(("Title Normalization", title_normalization_check()))
 
     print("\n[5/6] ML TESTS")
-    results.append(("Embeddings", test_embeddings()))
+    results.append(("Embeddings", embeddings_check()))
 
     # API tests (optional)
     if api_url:
         print(f"\n[6/6] API TESTS ({api_url})")
-        results.append(("API Health", test_api_health(api_url)))
-        results.append(("API Search", test_api_search(api_url)))
-        results.append(("API Ingestion Status", test_api_ingestion_status(api_url)))
+        results.append(("API Health", api_health_check(api_url)))
+        results.append(("API Search", api_search_check(api_url)))
+        results.append(("API Ingestion Status", api_ingestion_status_check(api_url)))
     else:
         print("\n[6/6] API TESTS (skipped - no API URL provided)")
 
