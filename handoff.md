@@ -142,6 +142,18 @@ Each session appends:
   - git push
   - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
 - next step: Open PR and review updated commit list.
+## 2026-01-26 20:47 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-210-evidence-extractors
+- last commit: 0b845fe5c21c7f05e6a033f5158a5f5a81778d2e
+- DONE:
+  - Drafted PR summary and lint-cleanup review notes
+- IN_PROGRESS:
+  - PR not opened yet
+- BLOCKED: None
+- commands run:
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+- next step: Resume by opening PR and optional automated diff scan of `a461520`.
 ## 2026-01-26 20:16 (Africa/Nairobi)
 - tool/model: codex-gpt5
 - branch: feat/T-210-evidence-extractors

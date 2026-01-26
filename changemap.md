@@ -111,6 +111,7 @@
   - `backend/venv3.11/bin/ruff format backend` (pass)
   - `backend/venv3.11/bin/ruff check backend conftest.py` (pass)
   - `backend/venv3.11/bin/pytest` (pass; warnings for skipped async tests, return-value tests, and SkillNER similarity warnings)
+  - `backend/venv3.11/bin/pytest` (pass; 22 passed, 16 skipped, 24 warnings)
 
 ### 2026-01-25
 - (T-000-SCAN) Initial baseline scan completed.
