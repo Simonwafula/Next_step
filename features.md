@@ -5,6 +5,8 @@
 - Job ingestion from ATS boards (Greenhouse, Lever) and RSS feeds.
 - Government career-page monitoring pipeline (HTML ingest + scheduled workers).
 - **High-Precision Normalization**: Production-ready modules for Titles, Companies, Locations, and Skills.
+- **SkillNER Upgrade**: SkillNER-backed skill extraction with mapping, evidence spans, and custom skill expansion.
+- **Evidence Extractors**: SkillNER-style evidence/confidence extraction for education, experience, seniority, and task statements.
 - **Deduplication Engine**: MinHash + LSH based deduplication for clean datasets.
 - **Production Schema**: Migrated to PostgreSQL with `pgvector`, `pg_trgm`, and `unaccent` support.
 - **Semantic Embeddings**: Full integration with `intfloat/e5-small-v2` for high-quality retrieval.

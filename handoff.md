@@ -70,3 +70,62 @@ Each session appends:
   - git status -sb
   - git rev-parse HEAD
 - next step: Decide whether to fix repo-wide ruff violations and isolate/skip torch-dependent smoke tests.
+## 2026-01-26 20:01 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-403-analytics-signals
+- last commit: 96a9f1de9b785961463c8962ce4d08581228fa5d
+- DONE:
+  - SkillNER-backed skills extraction adapter with mapping + custom expansions
+  - Updated recommendations skill extraction + new tests
+  - Updated AGENTS instructions and feature list
+- IN_PROGRESS:
+  - Commit + push pending task id
+- BLOCKED: None
+- commands run:
+  - ls
+  - rg -n "skill|skills" backend README.md docs frontend -g"*.py"
+  - sed -n '1,200p' backend/app/normalization/skills.py
+  - backend/venv3.11/bin/pip install skillner
+  - curl -L -o skill_db_relax_20.json https://raw.githubusercontent.com/AnasAito/SkillNER/first_release/buckets/skill_db_relax_20.json
+  - curl -L -o token_dist.json https://raw.githubusercontent.com/AnasAito/SkillNER/first_release/buckets/token_dist.json
+  - backend/venv3.11/bin/ruff check backend
+  - backend/venv3.11/bin/ruff format backend
+  - backend/venv3.11/bin/ruff check conftest.py
+  - backend/venv3.11/bin/pytest
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+  - git rev-parse --abbrev-ref HEAD
+  - git rev-parse HEAD
+- next step: Provide a task id, then commit and push with the required message format.
+## 2026-01-26 20:16 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-210-evidence-extractors
+- last commit: 96a9f1de9b785961463c8962ce4d08581228fa5d
+- DONE:
+  - SkillNER-style evidence extractors for education/experience/seniority/tasks with mappings and tests
+  - Enabled SkillNER in tests with torch stub and stable pytest run
+- IN_PROGRESS:
+  - Commit + push pending task id
+- BLOCKED: None
+- commands run:
+  - git checkout -b feat/T-210-evidence-extractors
+  - backend/venv3.11/bin/ruff format backend
+  - backend/venv3.11/bin/ruff check backend conftest.py
+  - backend/venv3.11/bin/pytest
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+- next step: Provide a task id, then commit and push with the required message format.
+## 2026-01-26 20:07 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-403-analytics-signals
+- last commit: 96a9f1de9b785961463c8962ce4d08581228fa5d
+- DONE:
+  - Enabled SkillNER in tests with torch import stub + env guards
+  - Fixed custom SkillNER IDs to avoid underscore split error
+  - Pytest now passes with SkillNER enabled
+- IN_PROGRESS:
+  - Commit + push pending task id
+- BLOCKED: None
+- commands run:
+  - backend/venv3.11/bin/pytest
+  - backend/venv3.11/bin/ruff check conftest.py
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+- next step: Provide a task id, then commit and push with the required message format.

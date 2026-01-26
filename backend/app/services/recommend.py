@@ -1,8 +1,9 @@
 from sqlalchemy.orm import Session
 from sqlalchemy import select, func, desc
-from ..db.models import TitleNorm, JobPost, Skill, JobSkill, Organization
+from ..db.models import TitleNorm, JobPost, Skill, JobSkill
 from ..ml.embeddings import embed_text
-from ..normalization.titles import normalize_title, TITLE_ALIASES
+from ..normalization.titles import normalize_title
+from ..normalization.skills import extract_skills
 import numpy as np
 from collections import Counter
 
@@ -79,55 +80,7 @@ def calculate_skill_overlap(
 
 def extract_skills_from_text(text: str) -> list[str]:
     """Extract skills from job description or user input"""
-
-    # Common skills patterns (this could be enhanced with NLP)
-    common_skills = [
-        "python",
-        "sql",
-        "excel",
-        "powerbi",
-        "tableau",
-        "r",
-        "stata",
-        "spss",
-        "javascript",
-        "html",
-        "css",
-        "react",
-        "node.js",
-        "java",
-        "c++",
-        "project management",
-        "data analysis",
-        "machine learning",
-        "statistics",
-        "communication",
-        "leadership",
-        "teamwork",
-        "problem solving",
-        "microsoft office",
-        "google analytics",
-        "salesforce",
-        "crm",
-        "financial modeling",
-        "budgeting",
-        "forecasting",
-        "accounting",
-        "research",
-        "writing",
-        "presentation",
-        "training",
-        "mentoring",
-    ]
-
-    text_lower = text.lower()
-    found_skills = []
-
-    for skill in common_skills:
-        if skill in text_lower:
-            found_skills.append(skill.title())
-
-    return found_skills
+    return extract_skills(text)
 
 
 def transitions_for(db: Session, current: str):

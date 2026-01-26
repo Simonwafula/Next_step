@@ -40,6 +40,8 @@ spacy==3.7.5
 nltk==3.8.1
 rapidfuzz==3.9.4
 datasketch==1.6.4
+skillner==1.0.3
+jellyfish==1.2.1
 
 # Real-time Features
 websockets==12.0

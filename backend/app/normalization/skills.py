@@ -1,5 +1,11 @@
-# Very lightweight patterns; extend with NLP later
+from __future__ import annotations
+
+import os
 import re
+from typing import Any, Dict, List
+
+from .skill_mapping import canonicalize_skill, custom_skills
+from .skillner_adapter import extract_skillner_matches
 
 SKILL_PATTERNS = {
     "sql": [" sql", "postgres", "mysql", "sqlserver", "tsql", "sqlite"],
@@ -51,6 +57,24 @@ SECTION_MARKERS = [
 ]
 
 
+def _skillner_enabled() -> bool:
+    return os.getenv("SKILL_EXTRACTOR_MODE", "skillner").lower() in {
+        "skillner",
+        "hybrid",
+    }
+
+
+def _pattern_enabled() -> bool:
+    return os.getenv("SKILL_EXTRACTOR_MODE", "skillner").lower() in {
+        "patterns",
+        "hybrid",
+    }
+
+
+def _build_word_boundary_pattern(term: str) -> re.Pattern:
+    return re.compile(rf"(?<!\w){re.escape(term)}(?!\w)", re.IGNORECASE)
+
+
 def extract_skill_phrases(text: str) -> list[str]:
     if not text:
         return []
@@ -71,21 +95,154 @@ def extract_skill_phrases(text: str) -> list[str]:
     return found
 
 
-def extract_skills(text: str) -> list[str]:
-    t = (text or "").lower()
-    found = []
-    for skill, needles in SKILL_PATTERNS.items():
-        if any(n in t for n in needles):
-            found.append(skill)
+def _upsert_skill_result(
+    results: Dict[str, Dict[str, Any]],
+    skill: str,
+    confidence: float,
+    evidence: str,
+    start: int | None,
+    end: int | None,
+    source: str,
+) -> None:
+    if not skill:
+        return
+    existing = results.get(skill)
+    if not existing or confidence > existing["confidence"]:
+        results[skill] = {
+            "value": skill,
+            "confidence": confidence,
+            "evidence": evidence,
+            "start": start,
+            "end": end,
+            "source": source,
+        }
 
-    found.extend(s for s in extract_skill_phrases(text) if s not in found)
-    return found
+
+def _extract_pattern_matches(text: str) -> List[Dict[str, Any]]:
+    matches = []
+    lowered = text.lower()
+    for skill, needles in SKILL_PATTERNS.items():
+        for needle in needles:
+            needle_clean = needle.strip()
+            if not needle_clean:
+                continue
+            match = re.search(re.escape(needle_clean), lowered)
+            if match:
+                matches.append(
+                    {
+                        "skill": skill,
+                        "confidence": 0.7,
+                        "evidence": lowered[match.start() : match.end()],
+                        "start": match.start(),
+                        "end": match.end(),
+                        "source": "pattern",
+                    }
+                )
+                break
+    return matches
+
+
+def _extract_custom_matches(text: str) -> List[Dict[str, Any]]:
+    matches = []
+    lowered = text.lower()
+    for entry in custom_skills():
+        name = str(entry.get("name", "")).strip()
+        if not name:
+            continue
+        terms = [name] + [alias for alias in entry.get("aliases", []) if alias]
+        for term in terms:
+            pattern = _build_word_boundary_pattern(term)
+            match = pattern.search(lowered)
+            if not match:
+                continue
+            matches.append(
+                {
+                    "skill": name.lower(),
+                    "confidence": 0.75,
+                    "evidence": lowered[match.start() : match.end()],
+                    "start": match.start(),
+                    "end": match.end(),
+                    "source": "custom",
+                }
+            )
+            break
+    return matches
+
+
+def extract_skills_detailed(text: str) -> Dict[str, Dict[str, Any]]:
+    """Return skill extraction details with value/confidence/evidence."""
+    if not text:
+        return {}
+    results: Dict[str, Dict[str, Any]] = {}
+
+    if _skillner_enabled():
+        for match in extract_skillner_matches(text):
+            canonical = canonicalize_skill(match["skill"])
+            _upsert_skill_result(
+                results,
+                canonical,
+                float(match["confidence"]),
+                match.get("evidence", ""),
+                match.get("start"),
+                match.get("end"),
+                match.get("source", "skillner"),
+            )
+
+    if _pattern_enabled():
+        for match in _extract_pattern_matches(text):
+            canonical = canonicalize_skill(match["skill"])
+            _upsert_skill_result(
+                results,
+                canonical,
+                float(match["confidence"]),
+                match.get("evidence", ""),
+                match.get("start"),
+                match.get("end"),
+                match.get("source", "pattern"),
+            )
+
+    for match in _extract_custom_matches(text):
+        canonical = canonicalize_skill(match["skill"])
+        _upsert_skill_result(
+            results,
+            canonical,
+            float(match["confidence"]),
+            match.get("evidence", ""),
+            match.get("start"),
+            match.get("end"),
+            match.get("source", "custom"),
+        )
+
+    for phrase in extract_skill_phrases(text):
+        canonical = canonicalize_skill(phrase)
+        idx = text.lower().find(phrase.lower())
+        start = idx if idx >= 0 else None
+        end = (idx + len(phrase)) if idx >= 0 else None
+        _upsert_skill_result(
+            results,
+            canonical,
+            0.65,
+            phrase.lower(),
+            start,
+            end,
+            "section_phrase",
+        )
+
+    return results
+
+
+def extract_skills(text: str) -> list[str]:
+    detailed = extract_skills_detailed(text)
+    ordered = sorted(
+        detailed.items(), key=lambda item: item[1]["confidence"], reverse=True
+    )
+    return [skill for skill, _ in ordered]
 
 
 def extract_and_normalize_skills(text: str) -> dict:
     """Return a mapping of skill -> confidence for given text."""
-    skills = extract_skills(text)
-    return {s: 0.9 for s in skills}
+    skills = extract_skills_detailed(text)
+    return {name: info["confidence"] for name, info in skills.items()}
 
 
 def update_skill_mappings(new_mappings: dict) -> None:

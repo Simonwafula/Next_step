@@ -35,6 +35,11 @@ Build Next Step: job matching + labor market intelligence from jobs.sqlite3.
 - Tool paths:
   - `backend/venv3.11/bin/ruff`
   - `backend/venv3.11/bin/pytest`
+- Skill extraction:
+  - SkillNER data: `backend/app/normalization/skillner_data/`
+  - Mapping file: `backend/app/normalization/skill_mapping.json`
+  - Education mapping: `backend/app/normalization/education_mapping.json`
+  - Config: `SKILL_EXTRACTOR_MODE` and `SKILLNER_DATA_DIR`
 
 ## Code Quality
 - Small functions, typed interfaces where possible.

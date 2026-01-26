@@ -61,6 +61,10 @@ class Settings(BaseModel):
     EMBEDDING_MODEL: str = os.getenv("EMBEDDING_MODEL", "all-MiniLM-L6-v2")
     EMBEDDING_DIM: int = int(os.getenv("EMBEDDING_DIM", "384"))
 
+    # Skill Extraction
+    SKILL_EXTRACTOR_MODE: str = os.getenv("SKILL_EXTRACTOR_MODE", "skillner")
+    SKILLNER_DATA_DIR: str = os.getenv("SKILLNER_DATA_DIR", "")
+
     # Twilio/WhatsApp
     TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
     TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")

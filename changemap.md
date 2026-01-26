@@ -100,6 +100,18 @@
 
 ## Logs
 
+### 2026-01-26
+- Added SkillNER-backed skill extraction adapter with local data files and custom mapping expansion.
+- Added mapping file and adapter integration in normalization pipeline; updated recommendations skill extraction.
+- Added test coverage for pattern + custom skill extraction; set tests to run SkillNER and stubbed torch import to avoid aborts.
+- Added SkillNER-style evidence extractors for education, experience, seniority, and task statements with new mappings and tests.
+- Updated feature list + agents instructions for SkillNER config and data paths.
+- Tests run:
+  - `backend/venv3.11/bin/ruff check backend` (pass)
+  - `backend/venv3.11/bin/ruff format backend` (pass)
+  - `backend/venv3.11/bin/ruff check backend conftest.py` (pass)
+  - `backend/venv3.11/bin/pytest` (pass; warnings for skipped async tests, return-value tests, and SkillNER similarity warnings)
+
 ### 2026-01-25
 - (T-000-SCAN) Initial baseline scan completed.
 - (T-010-PLAN) Integrated ML/DB production transition plan into control plane.

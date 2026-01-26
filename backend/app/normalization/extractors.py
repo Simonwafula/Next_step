@@ -1,102 +1,191 @@
+from __future__ import annotations
+
 import re
+from typing import Any, Dict, List
+
+from .education_mapping import education_levels
+
+
+def _word_boundary_pattern(term: str) -> re.Pattern:
+    return re.compile(rf"(?<!\w){re.escape(term)}(?!\w)", re.IGNORECASE)
+
+
+def _find_first_match(text: str, term: str) -> re.Match | None:
+    pattern = _word_boundary_pattern(term)
+    return pattern.search(text)
+
+
+def _score_modifier(window: str) -> float:
+    signal_words = {"required", "minimum", "must", "mandatory", "need", "preferred"}
+    lowered = window.lower()
+    return 0.1 if any(word in lowered for word in signal_words) else 0.0
+
+
+def extract_education_detailed(text: str) -> Dict[str, Any] | None:
+    if not text:
+        return None
+
+    candidates: List[Dict[str, Any]] = []
+    lowered = text.lower()
+    for level in education_levels():
+        value = str(level.get("value", "")).strip()
+        if not value:
+            continue
+        rank = int(level.get("rank", 0))
+        aliases = level.get("aliases", [])
+        for alias in aliases:
+            if not alias:
+                continue
+            match = _find_first_match(lowered, alias)
+            if not match:
+                continue
+            window = lowered[max(0, match.start() - 40) : match.end() + 40]
+            confidence = 0.55 + (rank * 0.08) + _score_modifier(window)
+            confidence = min(confidence, 0.95)
+            candidates.append(
+                {
+                    "value": value.title() if value != "phd" else "PhD",
+                    "confidence": round(confidence, 2),
+                    "evidence": text[match.start() : match.end()],
+                    "start": match.start(),
+                    "end": match.end(),
+                    "source": "education_mapping",
+                    "rank": rank,
+                }
+            )
+
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda c: (c["rank"], c["confidence"]), reverse=True)
+    result = candidates[0]
+    result.pop("rank", None)
+    return result
 
 
 def extract_education_level(text: str) -> str | None:
-    """
-    Detects the highest education level required in the job description.
-    Returns: 'PhD', 'Master', 'Bachelor', 'Diploma', 'High School', or None.
-    """
+    """Detects the highest education level required in the job description."""
+    detailed = extract_education_detailed(text)
+    return detailed["value"] if detailed else None
+
+
+def extract_experience_years_detailed(text: str) -> Dict[str, Any] | None:
     if not text:
         return None
 
-    t = text.lower()
+    patterns = [
+        (r"at least\s*(\d+)\s*years?", 0.85),
+        (r"minimum\s*(?:of)?\s*(\d+)\s*years?", 0.82),
+        (r"min\s*(\d+)\s*years?", 0.78),
+        (r"(\d+)\s*\+?\s*years?", 0.72),
+        (r"(\d+)\s*-\s*(\d+)\s*years?", 0.7),
+        (r"(\d+)\s*to\s*(\d+)\s*years?", 0.7),
+    ]
 
-    # Priority order: PhD -> Master -> Bachelor -> Diploma -> High School
-    if any(p in t for p in ["phd", "doctorate", "ph.d"]):
-        return "PhD"
-    if any(m in t for m in ["master's", "masters", "msc", "mba", "ma degree"]):
-        return "Master"
-    if any(
-        b in t
-        for b in [
-            "bachelor's",
-            "bachelors",
-            "degree",
-            "university graduate",
-            "bsc",
-            "ba degree",
-        ]
-    ):
-        return "Bachelor"
-    if any(d in t for d in ["diploma", "higher national diploma", "hnd"]):
-        return "Diploma"
-    if any(h in t for h in ["high school", "kcse", "school leaver"]):
-        return "High School"
+    candidates: List[Dict[str, Any]] = []
+    lowered = text.lower()
+    for pattern, base_conf in patterns:
+        for match in re.finditer(pattern, lowered):
+            nums = [int(n) for n in match.groups() if n and n.isdigit()]
+            if not nums:
+                continue
+            value = min(nums)
+            window = lowered[max(0, match.start() - 40) : match.end() + 40]
+            confidence = min(base_conf + _score_modifier(window), 0.9)
+            candidates.append(
+                {
+                    "value": value,
+                    "confidence": round(confidence, 2),
+                    "evidence": text[match.start() : match.end()],
+                    "start": match.start(),
+                    "end": match.end(),
+                    "source": "experience_pattern",
+                }
+            )
 
-    return None
+    if not candidates:
+        return None
+
+    candidates.sort(key=lambda c: (-c["confidence"], c["value"]))
+    return candidates[0]
 
 
 def extract_experience_years(text: str) -> int | None:
-    """
-    Extracts required years of experience using regex.
-    Returns the minimum number of years found, or None.
-    """
-    if not text:
-        return None
+    """Extracts required years of experience using evidence-aware patterns."""
+    detailed = extract_experience_years_detailed(text)
+    return detailed["value"] if detailed else None
 
-    # Patterns: "3+ years", "at least 5 years", "3 to 5 years", "min 2 years"
-    patterns = [
-        r"(\d+)\s*\+?\s*years?",
-        r"at least\s*(\d+)\s*years?",
-        r"minimum\s*(?:of)?\s*(\d+)\s*years?",
-        r"(\d+)\s*-\s*\d+\s*years?",
-        r"min\s*(\d+)\s*years?",
+
+def classify_seniority_detailed(
+    title: str, experience_years: int | None
+) -> Dict[str, Any]:
+    t = (title or "").lower()
+    candidates: List[Dict[str, Any]] = []
+
+    def add_candidate(value: str, confidence: float, evidence: str, source: str):
+        if not value:
+            return
+        idx = t.find(evidence.lower()) if evidence else -1
+        start = idx if idx >= 0 else None
+        end = (idx + len(evidence)) if idx >= 0 else None
+        candidates.append(
+            {
+                "value": value,
+                "confidence": round(confidence, 2),
+                "evidence": evidence,
+                "start": start,
+                "end": end,
+                "source": source,
+            }
+        )
+
+    # Title keyword cues
+    title_keywords = [
+        ("Executive", ["executive", "c-level", "chief", "vp", "vice president"], 0.9),
+        ("Executive", ["director", "head of", "principal"], 0.85),
+        ("Senior", ["senior", "lead", "sr.", "sr "], 0.8),
+        ("Senior", ["manager", "supervisor"], 0.75),
+        (
+            "Entry",
+            ["junior", "entry", "intern", "graduate", "trainee", "assistant"],
+            0.7,
+        ),
     ]
+    for value, terms, conf in title_keywords:
+        for term in terms:
+            if term in t:
+                add_candidate(value, conf, term, "title_keyword")
+                break
 
-    all_years = []
-    for pattern in patterns:
-        matches = re.findall(pattern, text.lower())
-        for m in matches:
-            all_years.append(int(m))
+    # Experience fallback
+    if experience_years is not None:
+        if experience_years >= 8:
+            add_candidate("Executive", 0.7, f"{experience_years} years", "experience")
+        elif experience_years >= 5:
+            add_candidate("Senior", 0.65, f"{experience_years} years", "experience")
+        elif experience_years >= 2:
+            add_candidate("Mid-Level", 0.6, f"{experience_years} years", "experience")
+        else:
+            add_candidate("Entry", 0.55, f"{experience_years} years", "experience")
 
-    if all_years:
-        return min(all_years)  # Usually the "minimum" requirement
+    if not candidates:
+        return {
+            "value": "Mid-Level",
+            "confidence": 0.4,
+            "evidence": "",
+            "start": None,
+            "end": None,
+            "source": "default",
+        }
 
-    return None
+    candidates.sort(key=lambda c: c["confidence"], reverse=True)
+    return candidates[0]
 
 
 def classify_seniority(title: str, experience_years: int | None) -> str:
-    """
-    Classifies seniority based on title keywords and years of experience.
-    """
-    t = (title or "").lower()
-
-    # High priority keywords in title
-    if any(x in t for x in ["executive", "c-level", "chief", "vp", "vice president"]):
-        return "Executive"
-    if any(x in t for x in ["director", "head of", "principal"]):
-        return "Executive"
-    if any(x in t for x in ["senior", "lead", "sr.", "sr "]):
-        return "Senior"
-    if any(x in t for x in ["manager", "supervisor"]):
-        return "Senior"  # Often counts as senior/management
-    if any(
-        x in t
-        for x in ["junior", "entry", "intern", "graduate", "trainee", "assistant"]
-    ):
-        return "Entry"
-
-    # Experience based fallback
-    if experience_years is not None:
-        if experience_years >= 8:
-            return "Executive"
-        if experience_years >= 5:
-            return "Senior"
-        if experience_years >= 2:
-            return "Mid-Level"
-        return "Entry"
-
-    return "Mid-Level"  # Default fallback
+    """Classifies seniority based on title keywords and years of experience."""
+    detailed = classify_seniority_detailed(title, experience_years)
+    return detailed["value"]
 
 
 def extract_task_statements(text: str) -> list[dict]:
@@ -142,11 +231,17 @@ def extract_task_statements(text: str) -> list[dict]:
         if len(line) > 120:
             confidence -= 0.1
         confidence = max(0.2, min(0.9, confidence))
+        idx = text.find(line)
+        start = idx if idx >= 0 else None
+        end = (idx + len(line)) if idx >= 0 else None
         candidates.append(
             {
                 "value": line,
                 "confidence": round(confidence, 2),
                 "evidence": line[:200],
+                "start": start,
+                "end": end,
+                "source": "line_heuristic",
             }
         )
 

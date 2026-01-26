@@ -1,0 +1,43 @@
+{
+  "levels": [
+    {
+      "value": "phd",
+      "rank": 5,
+      "aliases": ["phd", "ph.d", "doctorate", "doctoral"]
+    },
+    {
+      "value": "master",
+      "rank": 4,
+      "aliases": ["master", "masters", "msc", "m.sc", "mba", "ma", "m.a", "mtech"]
+    },
+    {
+      "value": "bachelor",
+      "rank": 3,
+      "aliases": [
+        "bachelor",
+        "bachelors",
+        "bsc",
+        "b.sc",
+        "ba",
+        "b.a",
+        "undergraduate",
+        "degree"
+      ]
+    },
+    {
+      "value": "diploma",
+      "rank": 2,
+      "aliases": ["diploma", "higher national diploma", "hnd", "national diploma"]
+    },
+    {
+      "value": "certificate",
+      "rank": 1,
+      "aliases": ["certificate", "certification", "certified", "cert"]
+    },
+    {
+      "value": "high school",
+      "rank": 0,
+      "aliases": ["high school", "secondary school", "kcse", "school leaver"]
+    }
+  ]
+}
