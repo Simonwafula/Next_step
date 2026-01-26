@@ -128,6 +128,20 @@ Each session appends:
   - git push
   - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
 - next step: Open PR and review clustered commits.
+## 2026-01-26 20:42 (Africa/Nairobi)
+- tool/model: codex-gpt5
+- branch: feat/T-210-evidence-extractors
+- last commit: 77740de5389cda90a2fdef2368a74c14c747d3c3
+- DONE:
+  - Dropped venv files from git and restored urllib3 warning filter order
+- IN_PROGRESS: None
+- BLOCKED: None
+- commands run:
+  - git rm --cached backend/venv3.11/bin/Activate.ps1 backend/venv3.11/pyvenv.cfg
+  - git commit -m "[T-210] drop venv files and restore warning filter"
+  - git push
+  - TZ=Africa/Nairobi date "+%Y-%m-%d %H:%M"
+- next step: Open PR and review updated commit list.
 ## 2026-01-26 20:16 (Africa/Nairobi)
 - tool/model: codex-gpt5
 - branch: feat/T-210-evidence-extractors
