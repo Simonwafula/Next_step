@@ -1,10 +1,9 @@
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy import (
     String,
     Integer,
     Text,
     ForeignKey,
-    Float,
     DateTime,
     Boolean,
     Index,
@@ -19,8 +18,6 @@ else:
     except Exception:
         from sqlalchemy import JSON as JSONB
 from datetime import datetime
-from typing import List
-import uuid
 from .models import Base
 
 

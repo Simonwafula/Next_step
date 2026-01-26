@@ -5,12 +5,10 @@ Automated data processing service that runs continuously to process scraped job 
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional
-from sqlalchemy.orm import Session
+from typing import Dict, List
 from ..db.database import SessionLocal
 from ..db.models import JobPost, ProcessingLog
 from ..processors.job_processor import JobProcessorService
-from ..services.scraper_service import scraper_service
 
 logger = logging.getLogger(__name__)
 
@@ -105,13 +103,13 @@ class DataProcessingService:
 
             old_jobs = (
                 db.query(JobPost)
-                .filter(JobPost.last_seen < cutoff_date, JobPost.is_active == False)
+                .filter(JobPost.last_seen < cutoff_date, JobPost.is_active.is_(False))
                 .count()
             )
 
             if old_jobs > 0:
                 db.query(JobPost).filter(
-                    JobPost.last_seen < cutoff_date, JobPost.is_active == False
+                    JobPost.last_seen < cutoff_date, JobPost.is_active.is_(False)
                 ).delete()
                 db.commit()
                 logger.info(f"Cleaned up {old_jobs} old job postings")
@@ -135,7 +133,7 @@ class DataProcessingService:
             total_jobs = db.query(func.count(JobPost.id)).scalar()
             active_jobs = (
                 db.query(func.count(JobPost.id))
-                .filter(JobPost.is_active == True)
+                .filter(JobPost.is_active.is_(True))
                 .scalar()
             )
 
@@ -170,7 +168,7 @@ class DataProcessingService:
 
             new_jobs = (
                 db.query(JobPost)
-                .filter(JobPost.created_at > recent_cutoff, JobPost.is_active == True)
+                .filter(JobPost.created_at > recent_cutoff, JobPost.is_active.is_(True))
                 .all()
             )
 

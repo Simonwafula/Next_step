@@ -1,24 +1,22 @@
 # scrapers/scraper.py
-import warnings
-
-from urllib3.exceptions import NotOpenSSLWarning
-
-# Suppress only the LibreSSL/OpenSSL compatibility warning before any urllib3 imports
-warnings.filterwarnings("ignore", category=NotOpenSSLWarning, module="urllib3")
-
 import argparse
 import logging
 import urllib3
+import warnings
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
-from urllib.parse import urljoin
 from dataclasses import dataclass
+from urllib.parse import urljoin
+from urllib3.exceptions import NotOpenSSLWarning
 
 # Absolute imports assuming `scrapers/` is on PYTHONPATH
 from scrapers.config import SITES, get_site_cfg, USE_POSTGRES
 from scrapers.db import Database
 from scrapers.postgres_db import PostgresJobDatabase
 from scrapers.utils import get_session, rate_limited_get
+
+# Suppress the LibreSSL/OpenSSL compatibility warning
+warnings.filterwarnings("ignore", category=NotOpenSSLWarning, module="urllib3")
 
 # Suppress generic InsecureRequestWarning
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)

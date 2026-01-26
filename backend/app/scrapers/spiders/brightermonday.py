@@ -1,14 +1,10 @@
 import logging
-import os
 import sqlite3
 import urllib3
 import requests
 from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import urljoin
-import time
-from ratelimit import limits, sleep_and_retry
-from datetime import datetime, timedelta
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 

@@ -14,11 +14,11 @@ from sqlalchemy.exc import IntegrityError
 
 try:
     from db.database import SessionLocal, engine
-    from db.models import Base, JobPost, Organization, Location
+    from db.models import Base, JobPost, Organization
 except ImportError:
     # Try absolute imports if relative imports fail
     from app.db.database import SessionLocal, engine
-    from app.db.models import Base, JobPost, Organization, Location
+    from app.db.models import Base, JobPost, Organization
 
 logging.basicConfig(level=logging.INFO)
 

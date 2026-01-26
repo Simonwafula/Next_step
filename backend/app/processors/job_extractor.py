@@ -6,10 +6,9 @@ import asyncio
 import aiohttp
 import re
 import logging
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional, List
 from datetime import datetime
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin, urlparse
 import json
 
 logger = logging.getLogger(__name__)
@@ -520,7 +519,6 @@ class JobDataExtractor:
 
     def _parse_myjobmag_content(self, content_text: str) -> tuple:
         """Parse MyJobMag content to extract structured information"""
-        import re
 
         # Initialize defaults
         company = location = salary = deadline = job_type = description = ""
@@ -615,7 +613,6 @@ class JobDataExtractor:
 
     def _parse_jobwebkenya_content(self, content_text: str) -> tuple:
         """Parse JobWebKenya content to extract structured information"""
-        import re
 
         # Initialize defaults
         company = location = salary = deadline = job_type = description = ""
@@ -719,7 +716,6 @@ class JobDataExtractor:
 
     def _extract_contact_info(self, content_text: str) -> str:
         """Extract contact information from content"""
-        import re
 
         # Look for email addresses
         email_match = re.search(

@@ -8,7 +8,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import select
 import uuid
 import secrets
-import hashlib
 
 from ..db.models import User, UserProfile
 from ..db.database import get_db

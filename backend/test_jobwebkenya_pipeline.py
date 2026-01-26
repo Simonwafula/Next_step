@@ -6,7 +6,6 @@ Extend pipeline connection to JobWebKenya scraper
 import asyncio
 import logging
 import sys
-import os
 from pathlib import Path
 
 # Load environment variables from .env file
@@ -18,8 +17,8 @@ load_dotenv()
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
-from app.scrapers.spiders.jobwebkenya import JobScraper as JobWebKenyaScraper
-from app.processors.job_processor import JobProcessor
+from app.scrapers.spiders.jobwebkenya import JobScraper as JobWebKenyaScraper  # noqa: E402
+from app.processors.job_processor import JobProcessor  # noqa: E402
 
 # Set up logging
 logging.basicConfig(
@@ -55,7 +54,7 @@ async def test_jobwebkenya_pipeline():
             success_count += 1
             logger.info(f"✅ Success - ID: {job_id}")
         else:
-            logger.error(f"❌ Failed")
+            logger.error("❌ Failed")
 
     logger.info(
         f"JobWebKenya pipeline result: {success_count}/3 jobs processed successfully"

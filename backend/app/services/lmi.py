@@ -7,11 +7,9 @@ from ..db.models import (
     TitleNorm,
     Skill,
     JobSkill,
-    MetricsDaily,
 )
 from datetime import datetime, timedelta
 from collections import Counter
-import json
 
 
 def get_weekly_insights(db: Session, location: str | None = None) -> dict:
@@ -283,7 +281,7 @@ def get_salary_insights(
 def get_attachment_companies(db: Session, location: str | None = None) -> dict:
     """Get companies that accept attachments/internships"""
 
-    conditions = [JobPost.attachment_flag == True]
+    conditions = [JobPost.attachment_flag.is_(True)]
 
     if location:
         conditions.append(
@@ -315,7 +313,7 @@ def get_attachment_companies(db: Session, location: str | None = None) -> dict:
     recent_attachments = (
         db.execute(
             select(func.count(JobPost.id)).where(
-                JobPost.attachment_flag == True,
+                JobPost.attachment_flag.is_(True),
                 JobPost.first_seen >= datetime.utcnow() - timedelta(days=30),
             )
         ).scalar()

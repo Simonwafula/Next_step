@@ -3,7 +3,6 @@ LinkedIn Jobs Scraper for NextStep
 Scrapes job listings and extracts basic information
 """
 
-import asyncio
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
 import re
@@ -52,7 +51,7 @@ class LinkedInScraper(BaseScraper):
         try:
             html = await self.fetch_page(search_url)
             if not html:
-                logger.error(f"Failed to fetch LinkedIn jobs page")
+                logger.error("Failed to fetch LinkedIn jobs page")
                 return jobs
 
             soup = BeautifulSoup(html, "html.parser")

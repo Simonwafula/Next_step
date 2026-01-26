@@ -1,4 +1,3 @@
-from celery import current_task
 import asyncio
 import logging
 from typing import Dict, Any, List
@@ -7,7 +6,6 @@ from datetime import datetime, timedelta
 from ..core.celery_app import celery_app
 from ..db.database import get_db, SessionLocal
 from ..services.automated_workflow_service import automated_workflow_service
-from ..services.data_processing_service import data_processing_service
 from ..services.email_service import send_email
 from ..processors.job_processor import JobProcessor
 
@@ -279,7 +277,7 @@ async def _process_raw_jobs_async(batch_size: int) -> Dict[str, Any]:
                         "source": job.source,
                     }
 
-                    processed_job = await job_processor.process_job(job_data)
+                    await job_processor.process_job(job_data)
 
                     # Update job with processed data
                     job.processed_at = datetime.utcnow()
@@ -696,14 +694,14 @@ def process_job_alerts(self, frequency: str = "daily"):
 def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
     """Process job alerts synchronously (Celery-compatible)"""
     from sqlalchemy import select, and_
-    from ..db.models import JobAlert, JobPost, User, UserNotification
+    from ..db.models import JobAlert, User, UserNotification
     from ..services.search import search_jobs
 
     db = SessionLocal()
     try:
         # Get active alerts for the specified frequency
         stmt = select(JobAlert).where(
-            and_(JobAlert.is_active == True, JobAlert.frequency == frequency)
+            and_(JobAlert.is_active.is_(True), JobAlert.frequency == frequency)
         )
         alerts = db.execute(stmt).scalars().all()
 
@@ -834,7 +832,7 @@ def _send_job_alert_email(to_email: str, alert_name: str, jobs: List[Dict]) -> b
 
     subject = f"🎯 {len(jobs)} new jobs match your '{alert_name}' alert"
 
-    body = f"Hi there,\n\n"
+    body = "Hi there,\n\n"
     body += f"Great news! We found {len(jobs)} new job(s) matching your '{alert_name}' job alert.\n\n"
     body += "Here are the top matches:\n\n"
 

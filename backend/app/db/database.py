@@ -1,4 +1,3 @@
-import os
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from ..core.config import settings
@@ -25,7 +24,7 @@ if DATABASE_URL.startswith("sqlite"):
         from .models import Base  # noqa: F401
 
         Base.metadata.create_all(bind=engine)
-    except Exception as e:
+    except Exception:
         import traceback
 
         traceback.print_exc()

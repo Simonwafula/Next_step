@@ -20,16 +20,16 @@ backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
 # Load environment variables
-from dotenv import load_dotenv
+from dotenv import load_dotenv  # noqa: E402
 
 load_dotenv()
 
 # Set database URL for main database
 os.environ.setdefault("DATABASE_URL", "sqlite:///var/nextstep.sqlite")
 
-import requests
-from bs4 import BeautifulSoup
-from app.processors.job_processor import JobProcessor
+import requests  # noqa: E402
+from bs4 import BeautifulSoup  # noqa: E402
+from app.processors.job_processor import JobProcessor  # noqa: E402
 
 # Set up logging
 logging.basicConfig(
@@ -154,7 +154,7 @@ async def run_ingestion(pages: int = 5, batch_size: int = 10):
         await asyncio.sleep(2)
 
     logger.info(f"\n{'=' * 60}")
-    logger.info(f"INGESTION COMPLETE")
+    logger.info("INGESTION COMPLETE")
     logger.info(f"{'=' * 60}")
     logger.info(f"Total scraped: {len(unique_jobs)}")
     logger.info(f"Successful: {successful}")

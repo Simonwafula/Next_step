@@ -1,25 +1,15 @@
-import asyncio
-import json
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 import httpx
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import Flow
-from exchangelib import (
-    Credentials as ExchangeCredentials,
-    Account,
-    Configuration,
-    DELEGATE,
-)
-import pytz
 
 from ..core.config import settings
-from ..db.database import get_db
-from ..db.models import User, JobApplication
+from ..db.models import User
 from ..db.integration_models import (
     CalendarIntegration,
     CalendarEvent,
@@ -302,7 +292,7 @@ class CalendarService:
             result = await db.execute(
                 select(CalendarIntegration).where(
                     CalendarIntegration.user_id == user_id,
-                    CalendarIntegration.is_active == True,
+                    CalendarIntegration.is_active.is_(True),
                 )
             )
             calendar_integration = result.scalar_one_or_none()
@@ -592,7 +582,7 @@ class CalendarService:
                 select(CalendarEvent).where(
                     CalendarEvent.start_time > now,
                     CalendarEvent.start_time <= now + timedelta(hours=24),
-                    CalendarEvent.reminder_sent == False,
+                    CalendarEvent.reminder_sent.is_(False),
                     CalendarEvent.status == "scheduled",
                 )
             )

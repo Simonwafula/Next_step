@@ -5,10 +5,9 @@ Career tools service for CV building, cover letter generation, and career advice
 import logging
 import os
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from sqlalchemy.orm import Session
+from typing import Dict, List
 from ..db.database import SessionLocal
-from ..db.models import JobPost, User, UserProfile, CareerDocument
+from ..db.models import CareerDocument
 import openai
 import json
 

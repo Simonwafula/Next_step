@@ -1,7 +1,6 @@
 # scrapers/main.py
 import logging
 import argparse
-from datetime import datetime
 from .scraper import SiteSpider
 from .config import SITES
 

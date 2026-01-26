@@ -38,8 +38,6 @@ def extract_salary_from_text(
     MIN_SALARY_USD = 50  # Minimum USD salary
     MAX_SALARY_USD = 500000  # Maximum reasonable USD salary
 
-    text_lower = text.lower()
-
     # Salary patterns for Kenyan job postings - ordered by specificity
     patterns = [
         # Kenyan format with /= suffix: Kshs. 157,427 – Kshs. 234,431/=

@@ -6,20 +6,16 @@ import logging
 import asyncio
 import sys
 from pathlib import Path
-from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from typing import List, Dict, Any
+from datetime import datetime
 
 # Ensure package root (app/) is on sys.path so `import scrapers.*` works
 sys.path.append(str(Path(__file__).parent.parent))
 
-from scrapers.main import scrape_site, scrape_all_sites
 from scrapers.config import SITES, USE_POSTGRES
 from scrapers.postgres_db import PostgresJobDatabase
 from scrapers.migrate_to_postgres import JobDataMigrator
 
-from sqlalchemy.orm import Session
-from ..db.database import get_db
-from ..db.models import JobPost, Organization
 from ..processors.job_processor import JobProcessorService
 
 logging.basicConfig(level=logging.INFO)

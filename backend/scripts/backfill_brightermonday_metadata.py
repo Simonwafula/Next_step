@@ -16,7 +16,7 @@ import argparse
 import re
 import sys
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional
 
 # Add parent directory to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent))
@@ -185,8 +185,6 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
         locations_found = {}
 
         for job in jobs:
-            updates_made = False
-
             # Extract company if missing
             if not job.org_id:
                 company_name = extract_company_from_description(
@@ -209,7 +207,6 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
                             db.add(org)
                             db.flush()
                         job.org_id = org.id
-                        updates_made = True
                     company_updated += 1
 
             # Extract location if missing
@@ -237,7 +234,6 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
                             db.add(loc)
                             db.flush()
                         job.location_id = loc.id
-                        updates_made = True
                     location_updated += 1
 
         if not dry_run:
@@ -250,7 +246,7 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
 
         # Show top companies found
         if companies_found:
-            print(f"\nTop companies found:")
+            print("\nTop companies found:")
             for company, count in sorted(companies_found.items(), key=lambda x: -x[1])[
                 :10
             ]:
@@ -258,7 +254,7 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
 
         # Show locations found
         if locations_found:
-            print(f"\nLocations found:")
+            print("\nLocations found:")
             for loc, count in sorted(locations_found.items(), key=lambda x: -x[1]):
                 print(f"  {loc}: {count}")
 
@@ -275,7 +271,7 @@ def backfill_brightermonday_metadata(dry_run: bool = False):
         )
         total_bm = db.query(JobPost).filter(JobPost.source == "brightermonday").count()
 
-        print(f"\nBrighterMonday coverage:")
+        print("\nBrighterMonday coverage:")
         print(
             f"  With organization: {jobs_with_org}/{total_bm} ({jobs_with_org / total_bm * 100:.1f}%)"
         )

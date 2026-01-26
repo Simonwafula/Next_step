@@ -1,9 +1,7 @@
-import asyncio
-import json
 import logging
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Tuple
 import numpy as np
-from ..ml.embeddings import embed_text, generate_embeddings
+from ..ml.embeddings import embed_text
 
 try:
     from sentence_transformers import SentenceTransformer  # type: ignore
@@ -15,10 +13,8 @@ except Exception:
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.feature_extraction.text import TfidfVectorizer
 import openai
-from sqlalchemy.orm import Session
-from sqlalchemy import select, text
 
-from ..db.models import JobPost, Skill, UserProfile, User
+from ..db.models import JobPost, UserProfile
 from ..core.config import settings
 
 logger = logging.getLogger(__name__)

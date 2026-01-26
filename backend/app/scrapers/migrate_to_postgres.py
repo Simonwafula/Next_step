@@ -10,7 +10,7 @@ import sys
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any, Optional
 from urllib.parse import urlparse
 
 # Add the parent directory to the path to import from the main app
@@ -20,12 +20,12 @@ from sqlalchemy.orm import Session
 
 try:
     from db.database import SessionLocal, engine
-    from db.models import Base, JobPost, Organization, Location, TitleNorm
+    from db.models import Base, JobPost, Organization
     from scrapers.config import DB_PATH, TABLE_NAME
 except ImportError:
     # Try absolute imports if relative imports fail
     from app.db.database import SessionLocal, engine
-    from app.db.models import Base, JobPost, Organization, Location, TitleNorm
+    from app.db.models import Base, JobPost, Organization
     from app.scrapers.config import DB_PATH, TABLE_NAME
 
 logging.basicConfig(

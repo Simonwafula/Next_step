@@ -3,7 +3,6 @@ BrighterMonday Jobs Scraper for NextStep
 Scrapes job listings from BrighterMonday Kenya
 """
 
-import asyncio
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
 import re

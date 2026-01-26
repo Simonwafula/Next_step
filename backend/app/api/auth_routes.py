@@ -1,4 +1,3 @@
-from datetime import timedelta
 from typing import Dict, Any
 from fastapi import APIRouter, Depends, HTTPException, status, Form, Query, Request
 from fastapi.security import OAuth2PasswordRequestForm
@@ -11,7 +10,6 @@ from ..db.database import get_db
 from ..services.auth_service import (
     auth_service,
     get_current_user,
-    get_current_user_optional,
     is_admin_user,
 )
 from ..db.models import User, UserProfile
@@ -130,7 +128,7 @@ async def register(
 
     except HTTPException:
         raise
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Registration failed",

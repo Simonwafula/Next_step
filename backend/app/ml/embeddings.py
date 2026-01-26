@@ -1,6 +1,8 @@
-import numpy as np
 import hashlib
 import logging
+import os
+
+import numpy as np
 from functools import lru_cache
 from ..core.config import settings
 
@@ -15,9 +17,10 @@ _use_transformers = True
 def _get_model():
     """Lazy load transformer model for embeddings."""
     global _tokenizer, _transformer_model, _use_transformers
+    if _use_transformers and os.getenv("NEXTSTEP_DISABLE_TRANSFORMERS") == "1":
+        _use_transformers = False
     if _tokenizer is None and _use_transformers:
         try:
-            import torch
             from transformers import AutoTokenizer, AutoModel
 
             model_name = "intfloat/e5-small-v2"

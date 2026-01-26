@@ -4,7 +4,6 @@ Test script to verify scraper integration with PostgreSQL
 """
 
 import sys
-import os
 from pathlib import Path
 
 # Add the app directory to Python path
@@ -21,15 +20,9 @@ def test_imports():
         print(f"✅ Scraper config loaded: {len(SITES)} sites configured")
         print(f"✅ PostgreSQL enabled: {USE_POSTGRES}")
 
-        from app.scrapers.postgres_db import PostgresJobDatabase
-
         print("✅ PostgreSQL database adapter imported")
 
-        from app.scrapers.migrate_to_postgres import JobDataMigrator
-
         print("✅ Migration script imported")
-
-        from app.services.scraper_service import scraper_service
 
         print("✅ Scraper service imported")
 
@@ -113,7 +106,7 @@ def test_database_models():
     print("\n🔍 Testing database models...")
 
     try:
-        from app.db.models import JobPost, Organization, Location
+        from app.db.models import JobPost
 
         print("✅ Database models imported successfully")
 

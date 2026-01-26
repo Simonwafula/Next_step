@@ -1,6 +1,6 @@
 # Generic RSS/Atom ingest (for boards exposing feeds)
 from sqlalchemy.orm import Session
-from ...db.models import JobPost, Organization, Location
+from ...db.models import JobPost, Organization
 from datetime import datetime
 import httpx
 import re

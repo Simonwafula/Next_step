@@ -3,10 +3,8 @@ Indeed Jobs Scraper for NextStep
 Scrapes job listings from Indeed Kenya
 """
 
-import asyncio
 from bs4 import BeautifulSoup
 from typing import List, Dict, Optional
-import re
 import logging
 from urllib.parse import urljoin, quote_plus
 from .base_scraper import BaseScraper

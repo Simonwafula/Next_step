@@ -1,16 +1,12 @@
-import asyncio
-import json
 from datetime import datetime, timedelta
-from typing import Optional, Dict, List, Any
+from typing import Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
-from linkedin_api import Linkedin
+from sqlalchemy import select
 import httpx
 from requests_oauthlib import OAuth2Session
 
 from ..core.config import settings
-from ..db.database import get_db
-from ..db.models import User, UserProfile
+from ..db.models import UserProfile
 from ..db.integration_models import LinkedInProfile, IntegrationActivityLog
 import logging
 
@@ -137,7 +133,6 @@ class LinkedInService:
 
             # Extract profile information
             profile_info = profile_data.get("profile", {})
-            email_info = profile_data.get("email", {})
             positions_info = profile_data.get("positions", {})
             education_info = profile_data.get("education", {})
             skills_info = profile_data.get("skills", {})
@@ -426,7 +421,7 @@ class LinkedInService:
             result = await db.execute(
                 select(LinkedInProfile).where(
                     LinkedInProfile.sync_status == "active",
-                    LinkedInProfile.auto_sync_enabled == True,
+                    LinkedInProfile.auto_sync_enabled.is_(True),
                 )
             )
             profiles = result.scalars().all()

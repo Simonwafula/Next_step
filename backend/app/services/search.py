@@ -1,11 +1,10 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func, or_
-from ..db.models import JobPost, Organization, Location, TitleNorm, Skill, JobSkill
+from sqlalchemy import select, or_
+from ..db.models import JobPost, Organization, Location, TitleNorm
 from ..ml.embeddings import embed_text
 from ..normalization.titles import (
     normalize_title,
     get_careers_for_degree,
-    explain_title_match,
 )
 import numpy as np
 import re
@@ -119,7 +118,7 @@ def search_jobs(
                 # In Postgres this would be a real vector; in SQLite it's JSON
                 job_vec = emb_record.vector_json
                 similarity_score = cosine_similarity(query_embedding, job_vec)
-            except:
+            except Exception:
                 similarity_score = 0.0
 
         # Fetch entities for better explanation

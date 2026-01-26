@@ -2,7 +2,7 @@ from fastapi import APIRouter, Request, Depends
 from ..services.search import search_jobs
 from ..services.recommend import transitions_for
 from ..services.lmi import get_weekly_insights, get_attachment_companies
-from ..normalization.titles import get_careers_for_degree, normalize_title
+from ..normalization.titles import get_careers_for_degree
 from ..db.database import get_db
 from ..core.config import settings
 from sqlalchemy.orm import Session
@@ -171,7 +171,6 @@ def format_whatsapp_message(content: str, max_length: int = 1500) -> str:
 async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
     body = (form.get("Body") or "").strip()
-    from_ = form.get("From")
 
     if not body:
         return {
@@ -214,12 +213,12 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
             companies = get_attachment_companies(db, location=location)
 
             if not companies["companies_with_attachments"]:
-                msg = f"🎯 No attachment programs found"
+                msg = "🎯 No attachment programs found"
                 if location:
                     msg += f" in {location}"
                 msg += ". Try broader search or check back later."
             else:
-                msg = f"🎯 *Attachment Opportunities"
+                msg = "🎯 *Attachment Opportunities"
                 if location:
                     msg += f" in {location}"
                 msg += ":*\n\n"
@@ -237,10 +236,10 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
             location = intent_data.get("location")
             insights = get_weekly_insights(db, location=location)
 
-            msg = f"📊 *Market Insights"
+            msg = "📊 *Market Insights"
             if location:
                 msg += f" - {location}"
-            msg += f":*\n\n"
+            msg += ":*\n\n"
 
             msg += f"📈 {insights['total_postings']} new jobs this week"
             if insights["week_over_week_change"] != 0:
@@ -289,7 +288,7 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
             if not results or (len(results) == 1 and results[0].get("is_suggestion")):
                 msg = "🔍 No matches found. Try:\n• 'I studied [your degree]'\n• 'transition [current role]'\n• 'attachments [location]'"
             else:
-                msg = f"🔍 *Job Matches:*\n\n"
+                msg = "🔍 *Job Matches:*\n\n"
                 for i, job in enumerate(results[:3], 1):
                     if job.get("is_suggestion"):
                         continue

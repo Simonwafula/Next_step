@@ -1,7 +1,6 @@
 from datetime import datetime
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from ..schemas.base import JobPostOut, RecommendOut
 from ..db.database import get_db
 from ..services.search import search_jobs
 from ..services.recommend import (

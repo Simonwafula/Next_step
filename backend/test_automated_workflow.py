@@ -3,13 +3,8 @@ Test script for the automated workflow system
 """
 
 import asyncio
-import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from app.db.database import get_db
 from app.services.automated_workflow_service import automated_workflow_service
-from app.tasks.workflow_tasks import run_daily_workflow
-from app.tasks.scraper_tasks import test_all_scrapers
-from app.tasks.processing_tasks import process_raw_jobs
 import logging
 
 # Configure logging

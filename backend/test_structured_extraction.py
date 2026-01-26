@@ -12,7 +12,6 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 from app.processors.job_extractor import JobDataExtractor
 from app.db.database import SessionLocal
-from app.db.models import JobPost
 from sqlalchemy import text
 
 
@@ -44,7 +43,7 @@ async def test_extraction_improvements():
                 )
                 quality_score = (filled_fields / len(fields)) * 100
 
-                print(f"✅ Extraction successful")
+                print("✅ Extraction successful")
                 print(f"   Title: {data.get('title', 'NOT FOUND')[:50]}...")
                 print(f"   Company: {data.get('company', 'NOT FOUND')[:50]}...")
                 print(f"   Location: {data.get('location', 'NOT FOUND')[:50]}...")
@@ -66,7 +65,7 @@ async def test_extraction_improvements():
                     }
                 )
             else:
-                print(f"❌ Extraction failed")
+                print("❌ Extraction failed")
                 results.append(
                     {
                         "source": job["source"],
@@ -78,7 +77,7 @@ async def test_extraction_improvements():
                 )
 
     # Summary
-    print(f"\n=== EXTRACTION SUMMARY ===")
+    print("\n=== EXTRACTION SUMMARY ===")
     successful_tests = sum(1 for r in results if r["success"])
     avg_quality = (
         sum(r["quality_score"] for r in results) / len(results) if results else 0
@@ -89,7 +88,7 @@ async def test_extraction_improvements():
     print(f"Average quality score: {avg_quality:.1f}%")
 
     # Check current database quality
-    print(f"\n=== DATABASE QUALITY CHECK ===")
+    print("\n=== DATABASE QUALITY CHECK ===")
     db = SessionLocal()
     try:
         total_jobs = db.execute(text("SELECT COUNT(*) FROM job_post")).scalar()
@@ -127,7 +126,7 @@ async def test_extraction_improvements():
         db.close()
 
     # Recommendations
-    print(f"\n=== RECOMMENDATIONS ===")
+    print("\n=== RECOMMENDATIONS ===")
     if avg_quality >= 80:
         print("✅ Excellent extraction quality achieved!")
     elif avg_quality >= 60:

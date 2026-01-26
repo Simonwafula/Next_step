@@ -1,16 +1,13 @@
 import asyncio
-import json
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Optional, Dict, List, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update
+from sqlalchemy import select
 import httpx
-from urllib.parse import urljoin
 import base64
 
 from ..core.config import settings
-from ..db.database import get_db
-from ..db.models import Organization, JobPost, JobApplication, User
+from ..db.models import JobPost, JobApplication, User
 from ..db.integration_models import (
     ATSIntegration,
     ATSJobSync,
@@ -162,8 +159,6 @@ class ATSService:
     ) -> Dict[str, Any]:
         """Test connection to ATS provider"""
         try:
-            ats_config = self.supported_ats[ats_provider]
-
             if ats_provider == "greenhouse":
                 return await self._test_greenhouse_connection(credentials)
             elif ats_provider == "lever":
@@ -928,7 +923,7 @@ class ATSService:
             # Get all active ATS integrations
             result = await db.execute(
                 select(ATSIntegration).where(
-                    ATSIntegration.is_active == True,
+                    ATSIntegration.is_active.is_(True),
                     ATSIntegration.sync_status == "active",
                 )
             )

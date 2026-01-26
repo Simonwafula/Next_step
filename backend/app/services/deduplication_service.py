@@ -16,10 +16,10 @@ from difflib import SequenceMatcher
 from datetime import datetime
 import logging
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..db.models import JobPost, Organization, Location
+from ..db.models import JobPost, Organization
 from ..ml.embeddings import generate_embeddings
 
 logger = logging.getLogger(__name__)

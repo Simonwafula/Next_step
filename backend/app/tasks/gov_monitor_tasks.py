@@ -1,4 +1,3 @@
-from celery import current_task
 import asyncio
 import logging
 

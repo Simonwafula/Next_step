@@ -1,14 +1,12 @@
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import select, func, text
-from sqlalchemy.orm import Session
 from .core.config import settings
 from .core.rate_limiter import rate_limit_middleware
 from .core.logging_config import setup_logging, logging_middleware, get_logger
-from .db.database import init_db, get_db, SessionLocal, DATABASE_URL
-from .db.models import JobPost, User, Organization
+from .db.database import init_db, SessionLocal, DATABASE_URL
+from .db.models import JobPost, Organization
 from .api.routes import api_router
 from .api.admin_routes import router as admin_router
 from .api.workflow_routes import router as workflow_router

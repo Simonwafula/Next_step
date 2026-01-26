@@ -1,5 +1,5 @@
 import os
-from typing import Iterable, List
+from typing import Iterable
 
 
 def _embedding_dim() -> int:

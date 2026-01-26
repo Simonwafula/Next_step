@@ -5,11 +5,9 @@ Notification service for sending alerts about new job opportunities
 import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Set
-from sqlalchemy.orm import Session
-from sqlalchemy import and_, or_
+from typing import Dict, List
 from ..db.database import SessionLocal
-from ..db.models import JobPost, User, NotificationPreference, NotificationLog
+from ..db.models import User, NotificationPreference, NotificationLog
 from ..services.data_processing_service import data_processing_service
 from ..webhooks.whatsapp import send_whatsapp_message
 
@@ -68,7 +66,7 @@ class NotificationService:
             users_with_prefs = (
                 db.query(User)
                 .join(NotificationPreference)
-                .filter(NotificationPreference.enabled == True)
+                .filter(NotificationPreference.enabled.is_(True))
                 .all()
             )
 
@@ -330,7 +328,7 @@ Reply STOP to unsubscribe from job alerts."""
             total_users_with_prefs = (
                 db.query(func.count(User.id))
                 .join(NotificationPreference)
-                .filter(NotificationPreference.enabled == True)
+                .filter(NotificationPreference.enabled.is_(True))
                 .scalar()
                 or 0
             )

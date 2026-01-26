@@ -1,8 +1,5 @@
-from celery import current_task
-from sqlalchemy.ext.asyncio import AsyncSession
 import asyncio
 import logging
-from datetime import datetime
 from typing import Dict, Any
 
 from ..core.celery_app import celery_app

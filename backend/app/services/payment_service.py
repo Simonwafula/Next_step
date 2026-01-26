@@ -4,17 +4,13 @@ Integrates with M-Pesa and other Kenyan payment methods
 """
 
 import logging
-import hashlib
-import hmac
 import base64
 import json
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
-from sqlalchemy.orm import Session
 from ..db.database import SessionLocal
-from ..db.models import User, Subscription, Payment, PaymentMethod
+from ..db.models import Subscription, Payment
 import requests
-import asyncio
 
 logger = logging.getLogger(__name__)
 

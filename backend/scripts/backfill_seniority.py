@@ -269,7 +269,6 @@ def backfill_seniority(dry_run: bool = False):
         print(f"Of those, {len(real_jobs)} have real job titles")
 
         updated_count = 0
-        skipped_count = 0
         seniority_counts = {
             "entry": 0,
             "mid": 0,
@@ -300,7 +299,7 @@ def backfill_seniority(dry_run: bool = False):
         else:
             print(f"\n[DRY RUN] Would update {sum(seniority_counts.values())} jobs")
 
-        print(f"\nSeniority distribution:")
+        print("\nSeniority distribution:")
         for level, count in sorted(seniority_counts.items(), key=lambda x: -x[1]):
             if count > 0:
                 print(f"  {level}: {count}")

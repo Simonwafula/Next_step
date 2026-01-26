@@ -261,7 +261,7 @@ class JobProcessorService:
             stats = self.get_stats()
 
             # Test extractor
-            async with JobDataExtractor() as extractor:
+            async with JobDataExtractor():
                 # This just tests that we can create the extractor
                 pass
 

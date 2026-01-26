@@ -1,7 +1,6 @@
-from celery import current_task
 import asyncio
 import logging
-from typing import Dict, Any, List
+from typing import Dict, Any
 
 from ..core.celery_app import celery_app
 from ..db.database import get_db
@@ -218,7 +217,7 @@ def cleanup_old_jobs(self, days_old: int = 30):
         self.update_state(
             state="SUCCESS",
             meta={
-                "status": f"Cleanup completed successfully",
+                "status": "Cleanup completed successfully",
                 "progress": 100,
                 "result": result,
             },

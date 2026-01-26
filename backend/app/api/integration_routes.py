@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query, Request
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from fastapi.responses import RedirectResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
@@ -11,10 +11,7 @@ from ..db.models import User, Organization, JobApplication
 from ..db.integration_models import (
     LinkedInProfile,
     CalendarIntegration,
-    CalendarEvent,
     ATSIntegration,
-    ATSJobSync,
-    ATSApplicationSync,
     IntegrationActivityLog,
 )
 from ..services.auth_service import get_current_user
@@ -343,10 +340,8 @@ async def calendar_callback(
             )
 
         # Create or update calendar integration
-        calendar_integration = (
-            await calendar_service.create_or_update_calendar_integration(
-                db, current_user.id, provider, token_data, user_data
-            )
+        await calendar_service.create_or_update_calendar_integration(
+            db, current_user.id, provider, token_data, user_data
         )
 
         # Redirect to frontend success page

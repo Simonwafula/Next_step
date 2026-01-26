@@ -6,7 +6,6 @@ from sqlalchemy import select, and_, or_, desc, func, delete
 
 from ..db.models import (
     User,
-    UserProfile,
     JobPost,
     UserJobRecommendation,
     SavedJob,
@@ -188,7 +187,7 @@ class PersonalizedRecommendationService:
                     and_(
                         UserJobRecommendation.user_id == user_id,
                         UserJobRecommendation.recommended_at >= cutoff_date,
-                        UserJobRecommendation.is_active == True,
+                        UserJobRecommendation.is_active.is_(True),
                     )
                 )
                 .order_by(desc(UserJobRecommendation.match_score))
@@ -279,7 +278,7 @@ class PersonalizedRecommendationService:
             viewed_stmt = select(func.count(UserJobRecommendation.id)).where(
                 and_(
                     UserJobRecommendation.user_id == user_id,
-                    UserJobRecommendation.viewed == True,
+                    UserJobRecommendation.viewed.is_(True),
                 )
             )
             viewed_count = db.execute(viewed_stmt).scalar() or 0
@@ -287,7 +286,7 @@ class PersonalizedRecommendationService:
             clicked_stmt = select(func.count(UserJobRecommendation.id)).where(
                 and_(
                     UserJobRecommendation.user_id == user_id,
-                    UserJobRecommendation.clicked == True,
+                    UserJobRecommendation.clicked.is_(True),
                 )
             )
             clicked_count = db.execute(clicked_stmt).scalar() or 0
@@ -433,7 +432,7 @@ class PersonalizedRecommendationService:
             stmt = select(UserJobRecommendation.job_post_id).where(
                 and_(
                     UserJobRecommendation.user_id == user_id,
-                    UserJobRecommendation.dismissed == True,
+                    UserJobRecommendation.dismissed.is_(True),
                 )
             )
             results = db.execute(stmt).scalars().all()

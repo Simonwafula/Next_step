@@ -8,8 +8,7 @@ from time import sleep
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from requests.adapters import HTTPAdapter
 from requests.packages.urllib3.util.retry import Retry
-import os
-from typing import List, Dict, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 
 # Suppress insecure request warnings

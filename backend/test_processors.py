@@ -38,7 +38,7 @@ async def test_job_extractor():
                 )
 
                 if data:
-                    print(f"✓ Successfully extracted data")
+                    print("✓ Successfully extracted data")
                     print(f"  Title: {data.get('title', 'N/A')}")
                     print(f"  Company: {data.get('company', 'N/A')}")
                     print(f"  Location: {data.get('location', 'N/A')}")
@@ -181,7 +181,7 @@ async def test_full_pipeline():
     # Get processing stats
     try:
         stats = service.get_stats()
-        print(f"\nProcessing Statistics:")
+        print("\nProcessing Statistics:")
         print(f"  Total jobs: {stats.get('total_jobs', 0)}")
         print(f"  Jobs by source: {stats.get('jobs_by_source', {})}")
         print(f"  Recent jobs (7 days): {stats.get('recent_jobs_7_days', 0)}")

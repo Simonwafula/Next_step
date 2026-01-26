@@ -7,9 +7,8 @@ Tests P0 success criteria: ingestion from multiple sources
 import asyncio
 import logging
 import sys
-import os
 from pathlib import Path
-from datetime import datetime, timedelta
+from datetime import datetime
 
 # Load environment variables from .env file
 from dotenv import load_dotenv
@@ -20,10 +19,9 @@ load_dotenv()
 backend_path = Path(__file__).parent.parent
 sys.path.insert(0, str(backend_path))
 
-from app.scrapers.spiders.myjobmag import JobScraper as MyJobMagScraper
-from app.scrapers.spiders.jobwebkenya import JobScraper as JobWebKenyaScraper
-from app.processors.job_processor import JobProcessor
-from app.db.database import SessionLocal
+from app.scrapers.spiders.myjobmag import JobScraper as MyJobMagScraper  # noqa: E402
+from app.scrapers.spiders.jobwebkenya import JobScraper as JobWebKenyaScraper  # noqa: E402
+from app.processors.job_processor import JobProcessor  # noqa: E402
 
 # Set up logging
 logging.basicConfig(
@@ -129,7 +127,6 @@ class UnifiedIngester:
 
         # Check P0 success criteria
         sources_working = sum(1 for count in results.values() if count > 0)
-        max_source_jobs = max(results.values()) if results.values() else 0
 
         logger.info("\n🎯 P0 Success Criteria Check:")
         logger.info(f"✅ Sources working: {sources_working} (need ≥1)")

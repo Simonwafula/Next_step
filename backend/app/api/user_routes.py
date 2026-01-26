@@ -95,7 +95,7 @@ async def get_recommendations(
             "message": "Personalized recommendations based on your profile and preferences",
         }
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to get recommendations",
@@ -492,7 +492,7 @@ async def get_notifications(
     stmt = select(UserNotification).where(UserNotification.user_id == current_user.id)
 
     if unread_only:
-        stmt = stmt.where(UserNotification.is_read == False)
+        stmt = stmt.where(UserNotification.is_read.is_(False))
 
     stmt = stmt.order_by(desc(UserNotification.created_at)).limit(limit)
 
@@ -555,7 +555,7 @@ async def mark_all_notifications_read(
         .where(
             and_(
                 UserNotification.user_id == current_user.id,
-                UserNotification.is_read == False,
+                UserNotification.is_read.is_(False),
             )
         )
         .values(is_read=True, read_at=func.now())

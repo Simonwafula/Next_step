@@ -78,7 +78,7 @@ def generate_role_evolution(db: Session):
 def refresh_analytics_baseline(db: Session):
     """Main entry point for CLI to refresh all analytics tables."""
     skill_results = aggregate_skill_trends(db)
-    evolution_results = generate_role_evolution(db)
+    generate_role_evolution(db)
 
     status = "success" if skill_results["status"] == "success" else "warning"
     return {

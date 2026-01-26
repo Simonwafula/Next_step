@@ -1,35 +1,25 @@
-import asyncio
 import logging
 from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, and_, or_, desc
-from sqlalchemy.orm import selectinload
-import json
+from sqlalchemy import select, func, and_
 import numpy as np
 from collections import defaultdict, Counter
 
-from ..db.database import get_db
 from ..db.models import (
     JobPost,
-    Organization,
-    Location,
     TitleNorm,
     Skill,
-    JobSkill,
     MetricsDaily,
-    User,
     UserProfile,
     SearchHistory,
     JobApplication,
 )
 from ..services.scraper_service import scraper_service
-from ..services.data_processing_service import data_processing_service
 from ..processors.job_processor import JobProcessor
 from ..normalization.titles import normalize_title, update_title_mappings
 from ..normalization.skills import extract_and_normalize_skills, update_skill_mappings
-from ..ml.embeddings import generate_embeddings, update_embeddings_model
-from ..core.config import settings
+from ..ml.embeddings import update_embeddings_model
 
 logger = logging.getLogger(__name__)
 

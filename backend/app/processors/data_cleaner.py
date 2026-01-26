@@ -4,7 +4,7 @@ Data cleaning and normalization processor for job data
 
 import re
 import logging
-from typing import Dict, Optional, List, Tuple
+from typing import Dict, Optional
 from datetime import datetime, timedelta
 from ..normalization.titles import normalize_title
 from ..normalization.skills import extract_skills
@@ -468,7 +468,7 @@ class JobDataCleaner:
                             salary_min = val_min
                             salary_max = val_max
                     elif len(groups) >= 1 and groups[0]:  # Single value
-                        if "k" in pattern.lower() and not groups[0].lower() in [
+                        if "k" in pattern.lower() and groups[0].lower() not in [
                             "negotiable",
                             "competitive",
                             "attractive",
