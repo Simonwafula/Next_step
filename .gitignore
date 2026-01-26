@@ -11,6 +11,8 @@ env/
 ENV/
 .venv/
 .env/
+venv3.11
+venv*
 
 # Python
 __pycache__/
