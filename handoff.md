@@ -16,6 +16,7 @@ Branch: `feat/T-800-comprehensive-audit`
 ### Commits
 - `c51d696` `[T-800] Stop tracking venv and transient artifacts`
 - `b640973` `[T-800] Make backend ruff-clean and fix processing/search correctness`
+- `361d9e6` `[T-800] Update audit docs and changemap`
 
 ### Tests Run
 - `backend/venv3.11/bin/ruff check backend`
@@ -29,4 +30,3 @@ Branch: `feat/T-800-comprehensive-audit`
 1. Add `backend/requirements-dev.txt` (or `pyproject.toml`) to capture `ruff` and other dev-only tooling.
 2. Harden `/whatsapp/webhook` (Twilio signature verification, request limits, rate limiting).
 3. Convert “script tests” into real assertions and add async markers (reduce skipped tests and future pytest return-value errors).
-
