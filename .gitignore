@@ -11,6 +11,8 @@ env/
 ENV/
 .venv/
 .env/
+venv3.11/
+venv*/
 
 # Python
 __pycache__/
@@ -39,6 +41,9 @@ MANIFEST
 *.db
 *.sqlite
 *.sqlite3
+*.sqlite-journal
+*.sqlite-wal
+*.sqlite-shm
 
 # Logs
 *.log
@@ -81,3 +86,6 @@ node_modules/
 
 # Deployment scripts with secrets
 deploy_secrets.sh
+
+# Application artifacts / generated outputs
+artifacts/
