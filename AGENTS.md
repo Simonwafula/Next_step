@@ -33,7 +33,7 @@ Build Next Step: job matching + labor market intelligence from `jobs.sqlite3`.
 - Create venv (example):
   - `python3.11 -m venv backend/venv3.11`
   - `backend/venv3.11/bin/pip install -r backend/requirements.txt`
-  - `backend/venv3.11/bin/pip install ruff`
+  - `backend/venv3.11/bin/pip install -r backend/requirements-dev.txt`
 - Tool paths:
   - `backend/venv3.11/bin/ruff`
   - `backend/venv3.11/bin/pytest`

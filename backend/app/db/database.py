@@ -1,7 +1,10 @@
 import os
+import logging
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 from ..core.config import settings
+
+logger = logging.getLogger(__name__)
 
 # Allow overriding the database URL via environment for testing (e.g. SQLite)
 DATABASE_URL = os.getenv("DATABASE_URL") or (
@@ -37,15 +40,84 @@ if DATABASE_URL.startswith("sqlite"):
 
 
 def init_db():
-    # Ensure pgvector extension (Postgres only)
-    if not DATABASE_URL.startswith("sqlite"):
-        with engine.connect() as conn:
-            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-            conn.commit()
     # Create tables
     from .models import Base  # noqa
 
-    Base.metadata.create_all(bind=engine)
+    if DATABASE_URL.startswith("sqlite"):
+        Base.metadata.create_all(bind=engine)
+        return
+
+    # Postgres: ensure pgvector extension, create tables, then ensure the new
+    # vector column exists for existing deployments.
+    embedding_dim = settings.EMBEDDING_DIM
+    create_index = os.getenv("PGVECTOR_CREATE_INDEX", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+
+    with engine.connect() as conn:
+        try:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
+            conn.commit()
+        except Exception as exc:
+            logger.warning(f"Could not ensure pgvector extension is installed: {exc}")
+
+        Base.metadata.create_all(bind=conn)
+
+        # Backward-compatible schema update for existing `job_post` tables.
+        try:
+            conn.execute(
+                text(
+                    "ALTER TABLE IF EXISTS job_post "
+                    f"ADD COLUMN IF NOT EXISTS embedding_vector vector({embedding_dim});"
+                )
+            )
+            conn.commit()
+        except Exception as exc:
+            logger.warning(f"Could not add job_post.embedding_vector column: {exc}")
+            # Fall back to TEXT so the app can still start on Postgres without pgvector.
+            try:
+                conn.execute(
+                    text(
+                        "ALTER TABLE IF EXISTS job_post "
+                        "ADD COLUMN IF NOT EXISTS embedding_vector TEXT;"
+                    )
+                )
+                conn.commit()
+                logger.warning(
+                    "Added job_post.embedding_vector as TEXT (pgvector unavailable)"
+                )
+            except Exception as exc2:
+                logger.warning(
+                    f"Could not add job_post.embedding_vector column as TEXT either: {exc2}"
+                )
+
+        if create_index:
+            # Index creation can be expensive on large tables; keep it opt-in.
+            # Prefer HNSW when available, fall back to IVFFlat.
+            try:
+                conn.execute(
+                    text(
+                        "CREATE INDEX IF NOT EXISTS ix_job_post_embedding_vector_hnsw "
+                        "ON job_post USING hnsw "
+                        "(embedding_vector vector_cosine_ops);"
+                    )
+                )
+                conn.commit()
+            except Exception:
+                try:
+                    conn.execute(
+                        text(
+                            "CREATE INDEX IF NOT EXISTS ix_job_post_embedding_vector_ivfflat "
+                            "ON job_post USING ivfflat "
+                            "(embedding_vector vector_cosine_ops) "
+                            "WITH (lists = 100);"
+                        )
+                    )
+                    conn.commit()
+                except Exception as exc:
+                    logger.warning(f"Could not create pgvector index: {exc}")
 
 
 async def get_db():

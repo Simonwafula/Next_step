@@ -27,10 +27,20 @@ app.middleware("http")(rate_limit_middleware)
 
 # CORS
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
+allow_credentials = True
+allow_origins = origins
+
+# Browsers will reject `Access-Control-Allow-Credentials: true` when the origin is `*`.
+if not allow_origins:
+    allow_credentials = False
+elif "*" in allow_origins:
+    allow_origins = ["*"]
+    allow_credentials = False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins or ["*"],
-    allow_credentials=True,
+    allow_origins=allow_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )

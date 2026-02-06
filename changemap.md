@@ -31,6 +31,33 @@ Purpose: Track human-readable changes and outcomes before pushing to git.
   - Tighten/realize the skipped async tests (add markers or convert to sync), and make “script-like” tests assert meaningful outcomes (remove `return` values to avoid future pytest errors).
   - Add Twilio webhook signature validation + request auth and consider strict CORS/CSRF posture for auth endpoints.
 
+## 2026-02-06 (T-800 improvement proposals implemented)
+- Change summary:
+  - Dev tooling: added `backend/requirements-dev.txt` (pins `ruff`) and updated `AGENTS.md` to install dev tooling from that file.
+  - Twilio webhook hardening: added Twilio signature validation (`X-Twilio-Signature`), request size guard (413 on oversized payloads), and per-endpoint rate limiting for `/whatsapp/webhook` with proxy-aware URL reconstruction (`TWILIO_WEBHOOK_URL`, `x-forwarded-*`).
+  - Auth hardening (browser clients): auth routes now set httpOnly cookies (access + refresh) and backend auth dependencies accept either Bearer tokens or cookies; logout now clears cookies without requiring a valid session.
+  - Embeddings migration: introduced `job_post.embedding_vector` (portable `VectorString` type), dual-read in search/dedupe, dual-write/backfill in embedding updater, and Postgres startup schema ensures (pgvector extension, add column if missing, optional ANN index via `PGVECTOR_CREATE_INDEX=true`).
+  - Test normalization: moved runnable smoke scripts out of pytest collection (`backend/scripts/`) and added deterministic tests under `backend/tests/`.
+- Outcome:
+  - `pytest` no longer reports skipped async coroutine tests or return-value warnings; new tests provide real coverage for the hardened auth/webhook paths.
+  - Postgres deployments can transition toward pgvector with backward-compatible dual storage and an opt-in index build.
+- Affected areas:
+  - `AGENTS.md`, `backend/requirements-dev.txt`
+  - `backend/app/core/config.py`, `backend/app/main.py`
+  - `backend/app/api/auth_routes.py`, `backend/app/services/auth_service.py`
+  - `backend/app/webhooks/whatsapp.py`
+  - `backend/app/db/database.py`, `backend/app/db/models.py`, `backend/app/db/types.py`
+  - `backend/app/services/search.py`, `backend/app/services/deduplication_service.py`
+  - `backend/app/tasks/processing_tasks.py`
+  - `backend/tests/`, `backend/scripts/`
+- Tests:
+  - `backend/venv3.11/bin/ruff check backend` (pass)
+  - `backend/venv3.11/bin/ruff format backend --check` (pass)
+  - `backend/venv3.11/bin/pytest` (pass; 7 passed)
+- Follow-ups:
+  - Consider adding CSRF protection if cookie auth is used cross-site (e.g., `SameSite=None` + `allow_credentials=True`).
+  - If/when Alembic is standardized in this repo, add a proper migration for `embedding_vector` and pgvector index creation.
+
 ## 2026-01-19 (local sqlite path)
 - Change summary: Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
 - Outcome: Local dev avoids the corrupted `test_db.sqlite` and boots with a clean DB path.

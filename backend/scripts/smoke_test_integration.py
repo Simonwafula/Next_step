@@ -6,8 +6,9 @@ Test script to verify scraper integration with PostgreSQL
 import sys
 from pathlib import Path
 
-# Add the app directory to Python path
-sys.path.append(str(Path(__file__).parent / "app"))
+# Ensure we can `import app.*` regardless of current working directory.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_DIR))
 
 
 def test_imports():
@@ -40,7 +41,9 @@ def test_sqlite_data():
         import sqlite3
         from app.scrapers.config import DB_PATH, TABLE_NAME
 
-        db_path = Path(__file__).parent / "app" / DB_PATH
+        db_path = Path(DB_PATH)
+        if not db_path.is_absolute():
+            db_path = BACKEND_DIR / db_path
         if not db_path.exists():
             print(f"❌ SQLite database not found at {db_path}")
             return False

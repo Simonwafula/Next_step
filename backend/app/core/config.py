@@ -40,6 +40,23 @@ class Settings(BaseModel):
         "ADMIN_API_KEY"
     )  # For server-to-server admin access
 
+    # Auth cookies (optional, recommended for browser clients)
+    AUTH_COOKIE_ACCESS_NAME: str = os.getenv(
+        "AUTH_COOKIE_ACCESS_NAME", "nextstep_access"
+    )
+    AUTH_COOKIE_REFRESH_NAME: str = os.getenv(
+        "AUTH_COOKIE_REFRESH_NAME", "nextstep_refresh"
+    )
+    AUTH_COOKIE_SAMESITE: str = os.getenv(
+        "AUTH_COOKIE_SAMESITE", "lax"
+    )  # lax|strict|none
+    AUTH_COOKIE_SECURE: bool = (
+        os.getenv("AUTH_COOKIE_SECURE", "").lower() in ("1", "true", "yes")
+        or APP_ENV != "dev"
+    )
+    AUTH_COOKIE_DOMAIN: str = os.getenv("AUTH_COOKIE_DOMAIN", "")
+    AUTH_COOKIE_PATH: str = os.getenv("AUTH_COOKIE_PATH", "/")
+
     # AI & ML Configuration
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-3.5-turbo")
@@ -55,6 +72,11 @@ class Settings(BaseModel):
     TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
     TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_WHATSAPP_FROM: str = os.getenv("TWILIO_WHATSAPP_FROM", "")
+    TWILIO_VALIDATE_WEBHOOK_SIGNATURE: bool = (
+        os.getenv("TWILIO_VALIDATE_WEBHOOK_SIGNATURE", "true").lower() == "true"
+    )
+    # If set, use this exact URL when validating Twilio signatures (helps behind proxies).
+    TWILIO_WEBHOOK_URL: str = os.getenv("TWILIO_WEBHOOK_URL", "")
 
     # Email Configuration
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")

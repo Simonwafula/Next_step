@@ -100,9 +100,10 @@ def search_jobs(
     for jp, org, loc, title_norm in rows:
         # Calculate semantic similarity if we have embeddings
         similarity_score = 0.0
-        if query_embedding and jp.embedding:
+        embedding_value = jp.embedding_vector or jp.embedding
+        if query_embedding and embedding_value:
             try:
-                job_embedding = parse_embedding(jp.embedding)
+                job_embedding = parse_embedding(embedding_value)
                 if job_embedding is not None:
                     similarity_score = cosine_similarity(query_embedding, job_embedding)
             except Exception:

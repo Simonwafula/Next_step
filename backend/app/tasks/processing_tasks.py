@@ -554,12 +554,14 @@ async def _update_job_embeddings_async(job_ids: List[int] = None) -> Dict[str, A
     async for db in get_db():
         try:
             import json
-            from sqlalchemy import select
+            from sqlalchemy import select, or_
             from ..db.models import JobPost
-            from ..ml.embeddings import generate_embeddings
+            from ..ml.embeddings import generate_embeddings, parse_embedding
 
             # Get jobs to process
-            query = select(JobPost).where(JobPost.embedding.is_(None))
+            query = select(JobPost).where(
+                or_(JobPost.embedding.is_(None), JobPost.embedding_vector.is_(None))
+            )
             if job_ids:
                 query = query.where(JobPost.id.in_(job_ids))
 
@@ -570,12 +572,28 @@ async def _update_job_embeddings_async(job_ids: List[int] = None) -> Dict[str, A
 
             for job in jobs:
                 try:
-                    # Generate embedding
+                    # Prefer cheap backfill from existing values before recomputing.
+                    if job.embedding_vector is None and job.embedding:
+                        embedding = parse_embedding(job.embedding)
+                        if embedding is not None:
+                            job.embedding_vector = embedding
+                            updated_count += 1
+                            continue
+
+                    if job.embedding is None and job.embedding_vector is not None:
+                        embedding = parse_embedding(job.embedding_vector)
+                        if embedding is not None:
+                            job.embedding = json.dumps(embedding)
+                            updated_count += 1
+                            continue
+
+                    # Generate embedding when neither representation is available.
                     text = f"{job.title_raw or ''} {job.description_raw or ''}"
                     if text.strip():
                         embedding = generate_embeddings([text])[0]
                         # Persist as JSON for portability and safe parsing.
                         job.embedding = json.dumps(embedding)
+                        job.embedding_vector = embedding
                         updated_count += 1
 
                 except Exception as e:

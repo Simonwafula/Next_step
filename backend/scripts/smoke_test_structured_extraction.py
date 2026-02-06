@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 Test script to verify improved structured data extraction
 """
 
 import asyncio
 import sys
-import os
+from pathlib import Path
 
-# Add the backend directory to the path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Ensure we can `import app.*` regardless of current working directory.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_DIR))
 
 from app.processors.job_extractor import JobDataExtractor
 from app.db.database import SessionLocal

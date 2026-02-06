@@ -350,7 +350,11 @@ class DeduplicationService:
             input_embedding = embeddings[0]
 
             # Build query for recent jobs
-            query = select(JobPost).where(JobPost.embedding.isnot(None))
+            from sqlalchemy import or_
+
+            query = select(JobPost).where(
+                or_(JobPost.embedding.isnot(None), JobPost.embedding_vector.isnot(None))
+            )
 
             if org_id:
                 query = query.where(JobPost.org_id == org_id)
@@ -370,7 +374,8 @@ class DeduplicationService:
             import numpy as np
 
             for candidate in candidates:
-                candidate_embedding = parse_embedding(candidate.embedding)
+                embedding_value = candidate.embedding_vector or candidate.embedding
+                candidate_embedding = parse_embedding(embedding_value)
                 if candidate_embedding is None:
                     continue
 

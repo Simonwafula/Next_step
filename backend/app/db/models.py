@@ -11,6 +11,8 @@ from sqlalchemy import (
 )
 import os
 
+from .types import VectorString
+
 # Use PostgreSQL JSONB when available, but fall back to generic JSON for SQLite
 if os.getenv("DATABASE_URL", "").startswith("sqlite"):
     from sqlalchemy import JSON as JSONB
@@ -26,6 +28,8 @@ else:
 from datetime import datetime
 from typing import List
 import uuid
+
+EMBEDDING_DIM = int(os.getenv("EMBEDDING_DIM", "384"))
 
 
 class Base(DeclarativeBase):
@@ -109,6 +113,10 @@ class JobPost(Base):
     embedding: Mapped[str | None] = mapped_column(
         Text
     )  # store as JSON string or move to vector type later
+    embedding_vector: Mapped[str | None] = mapped_column(
+        VectorString(EMBEDDING_DIM),
+        nullable=True,
+    )
 
     # Relationships
     organization: Mapped["Organization"] = relationship(

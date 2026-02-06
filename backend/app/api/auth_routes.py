@@ -1,5 +1,15 @@
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Query, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Form,
+    Query,
+    Request,
+    Response,
+    Cookie,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -7,7 +17,12 @@ import httpx
 import uuid
 
 from ..db.database import get_db
-from ..services.auth_service import auth_service, get_current_user, is_admin_user
+from ..services.auth_service import (
+    auth_service,
+    get_current_user,
+    get_current_user_optional,
+    is_admin_user,
+)
 from ..db.models import User, UserProfile
 from ..core.config import settings
 from ..core.rate_limiter import rate_limit
@@ -73,6 +88,49 @@ class GoogleAuthUrlResponse(BaseModel):
     authorization_url: str
 
 
+def _cookie_kwargs() -> dict:
+    kwargs: dict[str, Any] = {
+        "httponly": True,
+        "secure": settings.AUTH_COOKIE_SECURE,
+        "samesite": settings.AUTH_COOKIE_SAMESITE,
+        "path": settings.AUTH_COOKIE_PATH,
+    }
+    if settings.AUTH_COOKIE_DOMAIN:
+        kwargs["domain"] = settings.AUTH_COOKIE_DOMAIN
+    return kwargs
+
+
+def _set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str
+) -> None:
+    response.set_cookie(
+        key=settings.AUTH_COOKIE_ACCESS_NAME,
+        value=access_token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        **_cookie_kwargs(),
+    )
+    response.set_cookie(
+        key=settings.AUTH_COOKIE_REFRESH_NAME,
+        value=refresh_token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        **_cookie_kwargs(),
+    )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    # Setting an empty value + max_age=0 instructs browsers to remove the cookie.
+    response.delete_cookie(
+        key=settings.AUTH_COOKIE_ACCESS_NAME,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=settings.AUTH_COOKIE_DOMAIN or None,
+    )
+    response.delete_cookie(
+        key=settings.AUTH_COOKIE_REFRESH_NAME,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=settings.AUTH_COOKIE_DOMAIN or None,
+    )
+
+
 def build_token_response(db: Session, user: User) -> Dict[str, Any]:
     access_token = auth_service.create_access_token(
         data={"sub": user.id, "email": user.email}
@@ -106,7 +164,10 @@ def build_token_response(db: Session, user: User) -> Dict[str, Any]:
 @router.post("/register", response_model=Token)
 @rate_limit(max_requests=5, window_seconds=60)  # 5 registrations per minute per IP
 async def register(
-    request: Request, user_data: UserCreate, db: Session = Depends(get_db)
+    request: Request,
+    response: Response,
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
 ):
     """Register a new user."""
     try:
@@ -120,7 +181,11 @@ async def register(
             whatsapp_number=user_data.whatsapp_number,
         )
 
-        return build_token_response(db, user)
+        token_payload = build_token_response(db, user)
+        _set_auth_cookies(
+            response, token_payload["access_token"], token_payload["refresh_token"]
+        )
+        return token_payload
 
     except HTTPException:
         raise
@@ -135,6 +200,7 @@ async def register(
 @rate_limit(max_requests=10, window_seconds=60)  # 10 login attempts per minute per IP
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
@@ -147,14 +213,31 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return build_token_response(db, user)
+    token_payload = build_token_response(db, user)
+    _set_auth_cookies(
+        response, token_payload["access_token"], token_payload["refresh_token"]
+    )
+    return token_payload
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(refresh_token: str = Form(...), db: Session = Depends(get_db)):
+async def refresh_token(
+    response: Response,
+    refresh_token_form: str | None = Form(None),
+    refresh_token_cookie: str | None = Cookie(
+        None, alias=settings.AUTH_COOKIE_REFRESH_NAME
+    ),
+    db: Session = Depends(get_db),
+):
     """Refresh access token using refresh token."""
     try:
-        payload = auth_service.verify_token(refresh_token)
+        refresh_token_value = refresh_token_form or refresh_token_cookie
+        if not refresh_token_value:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
+            )
+
+        payload = auth_service.verify_token(refresh_token_value)
 
         if payload.get("type") != "refresh":
             raise HTTPException(
@@ -170,7 +253,11 @@ async def refresh_token(refresh_token: str = Form(...), db: Session = Depends(ge
                 detail="User not found or inactive",
             )
 
-        return build_token_response(db, user)
+        token_payload = build_token_response(db, user)
+        _set_auth_cookies(
+            response, token_payload["access_token"], token_payload["refresh_token"]
+        )
+        return token_payload
 
     except HTTPException:
         raise
@@ -257,6 +344,7 @@ async def google_auth_url(
 
 @router.get("/google/callback", response_model=Token)
 async def google_callback(
+    response: Response,
     code: str = Query(...),
     redirect_uri: str | None = Query(None),
     db: Session = Depends(get_db),
@@ -331,7 +419,11 @@ async def google_callback(
         user.is_verified = True
         db.commit()
 
-    return build_token_response(db, user)
+    token_payload = build_token_response(db, user)
+    _set_auth_cookies(
+        response, token_payload["access_token"], token_payload["refresh_token"]
+    )
+    return token_payload
 
 
 @router.get("/me", response_model=UserResponse)
@@ -413,8 +505,13 @@ async def update_user_profile(
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
-    """Logout user (client should discard tokens)."""
+async def logout(
+    response: Response,
+    current_user: User | None = Depends(get_current_user_optional),
+):
+    """Logout user (clears auth cookies; client may also discard stored tokens)."""
+    del current_user
+    _clear_auth_cookies(response)
     return {"message": "Successfully logged out"}
 
 

@@ -1,10 +1,11 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException, status
 from ..services.search import search_jobs
 from ..services.recommend import transitions_for
 from ..services.lmi import get_weekly_insights, get_attachment_companies
 from ..normalization.titles import get_careers_for_degree
 from ..db.database import get_db
 from ..core.config import settings
+from ..core.rate_limiter import rate_limit
 from sqlalchemy.orm import Session
 import re
 import logging
@@ -167,9 +168,79 @@ def format_whatsapp_message(content: str, max_length: int = 1500) -> str:
     return f"{truncated}...\n\n📱 Visit our web app for full details!"
 
 
+def _webhook_validation_url(request: Request) -> str:
+    # Prefer explicit config to avoid proxy/host mismatches.
+    if settings.TWILIO_WEBHOOK_URL:
+        return settings.TWILIO_WEBHOOK_URL
+
+    forwarded_proto = request.headers.get("x-forwarded-proto")
+    forwarded_host = request.headers.get("x-forwarded-host")
+    if forwarded_proto and forwarded_host:
+        return str(request.url.replace(scheme=forwarded_proto, netloc=forwarded_host))
+
+    return str(request.url)
+
+
+def _validate_twilio_signature(request: Request, form: dict) -> None:
+    """Validate inbound webhook came from Twilio (if configured)."""
+    if not settings.TWILIO_VALIDATE_WEBHOOK_SIGNATURE:
+        return
+
+    if not settings.TWILIO_AUTH_TOKEN:
+        logger.warning(
+            "TWILIO_VALIDATE_WEBHOOK_SIGNATURE=true but TWILIO_AUTH_TOKEN is not set; skipping signature validation"
+        )
+        return
+
+    signature = request.headers.get("x-twilio-signature") or ""
+    if not signature:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Missing Twilio signature"
+        )
+
+    try:
+        from twilio.request_validator import RequestValidator
+
+        validator = RequestValidator(settings.TWILIO_AUTH_TOKEN)
+        url = _webhook_validation_url(request)
+
+        # Twilio expects a mapping of str -> str values.
+        params = {k: v for k, v in form.items()}
+
+        if not validator.validate(url, params, signature):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Invalid Twilio signature"
+            )
+    except HTTPException:
+        raise
+    except Exception as exc:
+        # Fail closed when validation is enabled.
+        logger.error(f"Twilio signature validation error: {exc}")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Webhook signature validation failed",
+        )
+
+
 @router.post("/webhook")
+@rate_limit(max_requests=120, window_seconds=60)  # Twilio may retry; allow bursts.
 async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
-    form = await request.form()
+    content_length = request.headers.get("content-length")
+    if content_length:
+        try:
+            if int(content_length) > 100_000:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="Request too large",
+                )
+        except ValueError:
+            pass
+
+    form_data = await request.form()
+    # Flatten form values (Starlette returns form items as strings already for Twilio).
+    form = dict(form_data)
+    _validate_twilio_signature(request, form)
+
     body = (form.get("Body") or "").strip()
 
     if not body:
@@ -304,7 +375,7 @@ async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
 
     except Exception as e:
         msg = "⚠️ Something went wrong. Please try again or rephrase your question."
-        print(f"WhatsApp webhook error: {e}")  # Log for debugging
+        logger.error(f"WhatsApp webhook error: {e}")
 
     # Format and return response
     formatted_msg = format_whatsapp_message(msg)
