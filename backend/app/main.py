@@ -1,14 +1,12 @@
 from datetime import datetime, timedelta
-from fastapi import FastAPI, Depends, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 from sqlalchemy import select, func, text
-from sqlalchemy.orm import Session
 from .core.config import settings
 from .core.rate_limiter import rate_limit_middleware
 from .core.logging_config import setup_logging, logging_middleware, get_logger
-from .db.database import init_db, get_db, SessionLocal, DATABASE_URL
-from .db.models import JobPost, User, Organization
+from .db.database import init_db, SessionLocal, DATABASE_URL
+from .db.models import JobPost, Organization
 from .api.routes import api_router
 from .api.admin_routes import router as admin_router
 from .api.workflow_routes import router as workflow_router
@@ -37,11 +35,13 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+
 @app.on_event("startup")
 def startup_event():
     logger.info("Application starting up...")
     init_db()
     logger.info("Database initialized successfully")
+
 
 @app.get("/health")
 def health():
@@ -55,7 +55,7 @@ def health_detailed():
     health_status = {
         "status": "healthy",
         "timestamp": datetime.utcnow().isoformat(),
-        "checks": {}
+        "checks": {},
     }
 
     # Check database connectivity
@@ -64,15 +64,12 @@ def health_detailed():
         db.execute(text("SELECT 1"))
         health_status["checks"]["database"] = {
             "status": "healthy",
-            "type": "sqlite" if "sqlite" in DATABASE_URL else "postgresql"
+            "type": "sqlite" if "sqlite" in DATABASE_URL else "postgresql",
         }
         db.close()
     except Exception as e:
         health_status["status"] = "unhealthy"
-        health_status["checks"]["database"] = {
-            "status": "unhealthy",
-            "error": str(e)
-        }
+        health_status["checks"]["database"] = {"status": "unhealthy", "error": str(e)}
 
     return health_status
 
@@ -91,82 +88,99 @@ def ingestion_status():
 
         # Jobs by source
         source_counts = db.execute(
-            select(JobPost.source, func.count(JobPost.id))
-            .group_by(JobPost.source)
+            select(JobPost.source, func.count(JobPost.id)).group_by(JobPost.source)
         ).all()
 
         # Recent ingestion (last 24h)
-        jobs_last_24h = db.execute(
-            select(func.count(JobPost.id))
-            .where(JobPost.first_seen >= last_24h)
-        ).scalar() or 0
+        jobs_last_24h = (
+            db.execute(
+                select(func.count(JobPost.id)).where(JobPost.first_seen >= last_24h)
+            ).scalar()
+            or 0
+        )
 
         # Last 7 days
-        jobs_last_7d = db.execute(
-            select(func.count(JobPost.id))
-            .where(JobPost.first_seen >= last_7d)
-        ).scalar() or 0
+        jobs_last_7d = (
+            db.execute(
+                select(func.count(JobPost.id)).where(JobPost.first_seen >= last_7d)
+            ).scalar()
+            or 0
+        )
 
         # Latest job timestamp
-        latest_job = db.execute(
-            select(func.max(JobPost.first_seen))
-        ).scalar()
+        latest_job = db.execute(select(func.max(JobPost.first_seen))).scalar()
 
         # Data quality metrics
-        jobs_with_org = db.execute(
-            select(func.count(JobPost.id))
-            .where(JobPost.org_id.is_not(None))
-        ).scalar() or 0
+        jobs_with_org = (
+            db.execute(
+                select(func.count(JobPost.id)).where(JobPost.org_id.is_not(None))
+            ).scalar()
+            or 0
+        )
 
-        jobs_with_location = db.execute(
-            select(func.count(JobPost.id))
-            .where(JobPost.location_id.is_not(None))
-        ).scalar() or 0
+        jobs_with_location = (
+            db.execute(
+                select(func.count(JobPost.id)).where(JobPost.location_id.is_not(None))
+            ).scalar()
+            or 0
+        )
 
-        jobs_with_salary = db.execute(
-            select(func.count(JobPost.id))
-            .where(JobPost.salary_min.is_not(None))
-        ).scalar() or 0
+        jobs_with_salary = (
+            db.execute(
+                select(func.count(JobPost.id)).where(JobPost.salary_min.is_not(None))
+            ).scalar()
+            or 0
+        )
 
         return {
             "status": "operational",
             "timestamp": now.isoformat(),
             "totals": {
                 "jobs": total_jobs,
-                "organizations": db.execute(select(func.count(Organization.id))).scalar() or 0,
+                "organizations": db.execute(
+                    select(func.count(Organization.id))
+                ).scalar()
+                or 0,
             },
-            "sources": {
-                source: count for source, count in source_counts
-            },
+            "sources": {source: count for source, count in source_counts},
             "ingestion": {
                 "last_24h": jobs_last_24h,
                 "last_7d": jobs_last_7d,
                 "latest_job": latest_job.isoformat() if latest_job else None,
-                "ingestion_rate_24h": round(jobs_last_24h / 24, 1) if jobs_last_24h else 0,
+                "ingestion_rate_24h": round(jobs_last_24h / 24, 1)
+                if jobs_last_24h
+                else 0,
             },
             "data_quality": {
                 "with_organization": {
                     "count": jobs_with_org,
-                    "percentage": round(jobs_with_org / total_jobs * 100, 1) if total_jobs else 0
+                    "percentage": round(jobs_with_org / total_jobs * 100, 1)
+                    if total_jobs
+                    else 0,
                 },
                 "with_location": {
                     "count": jobs_with_location,
-                    "percentage": round(jobs_with_location / total_jobs * 100, 1) if total_jobs else 0
+                    "percentage": round(jobs_with_location / total_jobs * 100, 1)
+                    if total_jobs
+                    else 0,
                 },
                 "with_salary": {
                     "count": jobs_with_salary,
-                    "percentage": round(jobs_with_salary / total_jobs * 100, 1) if total_jobs else 0
-                }
-            }
+                    "percentage": round(jobs_with_salary / total_jobs * 100, 1)
+                    if total_jobs
+                    else 0,
+                },
+            },
         }
     except Exception as e:
         return {
             "status": "error",
             "timestamp": datetime.utcnow().isoformat(),
-            "error": str(e)
+            "error": str(e),
         }
     finally:
         db.close()
+
 
 # API routers
 app.include_router(api_router, prefix="/api")

@@ -1,4 +1,3 @@
-from celery import current_task
 import asyncio
 import logging
 
@@ -37,7 +36,10 @@ def run_government_sources_task(self):
         logger.error("Government source monitoring failed: %s", exc)
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Government source monitoring failed: {exc}", "progress": 0},
+            meta={
+                "status": f"Government source monitoring failed: {exc}",
+                "progress": 0,
+            },
         )
         raise
 

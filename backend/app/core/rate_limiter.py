@@ -4,6 +4,7 @@ Rate limiting middleware for FastAPI.
 Uses in-memory storage for development/single-instance deployments.
 For production with multiple instances, configure Redis backend.
 """
+
 import time
 from collections import defaultdict
 from typing import Callable, Optional
@@ -34,15 +35,16 @@ class RateLimiter:
         cutoff = now - window_seconds
         for key in list(self._requests.keys()):
             self._requests[key] = [
-                (ts, count) for ts, count in self._requests[key]
-                if ts > cutoff
+                (ts, count) for ts, count in self._requests[key] if ts > cutoff
             ]
             if not self._requests[key]:
                 del self._requests[key]
 
         self._last_cleanup = now
 
-    def is_allowed(self, key: str, max_requests: int, window_seconds: int = 60) -> tuple[bool, int]:
+    def is_allowed(
+        self, key: str, max_requests: int, window_seconds: int = 60
+    ) -> tuple[bool, int]:
         """
         Check if request is allowed under rate limit.
 
@@ -54,8 +56,7 @@ class RateLimiter:
 
         cutoff = now - window_seconds
         self._requests[key] = [
-            (ts, count) for ts, count in self._requests[key]
-            if ts > cutoff
+            (ts, count) for ts, count in self._requests[key] if ts > cutoff
         ]
 
         current_count = sum(count for _, count in self._requests[key])
@@ -99,7 +100,7 @@ def get_client_identifier(request: Request) -> str:
 def rate_limit(
     max_requests: Optional[int] = None,
     window_seconds: int = 60,
-    key_func: Optional[Callable[[Request], str]] = None
+    key_func: Optional[Callable[[Request], str]] = None,
 ):
     """
     Decorator for rate limiting endpoints.
@@ -115,6 +116,7 @@ def rate_limit(
         async def search(...):
             ...
     """
+
     def decorator(func: Callable):
         @wraps(func)
         async def wrapper(*args, **kwargs):
@@ -149,13 +151,14 @@ def rate_limit(
                         "Retry-After": str(retry_after),
                         "X-RateLimit-Limit": str(limit),
                         "X-RateLimit-Remaining": "0",
-                        "X-RateLimit-Reset": str(int(time.time()) + retry_after)
-                    }
+                        "X-RateLimit-Reset": str(int(time.time()) + retry_after),
+                    },
                 )
 
             return await func(*args, **kwargs)
 
         return wrapper
+
     return decorator
 
 
@@ -183,6 +186,7 @@ async def rate_limit_middleware(request: Request, call_next):
         retry_after = rate_limiter.get_retry_after(key, 60)
         logger.warning(f"Global rate limit exceeded for {client_id}")
         from fastapi.responses import JSONResponse
+
         return JSONResponse(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             content={
@@ -191,8 +195,8 @@ async def rate_limit_middleware(request: Request, call_next):
             headers={
                 "Retry-After": str(retry_after),
                 "X-RateLimit-Limit": str(global_limit),
-                "X-RateLimit-Remaining": "0"
-            }
+                "X-RateLimit-Remaining": "0",
+            },
         )
 
     response = await call_next(request)

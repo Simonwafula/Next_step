@@ -5,6 +5,7 @@ from ...db.models import JobPost, Organization, Location
 from datetime import datetime
 import httpx
 
+
 def ingest_greenhouse(db: Session, **src) -> int:
     token = src.get("board_token")
     org_name = src.get("org")
@@ -18,7 +19,9 @@ def ingest_greenhouse(db: Session, **src) -> int:
         org = db.query(Organization).filter(Organization.name == org_name).one_or_none()
         if not org:
             org = Organization(name=org_name, ats="greenhouse", verified=True)
-            db.add(org); db.commit(); db.refresh(org)
+            db.add(org)
+            db.commit()
+            db.refresh(org)
     else:
         org = None
 
@@ -28,12 +31,14 @@ def ingest_greenhouse(db: Session, **src) -> int:
         existing = db.query(JobPost).filter(JobPost.url == jurl).one_or_none()
         if existing:
             existing.last_seen = datetime.utcnow()
-            db.add(existing); continue
+            db.add(existing)
+            continue
 
         loc = None
         if j.get("location", {}).get("name"):
             loc = Location(raw=j["location"]["name"])
-            db.add(loc); db.flush()
+            db.add(loc)
+            db.flush()
 
         jp = JobPost(
             source="greenhouse",
@@ -44,7 +49,8 @@ def ingest_greenhouse(db: Session, **src) -> int:
             description_raw="",
             requirements_raw="",
         )
-        db.add(jp); added += 1
+        db.add(jp)
+        added += 1
 
     db.commit()
     return added

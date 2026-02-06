@@ -19,7 +19,9 @@ from typing import Tuple, Optional
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 
-def extract_salary_from_text(text: str) -> Tuple[Optional[float], Optional[float], Optional[str]]:
+def extract_salary_from_text(
+    text: str,
+) -> Tuple[Optional[float], Optional[float], Optional[str]]:
     """
     Extract salary information from text content.
     Returns (salary_min, salary_max, currency)
@@ -36,41 +38,51 @@ def extract_salary_from_text(text: str) -> Tuple[Optional[float], Optional[float
     MIN_SALARY_USD = 50  # Minimum USD salary
     MAX_SALARY_USD = 500000  # Maximum reasonable USD salary
 
-    text_lower = text.lower()
-
     # Salary patterns for Kenyan job postings - ordered by specificity
     patterns = [
         # Kenyan format with /= suffix: Kshs. 157,427 – Kshs. 234,431/=
-        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)(?:/=)?\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)(?:/=)?', 'KES', False),
+        (
+            r"(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)(?:/=)?\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)(?:/=)?",
+            "KES",
+            False,
+        ),
         # K notation range: KES 80k-120k (requires 'k' after number)
-        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)\s*k\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*(\d+)\s*k', 'KES', True),
+        (
+            r"(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)\s*k\s*[-–to]+\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*(\d+)\s*k",
+            "KES",
+            True,
+        ),
         # Standard KSH range: KSH 50,000 - 100,000 (require comma for larger numbers)
-        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)\s*[-–to]+\s*([\d,]+)', 'KES', False),
+        (r"(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)\s*[-–to]+\s*([\d,]+)", "KES", False),
         # Salary range pattern: "salary of between X and Y"
-        (r'salary\s+(?:of\s+)?(?:between\s+)?(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)\s*(?:and|to|-|–)\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)', 'KES', False),
+        (
+            r"salary\s+(?:of\s+)?(?:between\s+)?(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)\s*(?:and|to|-|–)\s*(?:KSH|KSh|Kshs?|KES)?\.?\s*([\d,]+)",
+            "KES",
+            False,
+        ),
         # Single Kenyan value with /= suffix (more specific - must have /=)
-        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)/=', 'KES', False),
+        (r"(?:KSH|KSh|Kshs?|KES)\.?\s*([\d,]+)/=", "KES", False),
         # K notation single with explicit 'k': KES 80k
-        (r'(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)\s*k\b', 'KES', True),
+        (r"(?:KSH|KSh|Kshs?|KES)\.?\s*(\d+)\s*k\b", "KES", True),
         # USD range
-        (r'\$\s*([\d,]+)\s*[-–to]+\s*\$?\s*([\d,]+)', 'USD', False),
+        (r"\$\s*([\d,]+)\s*[-–to]+\s*\$?\s*([\d,]+)", "USD", False),
         # "Salary: X to Y" format (requires explicit "salary" keyword)
-        (r'salary[:\s]+([\d,]+)\s*[-–to]+\s*([\d,]+)', 'KES', False),
+        (r"salary[:\s]+([\d,]+)\s*[-–to]+\s*([\d,]+)", "KES", False),
         # "Salary: X" format with comma (requires comma for validity)
-        (r'salary[:\s]+([\d,]+)', 'KES', False),
+        (r"salary[:\s]+([\d,]+)", "KES", False),
         # "X per month" format (requires comma for larger numbers)
-        (r'([\d,]+)\s*(?:per|/)\s*month', 'KES', False),
+        (r"([\d,]+)\s*(?:per|/)\s*month", "KES", False),
         # Annual salary format
-        (r'([\d,]+)\s*(?:per|/)\s*(?:year|annum|p\.a\.)', 'KES', False),
+        (r"([\d,]+)\s*(?:per|/)\s*(?:year|annum|p\.a\.)", "KES", False),
     ]
 
     def clean_value(val: str) -> float:
-        cleaned = val.replace(' ', '').replace(',', '').replace('/=', '')
+        cleaned = val.replace(" ", "").replace(",", "").replace("/=", "")
         return float(cleaned)
 
     def is_valid_salary(val: float, currency: str) -> bool:
         """Check if salary value is within reasonable bounds."""
-        if currency == 'USD':
+        if currency == "USD":
             return MIN_SALARY_USD <= val <= MAX_SALARY_USD
         else:  # KES
             return MIN_SALARY_KES <= val <= MAX_SALARY_KES
@@ -89,7 +101,9 @@ def extract_salary_from_text(text: str) -> Tuple[Optional[float], Optional[float
                         val1 *= 1000
                         val2 *= 1000
                     # Sanity check - both values should be reasonable
-                    if is_valid_salary(val1, currency) and is_valid_salary(val2, currency):
+                    if is_valid_salary(val1, currency) and is_valid_salary(
+                        val2, currency
+                    ):
                         return min(val1, val2), max(val1, val2), currency
                 elif len(groups) >= 1 and groups[0]:
                     # Single value
@@ -110,11 +124,19 @@ def extract_seniority_from_text(title: str, description: str) -> Optional[str]:
     combined_text = f"{title} {description}".lower()
 
     seniority_mapping = {
-        'entry': ['entry level', 'entry-level', 'junior', 'graduate', 'trainee', 'intern', 'attachment'],
-        'mid': ['mid level', 'mid-level', 'intermediate', 'experienced'],
-        'senior': ['senior', 'lead', 'principal', 'sr.', 'sr '],
-        'management': ['manager', 'supervisor', 'team lead', 'head of', 'head,'],
-        'executive': ['director', 'executive', 'c-level', 'ceo', 'cfo', 'cto', 'chief'],
+        "entry": [
+            "entry level",
+            "entry-level",
+            "junior",
+            "graduate",
+            "trainee",
+            "intern",
+            "attachment",
+        ],
+        "mid": ["mid level", "mid-level", "intermediate", "experienced"],
+        "senior": ["senior", "lead", "principal", "sr.", "sr "],
+        "management": ["manager", "supervisor", "team lead", "head of", "head,"],
+        "executive": ["director", "executive", "c-level", "ceo", "cfo", "cto", "chief"],
     }
 
     for seniority, keywords in seniority_mapping.items():
@@ -133,11 +155,15 @@ def backfill_salary_data(dry_run: bool = False):
     db = SessionLocal()
     try:
         # Get jobs without salary data that have descriptions
-        jobs_without_salary = db.query(JobPost).filter(
-            JobPost.salary_min.is_(None),
-            JobPost.description_raw.isnot(None),
-            JobPost.description_raw != ''
-        ).all()
+        jobs_without_salary = (
+            db.query(JobPost)
+            .filter(
+                JobPost.salary_min.is_(None),
+                JobPost.description_raw.isnot(None),
+                JobPost.description_raw != "",
+            )
+            .all()
+        )
 
         print(f"Found {len(jobs_without_salary)} jobs without salary data")
 
@@ -145,8 +171,12 @@ def backfill_salary_data(dry_run: bool = False):
         salary_found_count = 0
 
         for job in jobs_without_salary:
-            salary_min, salary_max, currency = extract_salary_from_text(job.description_raw or '')
-            seniority = extract_seniority_from_text(job.title_raw or '', job.description_raw or '')
+            salary_min, salary_max, currency = extract_salary_from_text(
+                job.description_raw or ""
+            )
+            seniority = extract_seniority_from_text(
+                job.title_raw or "", job.description_raw or ""
+            )
 
             updates_made = False
 
@@ -159,7 +189,9 @@ def backfill_salary_data(dry_run: bool = False):
                     updates_made = True
                 else:
                     print(f"  Would update job {job.id}: {job.title_raw[:50]}...")
-                    print(f"    Salary: {currency} {salary_min:,.0f} - {salary_max:,.0f}")
+                    print(
+                        f"    Salary: {currency} {salary_min:,.0f} - {salary_max:,.0f}"
+                    )
 
             if seniority and not job.seniority:
                 if not dry_run:
@@ -174,15 +206,19 @@ def backfill_salary_data(dry_run: bool = False):
             print(f"\nUpdated {updated_count} jobs")
             print(f"Found salary data in {salary_found_count} jobs")
         else:
-            print(f"\n[DRY RUN] Would update {salary_found_count} jobs with salary data")
+            print(
+                f"\n[DRY RUN] Would update {salary_found_count} jobs with salary data"
+            )
 
         # Show final stats
-        jobs_with_salary = db.query(JobPost).filter(
-            JobPost.salary_min.isnot(None)
-        ).count()
+        jobs_with_salary = (
+            db.query(JobPost).filter(JobPost.salary_min.isnot(None)).count()
+        )
 
         total_jobs = db.query(JobPost).count()
-        print(f"\nSalary coverage: {jobs_with_salary}/{total_jobs} ({jobs_with_salary/total_jobs*100:.1f}%)")
+        print(
+            f"\nSalary coverage: {jobs_with_salary}/{total_jobs} ({jobs_with_salary / total_jobs * 100:.1f}%)"
+        )
 
     except Exception as e:
         print(f"Error: {e}")
@@ -193,11 +229,13 @@ def backfill_salary_data(dry_run: bool = False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Backfill salary data for existing jobs")
+    parser = argparse.ArgumentParser(
+        description="Backfill salary data for existing jobs"
+    )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        help="Show what would be updated without making changes"
+        help="Show what would be updated without making changes",
     )
     args = parser.parse_args()
 

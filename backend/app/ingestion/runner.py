@@ -4,7 +4,8 @@ from .connectors.rss import ingest_rss
 from .connectors.html_generic import ingest_html_generic
 from .connectors.gov_careers import ingest_gov_careers
 from sqlalchemy.orm import Session
-import yaml, os
+import yaml
+import os
 
 DEFAULT_CONFIG_PATHS = [
     os.path.join(os.path.dirname(__file__), "sources.yaml"),
@@ -23,6 +24,7 @@ def _load_sources(config_paths=None):
             cfg = yaml.safe_load(f) or {}
         sources.extend(cfg.get("sources", []))
     return sources
+
 
 def run_all_sources(db: Session, config_paths=None) -> int:
     count = 0

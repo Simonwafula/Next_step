@@ -13,8 +13,8 @@ celery_app = Celery(
         "app.tasks.workflow_tasks",
         "app.tasks.scraper_tasks",
         "app.tasks.gov_monitor_tasks",
-        "app.tasks.processing_tasks"
-    ]
+        "app.tasks.processing_tasks",
+    ],
 )
 
 # Celery configuration
@@ -32,62 +32,64 @@ celery_app.conf.update(
     result_expires=3600,  # 1 hour
     beat_schedule={
         # Run complete workflow daily at 2 AM
-        'daily-complete-workflow': {
-            'task': 'app.tasks.workflow_tasks.run_daily_workflow',
-            'schedule': 60.0 * 60.0 * 24.0,  # 24 hours
-            'options': {'queue': 'workflow'}
+        "daily-complete-workflow": {
+            "task": "app.tasks.workflow_tasks.run_daily_workflow",
+            "schedule": 60.0 * 60.0 * 24.0,  # 24 hours
+            "options": {"queue": "workflow"},
         },
         # Run scraper tests every 6 hours
-        'scraper-health-check': {
-            'task': 'app.tasks.scraper_tasks.test_all_scrapers',
-            'schedule': 60.0 * 60.0 * 6.0,  # 6 hours
-            'options': {'queue': 'scrapers'}
+        "scraper-health-check": {
+            "task": "app.tasks.scraper_tasks.test_all_scrapers",
+            "schedule": 60.0 * 60.0 * 6.0,  # 6 hours
+            "options": {"queue": "scrapers"},
         },
         # Monitor government career pages every 6 hours
-        'gov-source-monitor': {
-            'task': 'app.tasks.gov_monitor_tasks.run_government_sources',
-            'schedule': 60.0 * 60.0 * 6.0,  # 6 hours
-            'options': {'queue': 'scrapers'}
+        "gov-source-monitor": {
+            "task": "app.tasks.gov_monitor_tasks.run_government_sources",
+            "schedule": 60.0 * 60.0 * 6.0,  # 6 hours
+            "options": {"queue": "scrapers"},
         },
         # Generate insights every 4 hours
-        'generate-insights': {
-            'task': 'app.tasks.workflow_tasks.generate_daily_insights',
-            'schedule': 60.0 * 60.0 * 4.0,  # 4 hours
-            'options': {'queue': 'insights'}
+        "generate-insights": {
+            "task": "app.tasks.workflow_tasks.generate_daily_insights",
+            "schedule": 60.0 * 60.0 * 4.0,  # 4 hours
+            "options": {"queue": "insights"},
         },
         # Process immediate job alerts every hour
-        'process-immediate-alerts': {
-            'task': 'app.tasks.processing_tasks.process_job_alerts',
-            'schedule': 60.0 * 60.0,  # 1 hour
-            'args': ['immediate'],
-            'options': {'queue': 'processing'}
+        "process-immediate-alerts": {
+            "task": "app.tasks.processing_tasks.process_job_alerts",
+            "schedule": 60.0 * 60.0,  # 1 hour
+            "args": ["immediate"],
+            "options": {"queue": "processing"},
         },
         # Process daily job alerts once per day
-        'process-daily-alerts': {
-            'task': 'app.tasks.processing_tasks.process_job_alerts',
-            'schedule': 60.0 * 60.0 * 24.0,  # 24 hours
-            'args': ['daily'],
-            'options': {'queue': 'processing'}
+        "process-daily-alerts": {
+            "task": "app.tasks.processing_tasks.process_job_alerts",
+            "schedule": 60.0 * 60.0 * 24.0,  # 24 hours
+            "args": ["daily"],
+            "options": {"queue": "processing"},
         },
         # Process weekly job alerts once per week
-        'process-weekly-alerts': {
-            'task': 'app.tasks.processing_tasks.process_job_alerts',
-            'schedule': 60.0 * 60.0 * 24.0 * 7.0,  # 7 days
-            'args': ['weekly'],
-            'options': {'queue': 'processing'}
-        }
+        "process-weekly-alerts": {
+            "task": "app.tasks.processing_tasks.process_job_alerts",
+            "schedule": 60.0 * 60.0 * 24.0 * 7.0,  # 7 days
+            "args": ["weekly"],
+            "options": {"queue": "processing"},
+        },
     },
     task_routes={
-        'app.tasks.workflow_tasks.*': {'queue': 'workflow'},
-        'app.tasks.scraper_tasks.*': {'queue': 'scrapers'},
-        'app.tasks.gov_monitor_tasks.*': {'queue': 'scrapers'},
-        'app.tasks.processing_tasks.*': {'queue': 'processing'},
-    }
+        "app.tasks.workflow_tasks.*": {"queue": "workflow"},
+        "app.tasks.scraper_tasks.*": {"queue": "scrapers"},
+        "app.tasks.gov_monitor_tasks.*": {"queue": "scrapers"},
+        "app.tasks.processing_tasks.*": {"queue": "processing"},
+    },
 )
 
 # Configure logging
-celery_app.conf.worker_log_format = '[%(asctime)s: %(levelname)s/%(processName)s] %(message)s'
-celery_app.conf.worker_task_log_format = '[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s'
+celery_app.conf.worker_log_format = (
+    "[%(asctime)s: %(levelname)s/%(processName)s] %(message)s"
+)
+celery_app.conf.worker_task_log_format = "[%(asctime)s: %(levelname)s/%(processName)s][%(task_name)s(%(task_id)s)] %(message)s"
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     celery_app.start()

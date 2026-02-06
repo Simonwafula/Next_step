@@ -91,6 +91,8 @@ async def update_processing_event_async(
     await _maybe_await(db.commit())
     await _maybe_await(db.refresh(log))
     return log
+
+
 async def _maybe_await(result: Any) -> Any:
     if hasattr(result, "__await__"):
         return await result

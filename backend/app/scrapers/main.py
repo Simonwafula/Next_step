@@ -1,20 +1,20 @@
 # scrapers/main.py
 import logging
 import argparse
-from datetime import datetime
 from .scraper import SiteSpider
 from .config import SITES
 
 logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s'
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 
 
 def scrape_site(site_name: str):
     """Scrape a specific site"""
     if site_name not in SITES:
-        logging.error(f"Unknown site: {site_name}. Available sites: {list(SITES.keys())}")
+        logging.error(
+            f"Unknown site: {site_name}. Available sites: {list(SITES.keys())}"
+        )
         return False
 
     try:
@@ -59,15 +59,13 @@ def scrape_all_sites():
 def main():
     parser = argparse.ArgumentParser(description="Job site scraper")
     parser.add_argument(
-        '--site',
-        choices=list(SITES.keys()) + ['all'],
-        default='all',
-        help='Site to scrape (default: all)'
+        "--site",
+        choices=list(SITES.keys()) + ["all"],
+        default="all",
+        help="Site to scrape (default: all)",
     )
     parser.add_argument(
-        '--list-sites',
-        action='store_true',
-        help='List available sites'
+        "--list-sites", action="store_true", help="List available sites"
     )
 
     args = parser.parse_args()
@@ -78,7 +76,7 @@ def main():
             print(f"  - {site}")
         return
 
-    if args.site == 'all':
+    if args.site == "all":
         scrape_all_sites()
     else:
         scrape_site(args.site)

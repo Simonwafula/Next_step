@@ -1,3 +1,5 @@
+import ast
+import json
 import numpy as np
 import hashlib
 import logging
@@ -12,27 +14,77 @@ _transformer_model = None
 _use_transformers = True
 
 
+def parse_embedding(value: object) -> list[float] | None:
+    """Parse an embedding value stored in the DB.
+
+    Supports:
+    - `list[float]` (already in-memory)
+    - JSON strings (preferred)
+    - Python-literal list strings (legacy)
+    """
+    if value is None:
+        return None
+
+    if isinstance(value, np.ndarray):
+        return value.astype(float).tolist()
+
+    if isinstance(value, tuple):
+        value = list(value)
+
+    if isinstance(value, list):
+        try:
+            return [float(x) for x in value]
+        except (TypeError, ValueError):
+            return None
+
+    if isinstance(value, str):
+        raw = value.strip()
+        if not raw:
+            return None
+
+        parsed: object
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            try:
+                parsed = ast.literal_eval(raw)
+            except (SyntaxError, ValueError):
+                return None
+
+        if not isinstance(parsed, list):
+            return None
+
+        try:
+            return [float(x) for x in parsed]
+        except (TypeError, ValueError):
+            return None
+
+    return None
+
+
 def _get_model():
     """Lazy load transformer model for embeddings."""
     global _tokenizer, _transformer_model, _use_transformers
     if _tokenizer is None and _use_transformers:
         try:
-            import torch
             from transformers import AutoTokenizer, AutoModel
-            model_name = 'sentence-transformers/all-MiniLM-L6-v2'
+
+            model_name = "sentence-transformers/all-MiniLM-L6-v2"
             _tokenizer = AutoTokenizer.from_pretrained(model_name)
             _transformer_model = AutoModel.from_pretrained(model_name)
             _transformer_model.eval()  # Set to evaluation mode
             logger.info(f"Loaded transformer model: {model_name}")
         except Exception as e:
-            logger.warning(f"Failed to load transformer model: {e}. Falling back to hash-based embeddings.")
+            logger.warning(
+                f"Failed to load transformer model: {e}. Falling back to hash-based embeddings."
+            )
             _use_transformers = False
     return _tokenizer, _transformer_model
 
 
 def _hash_to_vec(text: str, dim: int) -> np.ndarray:
     """Fallback: Deterministic embedding using hash (not semantically meaningful)."""
-    h = hashlib.sha256((text or '').encode('utf-8')).digest()
+    h = hashlib.sha256((text or "").encode("utf-8")).digest()
     needed = (dim + len(h) - 1) // len(h)
     buf = (h * needed)[:dim]
     arr = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
@@ -43,9 +95,14 @@ def _hash_to_vec(text: str, dim: int) -> np.ndarray:
 def _mean_pooling(model_output, attention_mask):
     """Mean pooling for transformer outputs."""
     import torch
+
     token_embeddings = model_output.last_hidden_state
-    input_mask_expanded = attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
-    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(input_mask_expanded.sum(1), min=1e-9)
+    input_mask_expanded = (
+        attention_mask.unsqueeze(-1).expand(token_embeddings.size()).float()
+    )
+    return torch.sum(token_embeddings * input_mask_expanded, 1) / torch.clamp(
+        input_mask_expanded.sum(1), min=1e-9
+    )
 
 
 @lru_cache(maxsize=1000)
@@ -58,13 +115,16 @@ def embed_text(text: str) -> list[float]:
     if tokenizer is not None and model is not None:
         try:
             import torch
+
             # Tokenize
-            inputs = tokenizer(text, return_tensors='pt', padding=True, truncation=True, max_length=512)
+            inputs = tokenizer(
+                text, return_tensors="pt", padding=True, truncation=True, max_length=512
+            )
 
             # Generate embeddings
             with torch.no_grad():
                 outputs = model(**inputs)
-                embeddings = _mean_pooling(outputs, inputs['attention_mask'])
+                embeddings = _mean_pooling(outputs, inputs["attention_mask"])
 
                 # Normalize embeddings
                 embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)
@@ -85,13 +145,20 @@ def generate_embeddings(texts: list[str]) -> list[list[float]]:
     if tokenizer is not None and model is not None:
         try:
             import torch
+
             # Tokenize batch
-            inputs = tokenizer(texts, return_tensors='pt', padding=True, truncation=True, max_length=512)
+            inputs = tokenizer(
+                texts,
+                return_tensors="pt",
+                padding=True,
+                truncation=True,
+                max_length=512,
+            )
 
             # Generate embeddings
             with torch.no_grad():
                 outputs = model(**inputs)
-                embeddings = _mean_pooling(outputs, inputs['attention_mask'])
+                embeddings = _mean_pooling(outputs, inputs["attention_mask"])
 
                 # Normalize embeddings
                 embeddings = torch.nn.functional.normalize(embeddings, p=2, dim=1)

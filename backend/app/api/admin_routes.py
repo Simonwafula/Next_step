@@ -62,17 +62,26 @@ def admin_overview(
     seven_days = now - timedelta(days=7)
 
     users_total = db.execute(select(func.count(User.id))).scalar() or 0
-    users_new = db.execute(
-        select(func.count(User.id)).where(User.created_at >= seven_days)
-    ).scalar() or 0
-    users_active = db.execute(
-        select(func.count(User.id)).where(User.last_login >= seven_days)
-    ).scalar() or 0
+    users_new = (
+        db.execute(
+            select(func.count(User.id)).where(User.created_at >= seven_days)
+        ).scalar()
+        or 0
+    )
+    users_active = (
+        db.execute(
+            select(func.count(User.id)).where(User.last_login >= seven_days)
+        ).scalar()
+        or 0
+    )
 
     jobs_total = db.execute(select(func.count(JobPost.id))).scalar() or 0
-    jobs_new = db.execute(
-        select(func.count(JobPost.id)).where(JobPost.first_seen >= seven_days)
-    ).scalar() or 0
+    jobs_new = (
+        db.execute(
+            select(func.count(JobPost.id)).where(JobPost.first_seen >= seven_days)
+        ).scalar()
+        or 0
+    )
     latest_job = db.execute(select(func.max(JobPost.first_seen))).scalar()
 
     orgs_total = db.execute(select(func.count(Organization.id))).scalar() or 0
@@ -81,14 +90,22 @@ def admin_overview(
     applications_total = db.execute(select(func.count(JobApplication.id))).scalar() or 0
     searches_total = db.execute(select(func.count(SearchHistory.id))).scalar() or 0
     alerts_total = db.execute(select(func.count(JobAlert.id))).scalar() or 0
-    notifications_total = db.execute(select(func.count(UserNotification.id))).scalar() or 0
+    notifications_total = (
+        db.execute(select(func.count(UserNotification.id))).scalar() or 0
+    )
 
-    posts_with_salary = db.execute(
-        select(func.count(JobPost.id)).where(JobPost.salary_min.is_not(None))
-    ).scalar() or 0
-    posts_with_skills = db.execute(
-        select(func.count(JobPost.id.distinct())).join_from(JobPost, JobSkill)
-    ).scalar() or 0
+    posts_with_salary = (
+        db.execute(
+            select(func.count(JobPost.id)).where(JobPost.salary_min.is_not(None))
+        ).scalar()
+        or 0
+    )
+    posts_with_skills = (
+        db.execute(
+            select(func.count(JobPost.id.distinct())).join_from(JobPost, JobSkill)
+        ).scalar()
+        or 0
+    )
 
     core_sources = _load_sources(BASE_DIR / "ingestion" / "sources.yaml")
     gov_sources = _load_sources(BASE_DIR / "ingestion" / "government_sources.yaml")
@@ -113,11 +130,15 @@ def admin_overview(
         "coverage": {
             "salary": {
                 "count": posts_with_salary,
-                "percentage": round(posts_with_salary / jobs_total * 100, 1) if jobs_total else 0,
+                "percentage": round(posts_with_salary / jobs_total * 100, 1)
+                if jobs_total
+                else 0,
             },
             "skills": {
                 "count": posts_with_skills,
-                "percentage": round(posts_with_skills / jobs_total * 100, 1) if jobs_total else 0,
+                "percentage": round(posts_with_skills / jobs_total * 100, 1)
+                if jobs_total
+                else 0,
             },
         },
         "sources": {
@@ -263,7 +284,9 @@ def admin_operations(
                 "status": (log.results or {}).get("status"),
                 "message": (log.results or {}).get("message"),
                 "details": (log.results or {}).get("details"),
-                "processed_at": log.processed_at.isoformat() if log.processed_at else None,
+                "processed_at": log.processed_at.isoformat()
+                if log.processed_at
+                else None,
             }
             for log in logs
         ],
@@ -274,7 +297,9 @@ def admin_operations(
                 "status": (log.results or {}).get("status"),
                 "message": (log.results or {}).get("message"),
                 "details": (log.results or {}).get("details"),
-                "processed_at": log.processed_at.isoformat() if log.processed_at else None,
+                "processed_at": log.processed_at.isoformat()
+                if log.processed_at
+                else None,
             }
             for process_type, log in latest_by_type.items()
         },
@@ -315,8 +340,15 @@ def admin_summaries(
         rows = db.execute(stmt).all()
     else:
         stmt = (
-            select(JobPost.education, EducationNormalization.normalized_value, func.count(JobPost.id))
-            .outerjoin(EducationNormalization, EducationNormalization.raw_value == JobPost.education)
+            select(
+                JobPost.education,
+                EducationNormalization.normalized_value,
+                func.count(JobPost.id),
+            )
+            .outerjoin(
+                EducationNormalization,
+                EducationNormalization.raw_value == JobPost.education,
+            )
             .where(JobPost.education.is_not(None))
             .group_by(JobPost.education, EducationNormalization.normalized_value)
             .order_by(desc(func.count(JobPost.id)))
@@ -401,7 +433,11 @@ def list_education_mappings(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    stmt = select(EducationNormalization).order_by(EducationNormalization.raw_value).limit(limit)
+    stmt = (
+        select(EducationNormalization)
+        .order_by(EducationNormalization.raw_value)
+        .limit(limit)
+    )
     mappings = db.execute(stmt).scalars().all()
     return {
         "mappings": [
@@ -433,7 +469,9 @@ def upsert_education_mapping(
         )
 
     mapping = db.execute(
-        select(EducationNormalization).where(EducationNormalization.raw_value == raw_value)
+        select(EducationNormalization).where(
+            EducationNormalization.raw_value == raw_value
+        )
     ).scalar_one_or_none()
     if mapping:
         mapping.normalized_value = normalized_value

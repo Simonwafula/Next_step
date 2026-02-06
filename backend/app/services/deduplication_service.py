@@ -16,11 +16,11 @@ from difflib import SequenceMatcher
 from datetime import datetime
 import logging
 
-from sqlalchemy import select, func, and_, or_
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from ..db.models import JobPost, Organization, Location
-from ..ml.embeddings import generate_embeddings
+from ..db.models import JobPost, Organization
+from ..ml.embeddings import generate_embeddings, parse_embedding
 
 logger = logging.getLogger(__name__)
 
@@ -39,9 +39,23 @@ class DeduplicationService:
     def __init__(self):
         """Initialize deduplication service"""
         self.url_params_to_remove = [
-            'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content',
-            'ref', 'source', 'referrer', 'tracking', 'track', 'campaign',
-            'fbclid', 'gclid', 'msclkid', '_ga', 'mc_cid', 'mc_eid'
+            "utm_source",
+            "utm_medium",
+            "utm_campaign",
+            "utm_term",
+            "utm_content",
+            "ref",
+            "source",
+            "referrer",
+            "tracking",
+            "track",
+            "campaign",
+            "fbclid",
+            "gclid",
+            "msclkid",
+            "_ga",
+            "mc_cid",
+            "mc_eid",
         ]
 
     def normalize_url(self, url: str) -> str:
@@ -64,7 +78,8 @@ class DeduplicationService:
             # Remove tracking parameters
             query_params = parse_qs(parsed.query)
             cleaned_params = {
-                k: v for k, v in query_params.items()
+                k: v
+                for k, v in query_params.items()
                 if k not in self.url_params_to_remove
             }
 
@@ -72,17 +87,19 @@ class DeduplicationService:
             new_query = urlencode(cleaned_params, doseq=True)
 
             # Remove common URL variations
-            path = parsed.path.rstrip('/')
+            path = parsed.path.rstrip("/")
 
             # Rebuild URL without tracking params
-            normalized = urlunparse((
-                parsed.scheme,
-                parsed.netloc,
-                path,
-                parsed.params,
-                new_query,
-                ''  # Remove fragment
-            ))
+            normalized = urlunparse(
+                (
+                    parsed.scheme,
+                    parsed.netloc,
+                    path,
+                    parsed.params,
+                    new_query,
+                    "",  # Remove fragment
+                )
+            )
 
             return normalized
 
@@ -121,24 +138,24 @@ class DeduplicationService:
 
         # Remove common prefixes/suffixes
         patterns_to_remove = [
-            r'^jobs?\s+at\s+',
-            r'^vacancies\s+at\s+',
-            r'^careers?\s+at\s+',
-            r'^positions?\s+at\s+',
-            r'^openings?\s+at\s+',
-            r'\s*-\s*urgent$',
-            r'\s*-\s*immediate\s+hire$',
-            r'\s*\(.*?\)\s*$',  # Remove parenthetical content
+            r"^jobs?\s+at\s+",
+            r"^vacancies\s+at\s+",
+            r"^careers?\s+at\s+",
+            r"^positions?\s+at\s+",
+            r"^openings?\s+at\s+",
+            r"\s*-\s*urgent$",
+            r"\s*-\s*immediate\s+hire$",
+            r"\s*\(.*?\)\s*$",  # Remove parenthetical content
         ]
 
         for pattern in patterns_to_remove:
-            title = re.sub(pattern, '', title, flags=re.IGNORECASE)
+            title = re.sub(pattern, "", title, flags=re.IGNORECASE)
 
         # Normalize whitespace
-        title = re.sub(r'\s+', ' ', title).strip()
+        title = re.sub(r"\s+", " ", title).strip()
 
         # Remove special characters but keep alphanumeric and basic punctuation
-        title = re.sub(r'[^\w\s\-&+]', '', title)
+        title = re.sub(r"[^\w\s\-&+]", "", title)
 
         return title
 
@@ -190,6 +207,7 @@ class DeduplicationService:
             embedding1, embedding2 = embeddings
 
             import numpy as np
+
             dot_product = np.dot(embedding1, embedding2)
             norm1 = np.linalg.norm(embedding1)
             norm2 = np.linalg.norm(embedding2)
@@ -207,9 +225,7 @@ class DeduplicationService:
             return 0.0
 
     async def find_duplicate_by_url(
-        self,
-        db: AsyncSession,
-        url: str
+        self, db: AsyncSession, url: str
     ) -> Optional[JobPost]:
         """
         Find existing job by exact URL match (after normalization)
@@ -238,7 +254,7 @@ class DeduplicationService:
         title: str,
         company_name: Optional[str] = None,
         location_id: Optional[int] = None,
-        days_lookback: int = 30
+        days_lookback: int = 30,
     ) -> List[Tuple[JobPost, float]]:
         """
         Find potential duplicates by fuzzy title matching + company + location
@@ -277,6 +293,7 @@ class DeduplicationService:
 
             # Only look at recent jobs
             from datetime import timedelta
+
             cutoff_date = datetime.utcnow() - timedelta(days=days_lookback)
             query = query.where(JobPost.first_seen >= cutoff_date)
 
@@ -307,7 +324,7 @@ class DeduplicationService:
         db: AsyncSession,
         content: str,
         org_id: Optional[int] = None,
-        days_lookback: int = 30
+        days_lookback: int = 30,
     ) -> List[Tuple[JobPost, float]]:
         """
         Find duplicates using content similarity (embeddings)
@@ -339,6 +356,7 @@ class DeduplicationService:
                 query = query.where(JobPost.org_id == org_id)
 
             from datetime import timedelta
+
             cutoff_date = datetime.utcnow() - timedelta(days=days_lookback)
             query = query.where(JobPost.first_seen >= cutoff_date)
 
@@ -349,14 +367,17 @@ class DeduplicationService:
 
             # Calculate content similarity
             matches = []
+            import numpy as np
+
             for candidate in candidates:
-                if candidate.embedding is None:
+                candidate_embedding = parse_embedding(candidate.embedding)
+                if candidate_embedding is None:
                     continue
 
                 # Calculate cosine similarity
-                import numpy as np
-                similarity = np.dot(input_embedding, candidate.embedding) / (
-                    np.linalg.norm(input_embedding) * np.linalg.norm(candidate.embedding)
+                similarity = np.dot(input_embedding, candidate_embedding) / (
+                    np.linalg.norm(input_embedding)
+                    * np.linalg.norm(candidate_embedding)
                 )
 
                 # Normalize to 0-1
@@ -382,7 +403,7 @@ class DeduplicationService:
         content: str,
         company_name: Optional[str] = None,
         location_id: Optional[int] = None,
-        org_id: Optional[int] = None
+        org_id: Optional[int] = None,
     ) -> Dict:
         """
         Comprehensive duplicate detection using all strategies
@@ -400,62 +421,56 @@ class DeduplicationService:
             Dictionary with duplicate detection results
         """
         results = {
-            'is_duplicate': False,
-            'duplicate_type': None,
-            'duplicate_job': None,
-            'confidence': 0.0,
-            'matches': {
-                'url': None,
-                'title_company': [],
-                'content': []
-            }
+            "is_duplicate": False,
+            "duplicate_type": None,
+            "duplicate_job": None,
+            "confidence": 0.0,
+            "matches": {"url": None, "title_company": [], "content": []},
         }
 
         # 1. Check exact URL match (highest priority)
         url_match = await self.find_duplicate_by_url(db, url)
         if url_match:
-            results['is_duplicate'] = True
-            results['duplicate_type'] = 'exact_url'
-            results['duplicate_job'] = url_match
-            results['confidence'] = 1.0
-            results['matches']['url'] = url_match
+            results["is_duplicate"] = True
+            results["duplicate_type"] = "exact_url"
+            results["duplicate_job"] = url_match
+            results["confidence"] = 1.0
+            results["matches"]["url"] = url_match
             return results
 
         # 2. Check fuzzy title + company match
         title_matches = await self.find_duplicates_by_title_company(
             db, title, company_name, location_id
         )
-        results['matches']['title_company'] = title_matches
+        results["matches"]["title_company"] = title_matches
 
         if title_matches and title_matches[0][1] >= 0.95:
             # Very high title similarity with same company
-            results['is_duplicate'] = True
-            results['duplicate_type'] = 'fuzzy_title_company'
-            results['duplicate_job'] = title_matches[0][0]
-            results['confidence'] = title_matches[0][1]
+            results["is_duplicate"] = True
+            results["duplicate_type"] = "fuzzy_title_company"
+            results["duplicate_job"] = title_matches[0][0]
+            results["confidence"] = title_matches[0][1]
             return results
 
         # 3. Check content similarity (embedding-based)
-        content_matches = await self.find_duplicates_by_content(
-            db, content, org_id
-        )
-        results['matches']['content'] = content_matches
+        content_matches = await self.find_duplicates_by_content(db, content, org_id)
+        results["matches"]["content"] = content_matches
 
-        if content_matches and content_matches[0][1] >= self.CONTENT_SIMILARITY_THRESHOLD:
-            results['is_duplicate'] = True
-            results['duplicate_type'] = 'content_similarity'
-            results['duplicate_job'] = content_matches[0][0]
-            results['confidence'] = content_matches[0][1]
+        if (
+            content_matches
+            and content_matches[0][1] >= self.CONTENT_SIMILARITY_THRESHOLD
+        ):
+            results["is_duplicate"] = True
+            results["duplicate_type"] = "content_similarity"
+            results["duplicate_job"] = content_matches[0][0]
+            results["confidence"] = content_matches[0][1]
             return results
 
         # No duplicates found
         return results
 
     async def merge_duplicate_data(
-        self,
-        db: AsyncSession,
-        existing_job: JobPost,
-        new_data: Dict
+        self, db: AsyncSession, existing_job: JobPost, new_data: Dict
     ) -> JobPost:
         """
         Merge new data into existing job post (update with better information)
@@ -473,25 +488,29 @@ class DeduplicationService:
             existing_job.last_seen = datetime.utcnow()
 
             # Increment repost count (signal of urgency/popularity)
-            if hasattr(existing_job, 'repost_count'):
+            if hasattr(existing_job, "repost_count"):
                 existing_job.repost_count = (existing_job.repost_count or 0) + 1
 
             # Update fields if new data is more complete
-            if new_data.get('description_raw') and len(new_data['description_raw']) > len(existing_job.description_raw or ''):
-                existing_job.description_raw = new_data['description_raw']
+            if new_data.get("description_raw") and len(
+                new_data["description_raw"]
+            ) > len(existing_job.description_raw or ""):
+                existing_job.description_raw = new_data["description_raw"]
 
-            if new_data.get('requirements_raw') and len(new_data['requirements_raw']) > len(existing_job.requirements_raw or ''):
-                existing_job.requirements_raw = new_data['requirements_raw']
+            if new_data.get("requirements_raw") and len(
+                new_data["requirements_raw"]
+            ) > len(existing_job.requirements_raw or ""):
+                existing_job.requirements_raw = new_data["requirements_raw"]
 
             # Update salary if not present
-            if not existing_job.salary_min and new_data.get('salary_min'):
-                existing_job.salary_min = new_data['salary_min']
-                existing_job.salary_max = new_data.get('salary_max')
-                existing_job.currency = new_data.get('currency')
+            if not existing_job.salary_min and new_data.get("salary_min"):
+                existing_job.salary_min = new_data["salary_min"]
+                existing_job.salary_max = new_data.get("salary_max")
+                existing_job.currency = new_data.get("currency")
 
             # Update location if not present
-            if not existing_job.location_id and new_data.get('location_id'):
-                existing_job.location_id = new_data['location_id']
+            if not existing_job.location_id and new_data.get("location_id"):
+                existing_job.location_id = new_data["location_id"]
 
             await db.commit()
             await db.refresh(existing_job)
@@ -515,36 +534,40 @@ class DeduplicationService:
             Deduplication statistics
         """
         report = {
-            'total_jobs': len(jobs_data),
-            'unique_jobs': 0,
-            'duplicates': 0,
-            'duplicate_by_type': {
-                'exact_url': 0,
-                'fuzzy_title_company': 0,
-                'content_similarity': 0
+            "total_jobs": len(jobs_data),
+            "unique_jobs": 0,
+            "duplicates": 0,
+            "duplicate_by_type": {
+                "exact_url": 0,
+                "fuzzy_title_company": 0,
+                "content_similarity": 0,
             },
-            'average_confidence': 0.0,
-            'generated_at': datetime.utcnow()
+            "average_confidence": 0.0,
+            "generated_at": datetime.utcnow(),
         }
 
         # Count duplicates by type
         duplicate_confidences = []
 
         for job in jobs_data:
-            if job.get('is_duplicate'):
-                report['duplicates'] += 1
-                dup_type = job.get('duplicate_type')
+            if job.get("is_duplicate"):
+                report["duplicates"] += 1
+                dup_type = job.get("duplicate_type")
                 if dup_type:
-                    report['duplicate_by_type'][dup_type] = report['duplicate_by_type'].get(dup_type, 0) + 1
+                    report["duplicate_by_type"][dup_type] = (
+                        report["duplicate_by_type"].get(dup_type, 0) + 1
+                    )
 
-                confidence = job.get('confidence', 0.0)
+                confidence = job.get("confidence", 0.0)
                 duplicate_confidences.append(confidence)
             else:
-                report['unique_jobs'] += 1
+                report["unique_jobs"] += 1
 
         # Calculate average confidence
         if duplicate_confidences:
-            report['average_confidence'] = sum(duplicate_confidences) / len(duplicate_confidences)
+            report["average_confidence"] = sum(duplicate_confidences) / len(
+                duplicate_confidences
+            )
 
         return report
 

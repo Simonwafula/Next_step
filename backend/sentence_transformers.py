@@ -1,5 +1,6 @@
 import os
-from typing import Iterable, List
+from typing import Iterable
+
 
 def _embedding_dim() -> int:
     try:
@@ -7,12 +8,14 @@ def _embedding_dim() -> int:
     except Exception:
         return 384
 
+
 class SentenceTransformer:
     """Minimal local stub for sentence_transformers.SentenceTransformer
 
     This avoids importing torch/transformers during local test runs.
     It returns deterministic zero vectors of the configured embedding dim.
     """
+
     def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
         self.model_name = model_name
         self.dim = _embedding_dim()
