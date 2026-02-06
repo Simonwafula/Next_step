@@ -14,6 +14,7 @@ Purpose: Track human-readable changes and outcomes before pushing to git.
 - Change summary:
   - Repo hygiene: stopped tracking `backend/venv3.11/` and a stray SQLite journal; expanded `.gitignore` to cover virtualenv variants, SQLite journal/WAL/SHM, and `artifacts/`.
   - Backend correctness/security: removed unsafe embedding parsing (`eval`) by introducing a safe `parse_embedding()` helper; ensured embeddings are persisted as JSON strings; fixed `DataProcessingService` to match the actual `JobPost` schema (use `first_seen/last_seen/description_raw`, derive “active” from recency).
+  - Frontend security: added `frontend/js/sanitize.js` and escaped/sanitized user- and API-provided strings before rendering via `innerHTML` (mitigates XSS on index/admin/dashboard pages).
   - Backend consistency: replaced SQLAlchemy boolean comparisons (`== True/False`) with `.is_(True/False)`; added targeted `# ruff: noqa: E402` where scripts/tests intentionally mutate `sys.path`/env pre-import; added missing `asyncio` import.
   - Code quality: made the backend `ruff`-clean and applied `ruff format` repo-wide under `backend/`.
 - Outcome:
