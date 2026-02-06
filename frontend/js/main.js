@@ -46,6 +46,11 @@ const profileSkills = document.getElementById('profileSkills');
 const savedJobsList = document.getElementById('savedJobsList');
 const savedJobsEmpty = document.getElementById('savedJobsEmpty');
 
+const { escapeHtml, safeUrl } = window.NEXTSTEP_SANITIZE || {
+    escapeHtml: (value) => String(value ?? ''),
+    safeUrl: (value) => (value ? String(value) : '#'),
+};
+
 const apiBase = (() => {
     const fromAttr = document.body.dataset.apiBase;
     if (fromAttr) return fromAttr;
@@ -242,15 +247,16 @@ const renderSavedJobs = (items) => {
     items.forEach((item) => {
         const card = document.createElement('div');
         card.className = 'saved-item';
-        const title = item.title || 'Untitled role';
-        const org = item.organization || 'Unknown organization';
-        const location = item.location || 'Location unspecified';
+        const title = escapeHtml(item.title || 'Untitled role');
+        const org = escapeHtml(item.organization || 'Unknown organization');
+        const location = escapeHtml(item.location || 'Location unspecified');
+        const href = escapeHtml(safeUrl(item.url));
         card.innerHTML = `
             <div>
                 <h4>${title}</h4>
                 <div class="saved-meta">${org} · ${location}</div>
             </div>
-            <a class="result-link" href="${item.url || '#'}" target="_blank" rel="noopener">Open</a>
+            <a class="result-link" href="${href}" target="_blank" rel="noopener">Open</a>
         `;
         savedJobsList.appendChild(card);
     });
@@ -310,11 +316,13 @@ const renderResults = (items) => {
     items.forEach((item) => {
         const card = document.createElement('article');
         card.className = 'result-card';
-        const org = item.organization || item.org || 'Unknown organization';
-        const location = item.location || item.location_raw || 'Location unspecified';
-        const link = item.url || '#';
+        const org = escapeHtml(item.organization || item.org || 'Unknown organization');
+        const location = escapeHtml(
+            item.location || item.location_raw || 'Location unspecified'
+        );
+        const link = escapeHtml(safeUrl(item.url));
         card.innerHTML = `
-            <h3 class="result-title">${item.title || 'Untitled role'}</h3>
+            <h3 class="result-title">${escapeHtml(item.title || 'Untitled role')}</h3>
             <div class="result-meta">${org} · ${location}</div>
             <a class="result-link" href="${link}" target="_blank" rel="noopener">Open posting</a>
         `;

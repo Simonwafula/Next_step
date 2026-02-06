@@ -25,6 +25,11 @@ const dashboardSignOut = document.getElementById('dashboardSignOut');
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
 
+const { escapeHtml, safeUrl } = window.NEXTSTEP_SANITIZE || {
+    escapeHtml: (value) => String(value ?? ''),
+    safeUrl: (value) => (value ? String(value) : '#'),
+};
+
 const getAuth = () => {
     const raw = localStorage.getItem(authStorageKey);
     if (!raw) return null;
@@ -68,20 +73,25 @@ const showGate = (message) => {
 
 const renderList = (target, items, emptyMessage) => {
     if (!items.length) {
-        target.innerHTML = `<p class="panel-note">${emptyMessage}</p>`;
+        target.innerHTML = `<p class="panel-note">${escapeHtml(emptyMessage)}</p>`;
         return;
     }
     target.innerHTML = items
         .map(
-            (item) => `
+            (item) => {
+                const title = escapeHtml(item.title);
+                const subtitle = escapeHtml(item.subtitle);
+                const href = item.link ? escapeHtml(safeUrl(item.link)) : '';
+                return `
                 <div class="data-row">
                     <div>
-                        <strong>${item.title}</strong>
-                        <span>${item.subtitle}</span>
+                        <strong>${title}</strong>
+                        <span>${subtitle}</span>
                     </div>
-                    ${item.link ? `<a class="result-link" href="${item.link}" target="_blank" rel="noopener">Open</a>` : ''}
+                    ${item.link ? `<a class="result-link" href="${href}" target="_blank" rel="noopener">Open</a>` : ''}
                 </div>
-            `
+            `;
+            }
         )
         .join('');
 };

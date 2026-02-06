@@ -31,6 +31,11 @@ const educationNotes = document.getElementById('educationNotes');
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
 
+const { escapeHtml, safeUrl } = window.NEXTSTEP_SANITIZE || {
+    escapeHtml: (value) => String(value ?? ''),
+    safeUrl: (value) => (value ? String(value) : '#'),
+};
+
 const getAuth = () => {
     const raw = localStorage.getItem(authStorageKey);
     if (!raw) return null;
@@ -149,8 +154,8 @@ const renderPipelineStats = (overview) => {
         .map(
             (item) => `
                 <div class="metric-row">
-                    <span>${item.label}</span>
-                    <strong>${item.value}</strong>
+                    <span>${escapeHtml(item.label)}</span>
+                    <strong>${escapeHtml(item.value)}</strong>
                 </div>
             `
         )
@@ -164,15 +169,20 @@ const renderUserList = (users) => {
     }
     adminUsers.innerHTML = users
         .map(
-            (user) => `
+            (user) => {
+                const name = escapeHtml(user.full_name || user.email);
+                const email = escapeHtml(user.email);
+                const tier = escapeHtml(user.subscription_tier);
+                return `
                 <div class="data-row">
                     <div>
-                        <strong>${user.full_name || user.email}</strong>
-                        <span>${user.email}</span>
+                        <strong>${name}</strong>
+                        <span>${email}</span>
                     </div>
-                    <span class="badge">${user.subscription_tier}</span>
+                    <span class="badge">${tier}</span>
                 </div>
-            `
+            `;
+            }
         )
         .join('');
 };
@@ -184,15 +194,21 @@ const renderJobList = (jobs) => {
     }
     adminJobs.innerHTML = jobs
         .map(
-            (job) => `
+            (job) => {
+                const title = escapeHtml(job.title);
+                const org = escapeHtml(job.organization || 'Unknown');
+                const location = escapeHtml(job.location || 'Unspecified');
+                const href = escapeHtml(safeUrl(job.url));
+                return `
                 <div class="data-row">
                     <div>
-                        <strong>${job.title}</strong>
-                        <span>${job.organization || 'Unknown'} · ${job.location || 'Unspecified'}</span>
+                        <strong>${title}</strong>
+                        <span>${org} · ${location}</span>
                     </div>
-                    <a class="result-link" href="${job.url}" target="_blank" rel="noopener">Open</a>
+                    <a class="result-link" href="${href}" target="_blank" rel="noopener">Open</a>
                 </div>
-            `
+            `;
+            }
         )
         .join('');
 };
@@ -205,15 +221,20 @@ const renderSourceList = (sources) => {
     adminSources.innerHTML = sources
         .slice(0, 10)
         .map(
-            (source) => `
+            (source) => {
+                const name = escapeHtml(source.name || source.org);
+                const meta = escapeHtml(`${source.source_type} · ${source.status || 'active'}`);
+                const href = source.url ? escapeHtml(safeUrl(source.url)) : '';
+                return `
                 <div class="data-row">
                     <div>
-                        <strong>${source.name || source.org}</strong>
-                        <span>${source.source_type} · ${source.status || 'active'}</span>
+                        <strong>${name}</strong>
+                        <span>${meta}</span>
                     </div>
-                    ${source.url ? `<a class="result-link" href="${source.url}" target="_blank" rel="noopener">View</a>` : ''}
+                    ${source.url ? `<a class="result-link" href="${href}" target="_blank" rel="noopener">View</a>` : ''}
                 </div>
-            `
+            `;
+            }
         )
         .join('');
 };
@@ -273,13 +294,16 @@ const renderAutomationActivity = (payload) => {
             const status = entry?.status || 'unknown';
             const summary = summarizeOperation(entry);
             const lastRun = formatRunTimestamp(entry?.processed_at);
+            const summarySafe = escapeHtml(summary);
+            const lastRunSafe = escapeHtml(lastRun);
+            const statusSafe = escapeHtml(status);
             return `
                 <div class="data-row">
                     <div>
                         <strong>${item.label}</strong>
-                        <span>${summary} · ${lastRun}</span>
+                        <span>${summarySafe} · ${lastRunSafe}</span>
                     </div>
-                    <span class="badge">${status}</span>
+                    <span class="badge">${statusSafe}</span>
                 </div>
             `;
         })
@@ -326,16 +350,24 @@ const renderSummaryTable = (items = []) => {
     }
     summaryTableBody.innerHTML = items
         .map(
-            (item) => `
+            (item) => {
+                const rawValue = item.specific_value ?? item.value;
+                const rawValueSafe = escapeHtml(rawValue);
+                const normalizedSafe = escapeHtml(
+                    item.normalized_value ?? item.specific_value ?? item.value
+                );
+                const countSafe = escapeHtml(item.count);
+                return `
                 <tr>
-                    <td class="summary-value">${item.specific_value ?? item.value}</td>
-                    <td>${item.normalized_value ?? item.specific_value ?? item.value}</td>
-                    <td>${item.count}</td>
+                    <td class="summary-value">${rawValueSafe}</td>
+                    <td>${normalizedSafe}</td>
+                    <td>${countSafe}</td>
                     <td>
-                        <button class="summary-action" type="button" data-summary-value="${item.specific_value ?? item.value}">View</button>
+                        <button class="summary-action" type="button" data-summary-value="${rawValueSafe}">View</button>
                     </td>
                 </tr>
-            `
+            `;
+            }
         )
         .join('');
 };
@@ -350,15 +382,21 @@ const openSummaryModal = (title, jobs = []) => {
     } else {
         summaryModalBody.innerHTML = jobs
             .map(
-                (job) => `
+                (job) => {
+                    const title = escapeHtml(job.title);
+                    const org = escapeHtml(job.organization || 'Unknown');
+                    const location = escapeHtml(job.location || 'Unspecified');
+                    const href = escapeHtml(safeUrl(job.url));
+                    return `
                     <div class="data-row">
                         <div>
-                            <strong>${job.title}</strong>
-                            <span>${job.organization || 'Unknown'} · ${job.location || 'Unspecified'}</span>
+                            <strong>${title}</strong>
+                            <span>${org} · ${location}</span>
                         </div>
-                        <a class="result-link" href="${job.url}" target="_blank" rel="noopener">Open</a>
+                        <a class="result-link" href="${href}" target="_blank" rel="noopener">Open</a>
                     </div>
-                `
+                `;
+                }
             )
             .join('');
     }
@@ -436,15 +474,21 @@ const renderEducationMappings = (mappings = []) => {
     }
     educationMappingList.innerHTML = mappings
         .map(
-            (mapping) => `
+            (mapping) => {
+                const rawSafe = escapeHtml(mapping.raw_value);
+                const normalizedSafe = escapeHtml(mapping.normalized_value);
+                const notesSafe = escapeHtml(mapping.notes || '');
+                const notesFragment = mapping.notes ? ` · ${notesSafe}` : '';
+                return `
                 <div class="data-row">
                     <div>
-                        <strong>${mapping.raw_value}</strong>
-                        <span>${mapping.normalized_value}${mapping.notes ? ` · ${mapping.notes}` : ''}</span>
+                        <strong>${rawSafe}</strong>
+                        <span>${normalizedSafe}${notesFragment}</span>
                     </div>
-                    <button class="summary-action" type="button" data-edu-edit="${mapping.raw_value}" data-edu-normalized="${mapping.normalized_value}" data-edu-notes="${mapping.notes || ''}">Edit</button>
+                    <button class="summary-action" type="button" data-edu-edit="${rawSafe}" data-edu-normalized="${normalizedSafe}" data-edu-notes="${notesSafe}">Edit</button>
                 </div>
-            `
+            `;
+            }
         )
         .join('');
 };
