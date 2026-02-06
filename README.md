@@ -25,7 +25,7 @@ A starter scaffold for a system that:
 4. Visit Metabase: http://localhost:3000 (create admin, add Postgres using env values).
 
 ## Data model (simplified)
-See `backend/app/models/` for SQLAlchemy models. Key tables:
+See `backend/app/db/models.py` for SQLAlchemy models. Key tables:
 - `job_post`, `organization`, `location`, `title_norm`, `skill`, `job_skill`
 
 ## Ingestion

@@ -10,6 +10,26 @@ Purpose: Track human-readable changes and outcomes before pushing to git.
 - Tests:
 - Follow-ups:
 
+## 2026-02-06 (T-800 comprehensive audit hardening)
+- Change summary:
+  - Repo hygiene: stopped tracking `backend/venv3.11/` and a stray SQLite journal; expanded `.gitignore` to cover virtualenv variants, SQLite journal/WAL/SHM, and `artifacts/`.
+  - Backend correctness/security: removed unsafe embedding parsing (`eval`) by introducing a safe `parse_embedding()` helper; ensured embeddings are persisted as JSON strings; fixed `DataProcessingService` to match the actual `JobPost` schema (use `first_seen/last_seen/description_raw`, derive “active” from recency).
+  - Backend consistency: replaced SQLAlchemy boolean comparisons (`== True/False`) with `.is_(True/False)`; added targeted `# ruff: noqa: E402` where scripts/tests intentionally mutate `sys.path`/env pre-import; added missing `asyncio` import.
+  - Code quality: made the backend `ruff`-clean and applied `ruff format` repo-wide under `backend/`.
+- Outcome:
+  - `ruff check backend` passes and formatting is consistent.
+  - Reduced RCE risk surface (no `eval` on DB data) and prevented runtime crashes in background processing due to stale schema assumptions.
+  - Tests remain green.
+- Affected areas: `.gitignore`, `backend/app/ml/embeddings.py`, `backend/app/services/search.py`, `backend/app/services/deduplication_service.py`, `backend/app/services/data_processing_service.py`, `backend/app/tasks/processing_tasks.py`, multiple API/services scripts under `backend/`.
+- Tests:
+  - `backend/venv3.11/bin/ruff check backend` (pass)
+  - `backend/venv3.11/bin/ruff format backend` (pass)
+  - `backend/venv3.11/bin/pytest` (pass; 11 passed, 12 skipped)
+- Follow-ups:
+  - Add a documented dev bootstrap (`python -m venv backend/venv3.11 && pip install -r backend/requirements.txt`) and consider a `requirements-dev.txt` for `ruff`.
+  - Tighten/realize the skipped async tests (add markers or convert to sync), and make “script-like” tests assert meaningful outcomes (remove `return` values to avoid future pytest errors).
+  - Add Twilio webhook signature validation + request auth and consider strict CORS/CSRF posture for auth endpoints.
+
 ## 2026-01-19 (local sqlite path)
 - Change summary: Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
 - Outcome: Local dev avoids the corrupted `test_db.sqlite` and boots with a clean DB path.
