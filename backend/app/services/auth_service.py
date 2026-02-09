@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional, Dict, Any
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import HTTPException, status, Depends, Header
+from fastapi import HTTPException, status, Depends, Header, Request
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -235,17 +235,20 @@ def is_admin_user(user: User) -> bool:
 
 # Dependency to get current user
 async def get_current_user(
+    request: Request,
     credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db),
 ) -> User:
     """Get current authenticated user."""
-    if not credentials:
+    token: str | None = credentials.credentials if credentials else None
+    if not token:
+        token = request.cookies.get(settings.AUTH_COOKIE_ACCESS_NAME)
+    if not token:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    token = credentials.credentials
     payload = auth_service.verify_token(token)
 
     user_id_raw = payload.get("sub")
@@ -282,15 +285,13 @@ async def get_current_user(
 
 # Optional dependency for routes that work with or without authentication
 async def get_current_user_optional(
+    request: Request,
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
     db: Session = Depends(get_db),
 ) -> Optional[User]:
     """Get current user if authenticated, None otherwise."""
-    if not credentials:
-        return None
-
     try:
-        return await get_current_user(credentials, db)
+        return await get_current_user(request, credentials, db)
     except HTTPException:
         return None
 
@@ -391,6 +392,7 @@ def require_admin_or_api_key():
     """
 
     async def check_auth(
+        request: Request,
         credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
         x_api_key: Optional[str] = Header(None, alias="X-API-Key"),
         db: Session = Depends(get_db),
@@ -415,14 +417,16 @@ def require_admin_or_api_key():
             )
 
         # Fall back to JWT auth
-        if not credentials:
+        if not credentials and not request.cookies.get(
+            settings.AUTH_COOKIE_ACCESS_NAME
+        ):
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Authentication required (Bearer token or X-API-Key header)",
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-        user = await get_current_user(credentials, db)
+        user = await get_current_user(request, credentials, db)
         if not is_admin_user(user):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Admin access required"

@@ -1,5 +1,14 @@
 from typing import Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, status, Form, Query, Request
+from fastapi import (
+    APIRouter,
+    Depends,
+    HTTPException,
+    status,
+    Form,
+    Query,
+    Request,
+    Response,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
@@ -77,6 +86,48 @@ class GoogleAuthUrlResponse(BaseModel):
     authorization_url: str
 
 
+def _cookie_domain() -> str | None:
+    domain = settings.AUTH_COOKIE_DOMAIN.strip()
+    return domain or None
+
+
+def _set_auth_cookies(
+    response: Response, access_token: str, refresh_token: str
+) -> None:
+    common = {
+        "httponly": True,
+        "secure": settings.AUTH_COOKIE_SECURE,
+        "samesite": settings.AUTH_COOKIE_SAMESITE,
+        "path": settings.AUTH_COOKIE_PATH,
+        "domain": _cookie_domain(),
+    }
+    response.set_cookie(
+        key=settings.AUTH_COOKIE_ACCESS_NAME,
+        value=access_token,
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        **common,
+    )
+    response.set_cookie(
+        key=settings.AUTH_COOKIE_REFRESH_NAME,
+        value=refresh_token,
+        max_age=settings.REFRESH_TOKEN_EXPIRE_DAYS * 24 * 60 * 60,
+        **common,
+    )
+
+
+def _clear_auth_cookies(response: Response) -> None:
+    response.delete_cookie(
+        key=settings.AUTH_COOKIE_ACCESS_NAME,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=_cookie_domain(),
+    )
+    response.delete_cookie(
+        key=settings.AUTH_COOKIE_REFRESH_NAME,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=_cookie_domain(),
+    )
+
+
 def build_token_response(db: Session, user: User) -> Dict[str, Any]:
     access_token = auth_service.create_access_token(
         data={"sub": user.id, "email": user.email}
@@ -110,7 +161,10 @@ def build_token_response(db: Session, user: User) -> Dict[str, Any]:
 @router.post("/register", response_model=Token)
 @rate_limit(max_requests=5, window_seconds=60)  # 5 registrations per minute per IP
 async def register(
-    request: Request, user_data: UserCreate, db: Session = Depends(get_db)
+    request: Request,
+    response: Response,
+    user_data: UserCreate,
+    db: Session = Depends(get_db),
 ):
     """Register a new user."""
     try:
@@ -124,7 +178,9 @@ async def register(
             whatsapp_number=user_data.whatsapp_number,
         )
 
-        return build_token_response(db, user)
+        payload = build_token_response(db, user)
+        _set_auth_cookies(response, payload["access_token"], payload["refresh_token"])
+        return payload
 
     except HTTPException:
         raise
@@ -139,6 +195,7 @@ async def register(
 @rate_limit(max_requests=10, window_seconds=60)  # 10 login attempts per minute per IP
 async def login(
     request: Request,
+    response: Response,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
 ):
@@ -151,14 +208,26 @@ async def login(
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    return build_token_response(db, user)
+    payload = build_token_response(db, user)
+    _set_auth_cookies(response, payload["access_token"], payload["refresh_token"])
+    return payload
 
 
 @router.post("/refresh", response_model=Token)
-async def refresh_token(refresh_token: str = Form(...), db: Session = Depends(get_db)):
+async def refresh_token(
+    request: Request,
+    response: Response,
+    refresh_token: str | None = Form(None),
+    db: Session = Depends(get_db),
+):
     """Refresh access token using refresh token."""
     try:
-        payload = auth_service.verify_token(refresh_token)
+        token = refresh_token or request.cookies.get(settings.AUTH_COOKIE_REFRESH_NAME)
+        if not token:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Missing refresh token"
+            )
+        payload = auth_service.verify_token(token)
 
         if payload.get("type") != "refresh":
             raise HTTPException(
@@ -174,7 +243,11 @@ async def refresh_token(refresh_token: str = Form(...), db: Session = Depends(ge
                 detail="User not found or inactive",
             )
 
-        return build_token_response(db, user)
+        next_payload = build_token_response(db, user)
+        _set_auth_cookies(
+            response, next_payload["access_token"], next_payload["refresh_token"]
+        )
+        return next_payload
 
     except HTTPException:
         raise
@@ -261,6 +334,7 @@ async def google_auth_url(
 
 @router.get("/google/callback", response_model=Token)
 async def google_callback(
+    response: Response,
     code: str = Query(...),
     redirect_uri: str | None = Query(None),
     db: Session = Depends(get_db),
@@ -335,7 +409,10 @@ async def google_callback(
         user.is_verified = True
         db.commit()
 
-    return build_token_response(db, user)
+    payload = build_token_response(db, user)
+    # Google OAuth is typically used by browsers; set cookies too.
+    _set_auth_cookies(response, payload["access_token"], payload["refresh_token"])
+    return payload
 
 
 @router.get("/me", response_model=UserResponse)
@@ -417,8 +494,9 @@ async def update_user_profile(
 
 
 @router.post("/logout")
-async def logout(current_user: User = Depends(get_current_user)):
+async def logout(response: Response, current_user: User = Depends(get_current_user)):
     """Logout user (client should discard tokens)."""
+    _clear_auth_cookies(response)
     return {"message": "Successfully logged out"}
 
 
