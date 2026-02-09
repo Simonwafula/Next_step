@@ -107,10 +107,19 @@
 - (T-731) Created systemd service/timer templates for API, pipeline (6-hourly), and drift checks (daily) in `deploy/systemd/`.
 - (T-732) Built Postgres-friendly upsert helpers (`backend/app/db/upsert.py`) with SQLite ORM fallback. 11 tests.
 - Updated CLI (`backend/cli.py`): added `dedupe` command, replaced external `embed` script with incremental `run_incremental_embeddings`, wired ProcessingLog for both.
+- (T-901) Fixed repo-wide `ruff` failures in scripts/scraper (E402/F401/E401/F541 etc.) and reformatted scripts.
+- (T-902) Implemented browser cookie auth flow (set/refresh/logout via cookies) and added Twilio webhook signature validation toggles to satisfy security tests.
+- (T-902) Hardened SkillNER evidence extraction against out-of-range node ids to prevent nondeterministic crashes in regression tests.
+- (OPS) VPS deployment: pulled `main` and restarted `nextstep-backend.service`. Updated OpenLiteSpeed vhost to proxy `/health` to the backend (`/usr/local/lsws/conf/vhosts/nextstep.co.ke/vhost.conf`, backup: `vhost.conf.bak-20260209`) and restarted `lshttpd` to satisfy external health checks.
 - Tests run:
   - `.venv/bin/ruff check backend` (pass)
   - `.venv/bin/ruff format backend --check` (pass)
   - `.venv/bin/pytest backend/tests/` (99 passed)
+  - `backend/venv3.11/bin/ruff check .` (pass, local)
+  - `backend/venv3.11/bin/ruff format --check .` (pass, local)
+  - `/home/nextstep.co.ke/.venv/bin/ruff check .` (pass, VPS)
+  - `/home/nextstep.co.ke/.venv/bin/ruff format --check .` (pass, VPS)
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q` (pass, VPS; 122 passed, 1 skipped)
 
 ### 2026-01-26
 - Added SkillNER-backed skill extraction adapter with local data files and custom mapping expansion.

@@ -11,11 +11,21 @@ Branch: `main`
 - **T-731**: Created systemd service/timer templates for API server, pipeline (every 6h), and drift checks (daily) in `deploy/systemd/`.
 - **T-732**: Built `backend/app/db/upsert.py` with Postgres `INSERT ON CONFLICT` + SQLite ORM fallback for jobs, orgs, and skills. Includes `bulk_upsert_jobs` convenience. 11 tests.
 - Updated CLI (`backend/cli.py`): added `dedupe` command, replaced external script-based `embed` with incremental `run_incremental_embeddings`.
+- **T-901**: Fixed `ruff` failures in scripts/scraper (import ordering, unused imports, formatting) so repo-wide lint passes.
+- **T-902**: Implemented cookie-based auth flow (set cookies on register/login/refresh, refresh via cookie, logout clears cookies, bearer tokens still supported).
+- **T-902**: Added Twilio WhatsApp webhook signature validation toggle (`TWILIO_VALIDATE_WEBHOOK_SIGNATURE`) and webhook URL override (`TWILIO_WEBHOOK_URL`) to satisfy webhook security tests.
+- **T-902**: Hardened SkillNER adapter evidence building against out-of-range node indices (fixes regression + determinism tests).
+- **OPS (VPS)**: Deployed latest `main` to `/home/nextstep.co.ke/public_html`, restarted `nextstep-backend.service`, and updated OpenLiteSpeed vhost to proxy `/health` to the backend (restart `lshttpd`).
 
 ### Tests Run
 - `.venv/bin/ruff check backend` (pass)
 - `.venv/bin/ruff format backend --check` (pass)
 - `.venv/bin/pytest backend/tests/` (99 passed)
+- `backend/venv3.11/bin/ruff check .` (pass, local)
+- `backend/venv3.11/bin/ruff format --check .` (pass, local)
+- `/home/nextstep.co.ke/.venv/bin/ruff check .` (pass, VPS)
+- `/home/nextstep.co.ke/.venv/bin/ruff format --check .` (pass, VPS)
+- `/home/nextstep.co.ke/.venv/bin/pytest -q` (pass, VPS; 122 passed, 1 skipped)
 
 ### Files Changed
 - `backend/tests/test_dashboard_endpoints.py` (new — 42 tests)
@@ -29,6 +39,11 @@ Branch: `main`
 - `deploy/systemd/` (new — 5 unit files)
 - `data/samples/regression_jobs.json` (new — fixture dataset)
 - `changemap.md` (updated task statuses + log)
+- `backend/app/core/config.py` (added auth cookie + Twilio webhook settings)
+- `backend/app/services/auth_service.py` (bearer-or-cookie auth resolution)
+- `backend/app/api/auth_routes.py` (cookie set/refresh/logout behavior)
+- `backend/app/webhooks/whatsapp.py` (Twilio signature validation)
+- `backend/app/normalization/skillner_adapter.py` (evidence bounds check)
 
 ### Next Steps
 1. Decide on cookie-first auth for the frontend (CORS + CSRF).
