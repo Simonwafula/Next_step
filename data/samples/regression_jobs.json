@@ -1,0 +1,77 @@
+[
+  {
+    "id": "REG-001",
+    "title": "Senior Software Engineer",
+    "company": "TechCorp Ltd",
+    "location": "Nairobi, Kenya",
+    "description": "We are looking for a Senior Software Engineer to join our team. You will build and maintain RESTful APIs using Python and FastAPI. Requirements: 5+ years experience, Bachelor's degree in Computer Science, proficiency in Python, SQL, Docker, and AWS. Salary range: KES 250,000 - 400,000 per month.",
+    "expected": {
+      "title_family": "technology",
+      "seniority": "Senior",
+      "education": "Bachelor",
+      "skills_subset": ["sql", "docker"],
+      "salary_max": 400000.0,
+      "experience_years": 5
+    }
+  },
+  {
+    "id": "REG-002",
+    "title": "Marketing Manager",
+    "company": "BrandCo Africa",
+    "location": "Mombasa, Kenya",
+    "description": "Marketing Manager needed to lead digital campaigns and brand strategy. Must have 3 years experience in marketing, strong communication skills, and experience with social media management, SEO, and Google Analytics. MBA preferred. Competitive salary.",
+    "expected": {
+      "title_family": "other",
+      "seniority": "Senior",
+      "education": "Master",
+      "skills_subset": [],
+      "salary_max": null,
+      "experience_years": 3
+    }
+  },
+  {
+    "id": "REG-003",
+    "title": "Junior Data Analyst",
+    "company": "DataInsights",
+    "location": "Nairobi, Kenya",
+    "description": "Entry-level Data Analyst position. Analyze business data using SQL and Excel. Create dashboards in Tableau. Certificate or diploma in statistics or related field required. Salary: KES 80,000 - 120,000.",
+    "expected": {
+      "title_family": "data_analytics",
+      "seniority": "Entry",
+      "education": "Diploma",
+      "skills_subset": [],
+      "salary_max": 120000.0,
+      "experience_years": null
+    }
+  },
+  {
+    "id": "REG-004",
+    "title": "DevOps Engineer",
+    "company": "CloudFirst Inc",
+    "location": "Remote",
+    "description": "DevOps Engineer to manage CI/CD pipelines, Kubernetes clusters, and cloud infrastructure on AWS and GCP. 4+ years experience required. Bachelor's degree in IT or equivalent. Must know Terraform, Ansible, Jenkins, and monitoring tools like Prometheus and Grafana.",
+    "expected": {
+      "title_family": "technology",
+      "seniority": "Mid-Level",
+      "education": "Bachelor",
+      "skills_subset": ["terraform", "kubernetes"],
+      "salary_max": null,
+      "experience_years": 4
+    }
+  },
+  {
+    "id": "REG-005",
+    "title": "Accounts Assistant",
+    "company": "KenyaFinance Corp",
+    "location": "Kisumu, Kenya",
+    "description": "Accounts Assistant to handle bookkeeping, reconciliations, and financial reporting. CPA Part II required. Experience with QuickBooks and SAP preferred. 1-2 years experience. Salary: KES 45,000 - 65,000 per month.",
+    "expected": {
+      "title_family": "finance",
+      "seniority": "Entry",
+      "education": null,
+      "skills_subset": [],
+      "salary_max": 65000.0,
+      "experience_years": 2
+    }
+  }
+]

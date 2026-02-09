@@ -1,0 +1,20 @@
+[Unit]
+Description=NextStep API Server
+After=network.target postgresql.service redis.service
+Wants=postgresql.service redis.service
+
+[Service]
+Type=exec
+User=nexts7595
+Group=nexts7595
+WorkingDirectory=/home/nextstep.co.ke/public_html/backend
+EnvironmentFile=/home/nextstep.co.ke/.env
+ExecStart=/home/nextstep.co.ke/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nextstep-api
+
+[Install]
+WantedBy=multi-user.target

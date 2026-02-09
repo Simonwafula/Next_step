@@ -131,3 +131,87 @@ def update_embeddings_model(db=None) -> dict:
     Returns a simple dict indicating success to satisfy callers in workflows.
     """
     return {"success": True, "message": "no-op in test environment"}
+
+
+# ---------------------------------------------------------------------------
+# Incremental embedding refresh (T-601c)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_MODEL_NAME = "e5-small-v2"
+
+
+def run_incremental_embeddings(
+    db,
+    batch_size: int = 100,
+    model_name: str = _DEFAULT_MODEL_NAME,
+) -> dict:
+    """Generate embeddings for jobs that don't yet have one for *model_name*.
+
+    Queries ``JobPost`` rows whose id is not present in ``JobEmbedding``
+    for the given model, generates vectors in batches, and persists them.
+
+    Returns a summary dict suitable for ProcessingLog.
+    """
+    import json
+
+    from sqlalchemy import func, select
+
+    from ..db.models import JobEmbedding, JobPost
+
+    embedded_sq = (
+        select(JobEmbedding.job_id)
+        .where(JobEmbedding.model_name == model_name)
+        .correlate(None)
+        .scalar_subquery()
+    )
+    pending_q = (
+        select(JobPost.id, JobPost.description_raw)
+        .where(JobPost.description_raw.is_not(None))
+        .where(JobPost.id.not_in(embedded_sq))
+        .order_by(JobPost.id)
+    )
+    total_pending = db.execute(
+        select(func.count()).select_from(pending_q.subquery())
+    ).scalar()
+
+    if total_pending == 0:
+        logger.info("Incremental embeddings: nothing to process.")
+        return {"status": "success", "processed": 0, "model": model_name}
+
+    processed = 0
+    offset = 0
+
+    while offset < total_pending:
+        rows = db.execute(pending_q.offset(offset).limit(batch_size)).all()
+        if not rows:
+            break
+
+        ids = [r[0] for r in rows]
+        texts = [r[1] or "" for r in rows]
+
+        vectors = generate_embeddings(texts)
+
+        for job_id, vec in zip(ids, vectors):
+            db.add(
+                JobEmbedding(
+                    job_id=job_id,
+                    model_name=model_name,
+                    vector_json=json.dumps(vec) if isinstance(vec, list) else vec,
+                )
+            )
+
+        db.commit()
+        processed += len(ids)
+        offset += batch_size
+        logger.info(
+            "Incremental embeddings: %d / %d processed.", processed, total_pending
+        )
+
+    summary = {
+        "status": "success",
+        "processed": processed,
+        "total_pending": total_pending,
+        "model": model_name,
+    }
+    logger.info("Incremental embeddings complete: %s", summary)
+    return summary

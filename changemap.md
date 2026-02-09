@@ -50,7 +50,7 @@
   - [x] (T-403a) define analytics read models + API contracts (`backend/app/services/analytics.py`)
   - [x] (T-403b) add dashboard endpoints (`backend/app/api/admin_routes.py`, `backend/app/api/analytics_routes.py`)
   - [x] (T-403c) wire admin/user dashboard UI to analytics endpoints (`frontend/js/dashboard-ui.js`, `frontend/js/admin.js`)
-  - [ ] (T-403d) dashboard endpoint tests (`backend/test_integration.py` or new analytics tests)
+  - [x] (T-403d) dashboard endpoint tests (`backend/tests/test_dashboard_endpoints.py` — 42 tests)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -74,12 +74,12 @@
 - [ ] (T-604) runbook docs
   - [x] (T-601a) watermark/state tracking table (`backend/app/db/models.py`)
   - [x] (T-601b) incremental ingestion runner (`backend/app/ingestion/runner.py`)
-  - [ ] (T-601c) incremental dedupe + embeddings refresh (`backend/app/processors/`, `backend/app/ml/embeddings.py`)
+  - [x] (T-601c) incremental dedupe + embeddings refresh (`backend/app/normalization/dedupe.py`, `backend/app/ml/embeddings.py` — 10 tests)
   - [/] (T-602a) monitoring metrics + thresholds (`backend/app/services/processing_log_service.py`)
   - [x] (T-602b) drift detection checks (skills, titles, salary) (`backend/app/services/analytics.py`)
   - [ ] (T-602c) alerting hooks (email/whatsapp) (`backend/app/services/notification_service.py`)
-  - [ ] (T-603a) regression fixture dataset (`data/samples/`)
-  - [ ] (T-603b) regression tests for extraction + analytics (`backend/test_*`)
+  - [x] (T-603a) regression fixture dataset (`data/samples/regression_jobs.json`)
+  - [x] (T-603b) regression tests for extraction + analytics (`backend/tests/test_regression.py` — 34 tests)
   - [x] (T-604a) runbook outline + SOPs (`docs/runbook.md`)
   - [x] (T-604b) on-call checklist + rollback steps (`docs/operations.md`)
 
@@ -94,11 +94,23 @@
 - [x] (T-720-PROD) Bulk Load & Artifacts
   - [x] (T-721) CSV/Parquet export scripts for initial bootstrap
   - [x] (T-722) COPY command templates for VPS load
-- [ ] (T-730-PROD) Hardening & Operations
-  - [ ] (T-731) Systemd service/timer templates
-  - [ ] (T-732) Incremental update upsert patterns
+- [x] (T-730-PROD) Hardening & Operations
+  - [x] (T-731) Systemd service/timer templates (`deploy/systemd/`)
+  - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-09
+- (T-403d) Added 42 dashboard/analytics endpoint tests covering all public analytics + admin routes (`backend/tests/test_dashboard_endpoints.py`).
+- (T-601c) Implemented incremental dedup (`run_incremental_dedup`) and incremental embeddings (`run_incremental_embeddings`) with batch processing and state tracking via `JobDedupeMap`/`JobEmbedding`. Added 10 tests.
+- (T-603a/b) Created regression fixture dataset (`data/samples/regression_jobs.json`, 5 jobs) and 34 regression tests for title normalization, seniority classification, experience extraction, education extraction, salary parsing, skill extraction, and determinism.
+- (T-731) Created systemd service/timer templates for API, pipeline (6-hourly), and drift checks (daily) in `deploy/systemd/`.
+- (T-732) Built Postgres-friendly upsert helpers (`backend/app/db/upsert.py`) with SQLite ORM fallback. 11 tests.
+- Updated CLI (`backend/cli.py`): added `dedupe` command, replaced external `embed` script with incremental `run_incremental_embeddings`, wired ProcessingLog for both.
+- Tests run:
+  - `.venv/bin/ruff check backend` (pass)
+  - `.venv/bin/ruff format backend --check` (pass)
+  - `.venv/bin/pytest backend/tests/` (99 passed)
 
 ### 2026-01-26
 - Added SkillNER-backed skill extraction adapter with local data files and custom mapping expansion.

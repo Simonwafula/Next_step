@@ -1,14 +1,18 @@
-import typer
+import subprocess
 import sys
 from pathlib import Path
+
+import typer
 
 # Add backend to path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from app.db.database import SessionLocal
 from app.ingestion.runner import run_all_sources, run_incremental_sources
+from app.ml.embeddings import run_incremental_embeddings
+from app.normalization.dedupe import run_incremental_dedup
 from app.services.analytics import refresh_analytics_baseline, run_drift_checks
-import subprocess
+from app.services.processing_log_service import log_processing_event
 
 app = typer.Typer(help="Next Step Production Pipeline Orchestrator")
 
@@ -45,10 +49,47 @@ def process(limit: int = 100):
 
 
 @app.command()
-def embed():
-    """Generate vector embeddings for all processed jobs."""
-    typer.echo("Generating embeddings...")
-    subprocess.run(["python3", "../scripts/generate_embeddings.py"])
+def dedupe(batch_size: int = 500):
+    """Run incremental deduplication on new jobs."""
+    typer.echo("Running incremental deduplication...")
+    db = SessionLocal()
+    try:
+        result = run_incremental_dedup(db, batch_size=batch_size)
+        log_processing_event(
+            db,
+            process_type="dedup",
+            status=result["status"],
+            message=f"Processed {result['processed']} jobs, found {result['duplicates_found']} duplicates",
+            details=result,
+        )
+        typer.echo(
+            f"Dedup complete: {result['processed']} processed, "
+            f"{result['duplicates_found']} duplicates found."
+        )
+    finally:
+        db.close()
+
+
+@app.command()
+def embed(batch_size: int = 100):
+    """Generate vector embeddings for unembedded jobs."""
+    typer.echo("Running incremental embedding generation...")
+    db = SessionLocal()
+    try:
+        result = run_incremental_embeddings(db, batch_size=batch_size)
+        log_processing_event(
+            db,
+            process_type="embedding",
+            status=result["status"],
+            message=f"Embedded {result['processed']} jobs with {result['model']}",
+            details=result,
+        )
+        typer.echo(
+            f"Embedding complete: {result['processed']} jobs embedded "
+            f"(model: {result['model']})."
+        )
+    finally:
+        db.close()
 
 
 @app.command()

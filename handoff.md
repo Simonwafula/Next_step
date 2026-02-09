@@ -1,5 +1,42 @@
 # Handoff
 
+## 2026-02-09 (Hardening & Test Coverage)
+
+Branch: `main`
+
+### Summary
+- **T-403d**: Added 42 endpoint tests covering all analytics (public) and admin dashboard routes — overview, users, jobs, sources, operations, summaries, education mappings (CRUD), admin analytics, drift monitoring, and signals (tenders + hiring).
+- **T-601c**: Implemented incremental dedup (`run_incremental_dedup`) using MinHash LSH with persistent `JobDedupeMap` tracking, and incremental embeddings (`run_incremental_embeddings`) that processes only unembedded jobs. Both wired into CLI and ProcessingLog. 10 tests.
+- **T-603a/b**: Created 5-job regression fixture dataset and 34 regression tests validating title normalization, seniority, experience, education, salary parsing, skill extraction, and determinism guarantees.
+- **T-731**: Created systemd service/timer templates for API server, pipeline (every 6h), and drift checks (daily) in `deploy/systemd/`.
+- **T-732**: Built `backend/app/db/upsert.py` with Postgres `INSERT ON CONFLICT` + SQLite ORM fallback for jobs, orgs, and skills. Includes `bulk_upsert_jobs` convenience. 11 tests.
+- Updated CLI (`backend/cli.py`): added `dedupe` command, replaced external script-based `embed` with incremental `run_incremental_embeddings`.
+
+### Tests Run
+- `.venv/bin/ruff check backend` (pass)
+- `.venv/bin/ruff format backend --check` (pass)
+- `.venv/bin/pytest backend/tests/` (99 passed)
+
+### Files Changed
+- `backend/tests/test_dashboard_endpoints.py` (new — 42 tests)
+- `backend/tests/test_incremental_processing.py` (new — 10 tests)
+- `backend/tests/test_upsert.py` (new — 11 tests)
+- `backend/tests/test_regression.py` (new — 34 tests)
+- `backend/app/normalization/dedupe.py` (added `run_incremental_dedup`)
+- `backend/app/ml/embeddings.py` (added `run_incremental_embeddings`)
+- `backend/app/db/upsert.py` (new — Postgres/SQLite upsert helpers)
+- `backend/cli.py` (added `dedupe` command, updated `embed`)
+- `deploy/systemd/` (new — 5 unit files)
+- `data/samples/regression_jobs.json` (new — fixture dataset)
+- `changemap.md` (updated task statuses + log)
+
+### Next Steps
+1. Decide on cookie-first auth for the frontend (CORS + CSRF).
+2. Enable pgvector index build (`PGVECTOR_CREATE_INDEX=true`) during maintenance.
+3. Remaining open items: T-500b (tender metadata normalization), T-502a (signal aggregation), T-602c (alerting hooks), T-603 (more regression fixtures).
+
+---
+
 ## 2026-02-06 (T-800 Comprehensive Audit)
 
 Branch: `feat/T-800-comprehensive-audit`
