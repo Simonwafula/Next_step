@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Request, Depends
+from fastapi import APIRouter, Request, Depends, HTTPException, status
 from ..services.search import search_jobs
 from ..services.recommend import transitions_for
 from ..services.lmi import get_weekly_insights, get_attachment_companies
@@ -170,6 +170,25 @@ def format_whatsapp_message(content: str, max_length: int = 1500) -> str:
 @router.post("/webhook")
 async def whatsapp_webhook(request: Request, db: Session = Depends(get_db)):
     form = await request.form()
+
+    if settings.TWILIO_VALIDATE_WEBHOOK_SIGNATURE:
+        signature = request.headers.get("X-Twilio-Signature")
+        if not signature:
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+        if not settings.TWILIO_AUTH_TOKEN:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Twilio auth token not configured",
+            )
+
+        from twilio.request_validator import RequestValidator
+
+        url = settings.TWILIO_WEBHOOK_URL.strip() or str(request.url)
+        params = {k: v for k, v in form.items()}
+        validator = RequestValidator(settings.TWILIO_AUTH_TOKEN)
+        if not validator.validate(url, params, signature):
+            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN)
+
     body = (form.get("Body") or "").strip()
 
     if not body:

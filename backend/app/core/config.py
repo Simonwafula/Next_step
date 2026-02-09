@@ -45,6 +45,26 @@ class Settings(BaseModel):
         os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30")
     )
     REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
+    # Browser auth cookies (optional; API still supports Bearer tokens).
+    AUTH_COOKIE_ACCESS_NAME: str = os.getenv(
+        "AUTH_COOKIE_ACCESS_NAME", "nextstep_access"
+    )
+    AUTH_COOKIE_REFRESH_NAME: str = os.getenv(
+        "AUTH_COOKIE_REFRESH_NAME", "nextstep_refresh"
+    )
+    # Leave blank to avoid host-mismatch in local/test environments.
+    AUTH_COOKIE_DOMAIN: str = os.getenv("AUTH_COOKIE_DOMAIN", "")
+    AUTH_COOKIE_PATH: str = os.getenv("AUTH_COOKIE_PATH", "/")
+    AUTH_COOKIE_SAMESITE: str = os.getenv("AUTH_COOKIE_SAMESITE", "lax")
+    AUTH_COOKIE_SECURE: bool = (
+        os.getenv(
+            "AUTH_COOKIE_SECURE",
+            "true"
+            if os.getenv("WEBSITE_URL", "http://localhost").startswith("https")
+            else "false",
+        ).lower()
+        == "true"
+    )
     ADMIN_EMAILS: str = os.getenv("ADMIN_EMAILS", "")
     ADMIN_API_KEY: Optional[str] = os.getenv(
         "ADMIN_API_KEY"
@@ -69,6 +89,11 @@ class Settings(BaseModel):
     TWILIO_ACCOUNT_SID: str = os.getenv("TWILIO_ACCOUNT_SID", "")
     TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_WHATSAPP_FROM: str = os.getenv("TWILIO_WHATSAPP_FROM", "")
+    TWILIO_VALIDATE_WEBHOOK_SIGNATURE: bool = (
+        os.getenv("TWILIO_VALIDATE_WEBHOOK_SIGNATURE", "false").lower() == "true"
+    )
+    # If set, use this exact URL for signature validation; otherwise use request.url.
+    TWILIO_WEBHOOK_URL: str = os.getenv("TWILIO_WEBHOOK_URL", "")
 
     # Email Configuration
     SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")

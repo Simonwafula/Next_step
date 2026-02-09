@@ -121,8 +121,11 @@ def _ensure_skillner_context() -> bool:
 def _build_evidence(text: str, words_position, node_ids: List[int]) -> Dict[str, Any]:
     if not node_ids:
         return {"start": None, "end": None, "snippet": ""}
-    start_idx = words_position[node_ids[0]].start
-    end_idx = words_position[node_ids[-1]].end
+    valid_ids = [idx for idx in node_ids if 0 <= idx < len(words_position)]
+    if not valid_ids:
+        return {"start": None, "end": None, "snippet": ""}
+    start_idx = words_position[min(valid_ids)].start
+    end_idx = words_position[max(valid_ids)].end
     snippet = text[start_idx:end_idx]
     return {"start": start_idx, "end": end_idx, "snippet": snippet}
 
