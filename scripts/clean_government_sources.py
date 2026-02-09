@@ -11,15 +11,24 @@ DEFAULT_TIMEOUT = 20
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Remove broken government source URLs.")
+    parser = argparse.ArgumentParser(
+        description="Remove broken government source URLs."
+    )
     parser.add_argument(
         "--file",
-        default=str(Path(__file__).resolve().parents[1] / "backend/app/ingestion/government_sources.yaml"),
+        default=str(
+            Path(__file__).resolve().parents[1]
+            / "backend/app/ingestion/government_sources.yaml"
+        ),
         help="Path to government_sources.yaml",
     )
-    parser.add_argument("--timeout", type=int, default=DEFAULT_TIMEOUT, help="Request timeout (seconds)")
+    parser.add_argument(
+        "--timeout", type=int, default=DEFAULT_TIMEOUT, help="Request timeout (seconds)"
+    )
     parser.add_argument("--dry-run", action="store_true", help="Only report changes")
-    parser.add_argument("--concurrency", type=int, default=10, help="Concurrent requests")
+    parser.add_argument(
+        "--concurrency", type=int, default=10, help="Concurrent requests"
+    )
     return parser.parse_args()
 
 
@@ -43,6 +52,7 @@ async def main():
     async with httpx.AsyncClient(
         timeout=args.timeout, headers={"User-Agent": "NextStepLinkCheck/1.0"}
     ) as client:
+
         async def check(url: str):
             async with sem:
                 results[url] = await fetch_status(client, url)
@@ -83,7 +93,9 @@ async def main():
     print(f"Sources removed: {len(removed_sources)}")
     print(f"Sources updated: {len(updated_sources)}")
     if removed_sources:
-        print("Removed sources (sample):", [s.get("name") for s in removed_sources[:10]])
+        print(
+            "Removed sources (sample):", [s.get("name") for s in removed_sources[:10]]
+        )
 
     if args.dry_run:
         print("Dry run enabled. No changes written.")
