@@ -1,4 +1,5 @@
 # scrapers/scraper.py
+# ruff: noqa: E402
 import warnings
 from urllib3.exceptions import NotOpenSSLWarning
 

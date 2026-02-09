@@ -4,6 +4,7 @@ Generate backend/app/ingestion/government_sources.yaml from the seed spreadsheet
 
 Requires: pandas, openpyxl, pyyaml
 """
+
 from __future__ import annotations
 
 import argparse

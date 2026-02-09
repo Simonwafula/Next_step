@@ -1,5 +1,5 @@
+# ruff: noqa: E402
 import sys
-import os
 from pathlib import Path
 
 # Add backend to path
@@ -9,18 +9,19 @@ from app.db.database import SessionLocal
 from app.db.models import User
 from app.core.security import get_password_hash
 
+
 def create_admin_user():
     db = SessionLocal()
     try:
         email = "mstatiliserver@gmail.com"
         password = "Password123!"
-        
+
         # Check if user exists
         user = db.query(User).filter(User.email == email).first()
         if user:
             print(f"User {email} already exists.")
             return
-            
+
         print(f"Creating admin user {email}...")
         new_user = User(
             email=email,
@@ -28,7 +29,7 @@ def create_admin_user():
             full_name="System Admin",
             is_active=True,
             is_verified=True,
-            subscription_tier="enterprise"
+            subscription_tier="enterprise",
         )
         db.add(new_user)
         db.commit()
@@ -38,6 +39,7 @@ def create_admin_user():
         print(f"Error: {e}")
     finally:
         db.close()
+
 
 if __name__ == "__main__":
     create_admin_user()

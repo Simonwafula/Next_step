@@ -1,7 +1,6 @@
 import os
 import hashlib
-import json
-from pathlib import Path
+
 
 def get_sha256(file_path):
     sha256_hash = hashlib.sha256()
@@ -10,17 +9,18 @@ def get_sha256(file_path):
             sha256_hash.update(byte_block)
     return sha256_hash.hexdigest()
 
+
 def package_artifacts(artifact_dir):
     files = [
         "jobs_normalized.csv",
         "job_entities.jsonl",
         "job_embeddings.csv",
-        "job_embeddings_meta.json"
+        "job_embeddings_meta.json",
     ]
-    
+
     print(f"Packaging artifacts in {artifact_dir}...")
     checksums = {}
-    
+
     for f in files:
         full_path = os.path.join(artifact_dir, f)
         if os.path.exists(full_path):
@@ -28,11 +28,11 @@ def package_artifacts(artifact_dir):
             print(f"  {f}: {checksums[f]}")
         else:
             print(f"  Warning: {f} missing!")
-            
+
     with open(os.path.join(artifact_dir, "checksums.txt"), "w") as f:
         for name, sha in checksums.items():
             f.write(f"{sha}  {name}\n")
-            
+
     # Generate README_PROD.md
     readme_content = f"""# Production Transition Artifacts {os.path.basename(artifact_dir)}
 
@@ -40,7 +40,7 @@ def package_artifacts(artifact_dir):
 """
     for name, sha in checksums.items():
         readme_content += f"- `{name}`: `{sha}`\n"
-        
+
     readme_content += """
 ## Postgres Load Instructions (Postgres 14.20)
 
@@ -68,10 +68,12 @@ def package_artifacts(artifact_dir):
 """
     with open(os.path.join(artifact_dir, "README_PROD.md"), "w") as f:
         f.write(readme_content)
-        
-    print(f"Artifacts packaged. README_PROD.md and checksums.txt created.")
+
+    print("Artifacts packaged. README_PROD.md and checksums.txt created.")
+
 
 if __name__ == "__main__":
     import sys
+
     target_dir = sys.argv[1] if len(sys.argv) > 1 else "artifacts/v1_baseline_v2"
     package_artifacts(target_dir)
