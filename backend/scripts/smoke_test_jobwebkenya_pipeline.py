@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# ruff: noqa: E402
 """
 Extend pipeline connection to JobWebKenya scraper
 """

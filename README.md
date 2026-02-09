@@ -45,7 +45,7 @@ A starter scaffold for a system that:
 - Postgres connection errors: confirm Postgres is running and `DATABASE_URL` credentials are correct.
 
 ## Data model (simplified)
-See `backend/app/models/` for SQLAlchemy models. Key tables:
+See `backend/app/db/models.py` for SQLAlchemy models. Key tables:
 - `job_post`, `organization`, `location`, `title_norm`, `skill`, `job_skill`
 
 ## Ingestion

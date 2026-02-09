@@ -1,6 +1,14 @@
+# ruff: noqa: E402
 """
 Test script for job processors
 """
+
+import sys
+from pathlib import Path
+
+# Ensure we can `import app.*` regardless of current working directory.
+BACKEND_DIR = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(BACKEND_DIR))
 
 import asyncio
 import logging
