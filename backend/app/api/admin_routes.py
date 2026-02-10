@@ -33,6 +33,14 @@ from ..services.analytics import (
 )
 from ..services.processing_log_service import log_monitoring_event
 from ..services.signals import list_tenders, list_hiring_signals
+from ..services.gov_processing_service import (
+    government_quality_snapshot,
+    process_government_posts,
+)
+from ..services.post_ingestion_processing_service import (
+    process_job_posts,
+    quality_snapshot,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -312,6 +320,79 @@ def admin_operations(
             for process_type, log in latest_by_type.items()
         },
     }
+
+
+@router.get("/government/quality")
+def admin_government_quality(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    """Quick visibility into gov ingestion completeness and processing coverage."""
+    return {
+        "source": "gov_careers",
+        "snapshot": government_quality_snapshot(db),
+    }
+
+
+@router.post("/government/process")
+def admin_government_process(
+    limit: int = Query(500, ge=1, le=5000),
+    only_unprocessed: bool = Query(True),
+    dry_run: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    """Run deterministic post-processing for `gov_careers` rows."""
+    result = process_government_posts(
+        db,
+        limit=limit,
+        only_unprocessed=only_unprocessed,
+        dry_run=dry_run,
+    )
+    log_monitoring_event(
+        db,
+        status="success" if result.get("status") == "success" else "error",
+        message="Government post-processing executed",
+        details={"triggered_by": current_user.email, "result": result},
+    )
+    return result
+
+
+@router.get("/quality")
+def admin_quality(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    """Global visibility into ingestion completeness and processing coverage."""
+    return quality_snapshot(db)
+
+
+@router.post("/process")
+def admin_process(
+    limit: int = Query(500, ge=1, le=5000),
+    only_unprocessed: bool = Query(True),
+    dry_run: bool = Query(False),
+    source: str | None = Query(
+        None, description="Optional source filter, e.g. gov_careers"
+    ),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    """Run deterministic post-processing for any `job_post` rows."""
+    result = process_job_posts(
+        db,
+        source=source,
+        limit=limit,
+        only_unprocessed=only_unprocessed,
+        dry_run=dry_run,
+    )
+    log_monitoring_event(
+        db,
+        status="success" if result.get("status") == "success" else "error",
+        message="Post-ingestion processing executed",
+        details={"triggered_by": current_user.email, "result": result},
+    )
+    return result
 
 
 @router.get("/summaries")

@@ -176,17 +176,40 @@ def extract_skills_detailed(text: str) -> Dict[str, Dict[str, Any]]:
     results: Dict[str, Dict[str, Any]] = {}
 
     if _skillner_enabled():
-        for match in extract_skillner_matches(text):
-            canonical = canonicalize_skill(match["skill"])
-            _upsert_skill_result(
-                results,
-                canonical,
-                float(match["confidence"]),
-                match.get("evidence", ""),
-                match.get("start"),
-                match.get("end"),
-                match.get("source", "skillner"),
-            )
+        try:
+            for match in extract_skillner_matches(text):
+                canonical = canonicalize_skill(match["skill"])
+                _upsert_skill_result(
+                    results,
+                    canonical,
+                    float(match["confidence"]),
+                    match.get("evidence", ""),
+                    match.get("start"),
+                    match.get("end"),
+                    match.get("source", "skillner"),
+                )
+        except Exception:
+            # SkillNER is an optional dependency; in environments where it's not
+            # installed we still want deterministic extraction via patterns/custom.
+            pass
+
+        # If SkillNER is enabled but unavailable (or yields nothing), fall back to
+        # patterns so downstream quality/coverage metrics remain meaningful.
+        if (
+            not results
+            and os.getenv("SKILL_EXTRACTOR_MODE", "skillner").lower() == "skillner"
+        ):
+            for match in _extract_pattern_matches(text):
+                canonical = canonicalize_skill(match["skill"])
+                _upsert_skill_result(
+                    results,
+                    canonical,
+                    float(match["confidence"]),
+                    match.get("evidence", ""),
+                    match.get("start"),
+                    match.get("end"),
+                    "pattern_fallback",
+                )
 
     if _pattern_enabled():
         for match in _extract_pattern_matches(text):
