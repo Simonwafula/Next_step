@@ -83,6 +83,10 @@ def _get_or_create_title_norm(
 ) -> int | None:
     if not family or not canonical_title:
         return None
+    # TitleNorm columns are constrained (String(120)); clamp to avoid runtime
+    # failures when upstream sources produce very long titles/snippets.
+    family = str(family)[:120]
+    canonical_title = str(canonical_title)[:120]
     existing = (
         db.query(TitleNorm)
         .filter(

@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from app.db.models import JobEntities, JobPost, JobSkill, Organization
+from app.db.models import JobEntities, JobPost, JobSkill, Organization, TitleNorm
 from app.services.post_ingestion_processing_service import (
     process_job_posts,
     quality_snapshot,
@@ -32,6 +32,31 @@ def test_process_job_posts_generic_source(db_session_factory):
     )
     assert result["status"] == "success"
     assert result["processed"] == 1
+
+
+def test_process_job_posts_clamps_long_titles(db_session_factory):
+    db = db_session_factory()
+    job = JobPost(
+        source="gov_careers",
+        url="https://example.com/long-title",
+        title_raw="X" * 500,  # Longer than TitleNorm.canonical_title (120)
+        description_raw="We need a data analyst with Python and SQL.",
+    )
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    result = process_job_posts(
+        db, source="gov_careers", limit=10, only_unprocessed=True
+    )
+    assert result["status"] == "success"
+    assert result["processed"] >= 1
+
+    # Ensure TitleNorm exists and respects length constraints.
+    tn = db.query(TitleNorm).filter(TitleNorm.id == job.title_norm_id).one_or_none()
+    assert tn is not None
+    assert tn.canonical_title is not None
+    assert len(tn.canonical_title) <= 120
     assert result["job_skills_created"] >= 1
 
     job2 = db.query(JobPost).filter(JobPost.id == job.id).one()
