@@ -4,6 +4,7 @@ import logging
 from ..core.celery_app import celery_app
 from ..db.database import get_db
 from ..ingestion.runner import run_government_sources
+from ..services.post_ingestion_processing_service import process_job_posts
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,13 @@ async def _run_government_sources_async():
     async for db in get_db():
         try:
             ingested = run_government_sources(db)
-            return {"ingested": ingested}
+            processed = process_job_posts(
+                db,
+                source="gov_careers",
+                limit=2000,
+                only_unprocessed=True,
+                dry_run=False,
+            )
+            return {"ingested": ingested, "post_process": processed}
         finally:
             await db.close()

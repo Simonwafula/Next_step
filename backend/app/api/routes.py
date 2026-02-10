@@ -18,6 +18,7 @@ from ..services.lmi import (
 from ..services.scraper_service import scraper_service
 from ..services.auth_service import get_current_user_optional, require_admin
 from ..services.processing_log_service import log_processing_event
+from ..services.post_ingestion_processing_service import process_job_posts
 from ..normalization.titles import get_careers_for_degree, normalize_title
 from ..ingestion.runner import run_all_sources, run_government_sources
 from .auth_routes import router as auth_router
@@ -400,6 +401,10 @@ async def get_recent_jobs(
 # Admin endpoints
 @api_router.post("/admin/ingest")
 def admin_ingest(
+    process_after: bool = Query(
+        True, description="Run deterministic post-processing after ingestion"
+    ),
+    process_limit: int = Query(500, ge=1, le=5000),
     db: Session = Depends(get_db),
     current_user=Depends(require_admin()),
 ):
@@ -407,6 +412,15 @@ def admin_ingest(
     started_at = datetime.utcnow()
     try:
         count = run_all_sources(db)
+        processing_result = None
+        if process_after:
+            processing_result = process_job_posts(
+                db,
+                source=None,
+                limit=process_limit,
+                only_unprocessed=True,
+                dry_run=False,
+            )
         duration = (datetime.utcnow() - started_at).total_seconds()
         log_processing_event(
             db,
@@ -415,11 +429,12 @@ def admin_ingest(
             message="Ingestion completed",
             details={
                 "sources_ingested": count,
+                "post_process": processing_result,
                 "duration_seconds": round(duration, 2),
                 "triggered_by": current_user.email,
             },
         )
-        return {"ingested": count}
+        return {"ingested": count, "post_process": processing_result}
     except Exception as exc:
         log_processing_event(
             db,
@@ -433,6 +448,10 @@ def admin_ingest(
 
 @api_router.post("/admin/ingest/government")
 def admin_ingest_government(
+    process_after: bool = Query(
+        True, description="Run deterministic post-processing after ingestion"
+    ),
+    process_limit: int = Query(1000, ge=1, le=5000),
     db: Session = Depends(get_db),
     current_user=Depends(require_admin()),
 ):
@@ -440,6 +459,15 @@ def admin_ingest_government(
     started_at = datetime.utcnow()
     try:
         count = run_government_sources(db)
+        processing_result = None
+        if process_after:
+            processing_result = process_job_posts(
+                db,
+                source="gov_careers",
+                limit=process_limit,
+                only_unprocessed=True,
+                dry_run=False,
+            )
         duration = (datetime.utcnow() - started_at).total_seconds()
         log_processing_event(
             db,
@@ -448,11 +476,12 @@ def admin_ingest_government(
             message="Government ingestion completed",
             details={
                 "sources_ingested": count,
+                "post_process": processing_result,
                 "duration_seconds": round(duration, 2),
                 "triggered_by": current_user.email,
             },
         )
-        return {"ingested": count}
+        return {"ingested": count, "post_process": processing_result}
     except Exception as exc:
         log_processing_event(
             db,

@@ -63,6 +63,38 @@ DOCUMENT_EXTENSIONS = (".pdf", ".doc", ".docx")
 MAX_DESCRIPTION_CHARS = 4000
 MAX_DOCUMENT_BYTES = 8 * 1024 * 1024
 
+_NON_JOB_HINTS = (
+    "tender",
+    "request for proposal",
+    "request for quotations",
+    "request for quotation",
+    "rfp",
+    "rfq",
+    "expression of interest",
+    "eoi",
+    "bid document",
+    "annual development plan",
+    "adp",
+    "memoranda",
+    "public participation",
+    "downloads",
+    "resources",
+)
+
+_JOB_POSITIVE_HINTS = (
+    "vacan",
+    "recruit",
+    "career",
+    "job",
+    "position",
+    "opening",
+    "opportun",
+    "intern",
+    "attachment",
+    "graduate",
+    "fellowship",
+)
+
 
 def _coerce_list(value) -> List[str]:
     if not value:
@@ -278,6 +310,17 @@ def _extract_seniority_from_text(title: str, description: str) -> Optional[str]:
     return "mid"
 
 
+def _looks_like_non_job_document(title: str, description: str) -> bool:
+    """Best-effort filter to keep gov_careers focused on roles, not tenders/notices."""
+    combined = f"{title} {description}".lower()
+    if any(hint in combined for hint in _NON_JOB_HINTS):
+        # Allow through if the text very clearly signals an actual vacancy/recruitment.
+        if any(hint in combined for hint in _JOB_POSITIVE_HINTS):
+            return False
+        return True
+    return False
+
+
 def ingest_gov_careers(db: Session, **src) -> int:
     list_urls = _coerce_list(src.get("list_urls") or src.get("url"))
     if not list_urls:
@@ -424,6 +467,13 @@ def ingest_gov_careers(db: Session, **src) -> int:
                     else:
                         description = _extract_document_text(link_url, client)
                         detail_fetches += 1
+                elif text:
+                    # If we didn't fetch details (or hit the detail budget), at least
+                    # store the surrounding list-page context for later processing.
+                    description = text[:MAX_DESCRIPTION_CHARS]
+
+                if _looks_like_non_job_document(title, description):
+                    continue
 
                 # Extract salary and seniority from description
                 salary_min, salary_max, currency = _extract_salary_from_text(

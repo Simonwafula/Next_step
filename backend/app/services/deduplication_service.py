@@ -87,13 +87,17 @@ class DeduplicationService:
             new_query = urlencode(cleaned_params, doseq=True)
 
             # Remove common URL variations
+            netloc = parsed.netloc
+            # Normalize www vs non-www so the same posting isn't ingested twice.
+            if netloc.startswith("www."):
+                netloc = netloc[4:]
             path = parsed.path.rstrip("/")
 
             # Rebuild URL without tracking params
             normalized = urlunparse(
                 (
                     parsed.scheme,
-                    parsed.netloc,
+                    netloc,
                     path,
                     parsed.params,
                     new_query,
