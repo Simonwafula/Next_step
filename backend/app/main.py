@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse, JSONResponse
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from sqlalchemy import select, func, text
 from .core.config import settings
 from .core.rate_limiter import rate_limit_middleware
@@ -190,6 +192,88 @@ def ingestion_status():
         }
     finally:
         db.close()
+
+
+# ---------------------------------------------------------------------------
+# Exception handlers – JSON for API clients, HTML for browsers
+# ---------------------------------------------------------------------------
+
+def _wants_json(request: Request) -> bool:
+    accept = request.headers.get("accept", "")
+    return "application/json" in accept
+
+
+def _error_html(code: int, title: str, message: str) -> str:
+    return (
+        "<!DOCTYPE html><html lang='en'><head><meta charset='UTF-8'>"
+        "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        "<title>{title} - NextStep Careers</title>"
+        "<style>"
+        "body{{font-family:system-ui,sans-serif;background:#faf8f5;color:#1a1a2e;"
+        "display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0}}"
+        ".card{{text-align:center;max-width:420px;padding:2rem}}"
+        ".code{{font-size:4rem;font-weight:700;color:#0d9488}}"
+        "h1{{margin:.5rem 0;font-size:1.3rem}}"
+        "p{{color:#555;line-height:1.5;margin-bottom:1.5rem}}"
+        "a{{color:#0d9488;text-decoration:none;font-weight:500}}"
+        "</style></head><body><div class='card'>"
+        "<div class='code'>{code}</div>"
+        "<h1>{title}</h1><p>{message}</p>"
+        "<a href='/'>Back to home</a>"
+        "</div></body></html>"
+    ).format(code=code, title=title, message=message)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    code = exc.status_code
+    detail = exc.detail or "An error occurred"
+
+    if _wants_json(request):
+        return JSONResponse(
+            status_code=code,
+            content={"detail": detail},
+        )
+
+    titles = {
+        403: "Access denied",
+        404: "Page not found",
+        500: "Something went wrong",
+    }
+    messages = {
+        403: "You don't have permission to access this resource.",
+        404: "The page you're looking for doesn't exist or may have been moved.",
+        500: "We hit an unexpected error. Please try again in a moment.",
+    }
+
+    return HTMLResponse(
+        status_code=code,
+        content=_error_html(
+            code,
+            titles.get(code, f"Error {code}"),
+            messages.get(code, str(detail)),
+        ),
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    logger.error("Unhandled exception: %s", exc, exc_info=True)
+
+    if _wants_json(request):
+        return JSONResponse(
+            status_code=500,
+            content={"detail": "Internal server error"},
+        )
+
+    return HTMLResponse(
+        status_code=500,
+        content=_error_html(
+            500,
+            "Something went wrong",
+            "We hit an unexpected error. Please try again in a moment.",
+        ),
+    )
 
 
 # API routers

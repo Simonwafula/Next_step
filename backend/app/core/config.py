@@ -23,7 +23,10 @@ class Settings(BaseModel):
     API_BASE_URL: str = os.getenv("API_BASE_URL", "https://api.nextstep.co.ke")
 
     # CORS
-    CORS_ORIGINS: str = os.getenv("CORS_ORIGINS", "*")
+    CORS_ORIGINS: str = os.getenv(
+        "CORS_ORIGINS",
+        "https://nextstep.co.ke,https://www.nextstep.co.ke,https://api.nextstep.co.ke",
+    )
 
     # Database
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "postgres")
@@ -90,7 +93,7 @@ class Settings(BaseModel):
     TWILIO_AUTH_TOKEN: str = os.getenv("TWILIO_AUTH_TOKEN", "")
     TWILIO_WHATSAPP_FROM: str = os.getenv("TWILIO_WHATSAPP_FROM", "")
     TWILIO_VALIDATE_WEBHOOK_SIGNATURE: bool = (
-        os.getenv("TWILIO_VALIDATE_WEBHOOK_SIGNATURE", "false").lower() == "true"
+        os.getenv("TWILIO_VALIDATE_WEBHOOK_SIGNATURE", "true").lower() == "true"
     )
     # If set, use this exact URL for signature validation; otherwise use request.url.
     TWILIO_WEBHOOK_URL: str = os.getenv("TWILIO_WEBHOOK_URL", "")

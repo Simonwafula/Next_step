@@ -12,6 +12,9 @@ from fastapi import (
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, EmailStr
+import hmac
+import secrets
+
 import httpx
 import uuid
 
@@ -297,12 +300,21 @@ async def reset_password(payload: PasswordResetConfirm, db: Session = Depends(ge
     return {"message": "Password updated successfully"}
 
 
-@router.get("/google/url", response_model=GoogleAuthUrlResponse)
+OAUTH_STATE_COOKIE = "nextstep_oauth_state"
+
+
+@router.get("/google/url")
 async def google_auth_url(
+    response: Response,
     redirect_uri: str | None = Query(None),
     state: str | None = Query(None),
 ):
-    """Get Google OAuth authorization URL."""
+    """Get Google OAuth authorization URL.
+
+    A random CSRF state token is generated, stored in an httponly cookie,
+    and sent as the ``state`` parameter to Google.  The callback endpoint
+    validates that the two match.
+    """
     client_id = settings.GOOGLE_OAUTH_CLIENT_ID
     if not client_id:
         raise HTTPException(
@@ -316,6 +328,9 @@ async def google_auth_url(
             status_code=status.HTTP_400_BAD_REQUEST, detail="redirect_uri required"
         )
 
+    # Generate a random state token for CSRF protection.
+    csrf_state = secrets.token_urlsafe(32)
+
     params = {
         "client_id": client_id,
         "redirect_uri": redirect,
@@ -323,23 +338,53 @@ async def google_auth_url(
         "scope": "openid email profile",
         "access_type": "offline",
         "prompt": "consent",
+        "state": csrf_state,
     }
-    if state:
-        params["state"] = state
 
     query = httpx.QueryParams(params)
     url = f"https://accounts.google.com/o/oauth2/v2/auth?{query}"
-    return GoogleAuthUrlResponse(authorization_url=url)
+
+    # Store the state in a short-lived httponly cookie so we can validate it
+    # when Google redirects back.
+    response.set_cookie(
+        key=OAUTH_STATE_COOKIE,
+        value=csrf_state,
+        max_age=600,  # 10 minutes
+        httponly=True,
+        secure=settings.AUTH_COOKIE_SECURE,
+        samesite="lax",
+        path=settings.AUTH_COOKIE_PATH,
+        domain=_cookie_domain(),
+    )
+
+    return {"authorization_url": url}
 
 
 @router.get("/google/callback", response_model=Token)
 async def google_callback(
+    request: Request,
     response: Response,
     code: str = Query(...),
+    state: str | None = Query(None),
     redirect_uri: str | None = Query(None),
     db: Session = Depends(get_db),
 ):
     """Exchange Google OAuth code for tokens and sign in the user."""
+    # Validate CSRF state token
+    expected_state = request.cookies.get(OAUTH_STATE_COOKIE)
+    if not expected_state or not state or not hmac.compare_digest(expected_state, state):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid or missing OAuth state parameter",
+        )
+
+    # Clear the state cookie now that it's been validated.
+    response.delete_cookie(
+        key=OAUTH_STATE_COOKIE,
+        path=settings.AUTH_COOKIE_PATH,
+        domain=_cookie_domain(),
+    )
+
     client_id = settings.GOOGLE_OAUTH_CLIENT_ID
     client_secret = settings.GOOGLE_OAUTH_CLIENT_SECRET
     if not client_id or not client_secret:

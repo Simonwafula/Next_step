@@ -256,10 +256,10 @@ const renderAnalyticsList = (target, items, emptyMessage) => {
             (item) => `
                 <div class="data-row">
                     <div>
-                        <strong>${item.title}</strong>
-                        <span>${item.subtitle}</span>
+                        <strong>${escapeHtml(item.title)}</strong>
+                        <span>${escapeHtml(item.subtitle)}</span>
                     </div>
-                    ${item.meta ? `<span class="badge">${item.meta}</span>` : ''}
+                    ${item.meta ? `<span class="badge">${escapeHtml(item.meta)}</span>` : ''}
                 </div>
             `
         )

@@ -1,4 +1,9 @@
 // Search functionality for the career search platform
+const { escapeHtml: _esc, safeUrl: _safeUrl } = window.NEXTSTEP_SANITIZE || {
+    escapeHtml: (v) => String(v ?? ''),
+    safeUrl: (v) => (v ? String(v) : '#'),
+};
+
 class SearchManager {
     constructor() {
         this.searchInput = document.getElementById('searchInput');
@@ -202,33 +207,35 @@ class SearchManager {
     }
     
     createJobCard(job) {
-        const salaryInfo = job.salary_min && job.salary_max 
+        const salaryInfo = job.salary_min && job.salary_max
             ? `<div class="job-salary">${UTILS.formatCurrency(job.salary_min)} - ${UTILS.formatCurrency(job.salary_max)}</div>`
-            : job.salary_min 
+            : job.salary_min
             ? `<div class="job-salary">From ${UTILS.formatCurrency(job.salary_min)}</div>`
             : '';
-            
-        const description = job.description 
-            ? UTILS.truncateText(job.description, 200)
+
+        const description = job.description
+            ? _esc(UTILS.truncateText(job.description, 200))
             : 'No description available.';
-            
+
         const skills = job.skills && job.skills.length > 0
-            ? job.skills.slice(0, 5).map(skill => `<span class="job-tag">${skill}</span>`).join('')
+            ? job.skills.slice(0, 5).map(skill => `<span class="job-tag">${_esc(skill)}</span>`).join('')
             : '';
-            
-        const postedDate = job.created_at 
-            ? UTILS.formatRelativeTime(job.created_at)
+
+        const postedDate = job.created_at
+            ? _esc(UTILS.formatRelativeTime(job.created_at))
             : 'Recently posted';
-            
+
+        const jobUrl = _safeUrl(job.url);
+
         return `
-            <div class="job-card" data-job-id="${job.id}" data-job-url="${job.url}">
+            <div class="job-card" data-job-id="${_esc(job.id)}" data-job-url="${_esc(jobUrl)}">
                 <div class="job-header">
                     <div class="job-info">
-                        <h3 class="job-title">${job.title_raw || job.title}</h3>
-                        <div class="job-company">${job.organization?.name || 'Company not specified'}</div>
+                        <h3 class="job-title">${_esc(job.title_raw || job.title)}</h3>
+                        <div class="job-company">${_esc(job.organization?.name || 'Company not specified')}</div>
                         <div class="job-location">
                             <i class="fas fa-map-marker-alt"></i>
-                            ${job.location?.city || job.location?.raw || 'Location not specified'}
+                            ${_esc(job.location?.city || job.location?.raw || 'Location not specified')}
                         </div>
                         <div class="job-posted">
                             <i class="fas fa-clock"></i>
@@ -237,26 +244,26 @@ class SearchManager {
                     </div>
                     <div class="job-actions">
                         ${salaryInfo}
-                        <div class="job-seniority">${job.seniority || 'Not specified'}</div>
+                        <div class="job-seniority">${_esc(job.seniority || 'Not specified')}</div>
                     </div>
                 </div>
-                
+
                 <div class="job-description">
                     ${description}
                 </div>
-                
+
                 ${skills ? `<div class="job-tags">${skills}</div>` : ''}
-                
+
                 <div class="job-footer">
                     <div class="job-meta">
-                        <span class="job-type">${job.role_family || 'General'}</span>
-                        ${job.source ? `<span class="job-source">via ${UTILS.capitalize(job.source)}</span>` : ''}
+                        <span class="job-type">${_esc(job.role_family || 'General')}</span>
+                        ${job.source ? `<span class="job-source">via ${_esc(UTILS.capitalize(job.source))}</span>` : ''}
                     </div>
                     <div class="job-actions-buttons">
-                        <button class="btn-secondary job-save" data-job-id="${job.id}">
+                        <button class="btn-secondary job-save" data-job-id="${_esc(job.id)}">
                             <i class="fas fa-bookmark"></i> Save
                         </button>
-                        <button class="btn-primary job-apply" data-job-url="${job.url}">
+                        <button class="btn-primary job-apply" data-job-url="${_esc(jobUrl)}">
                             Apply Now <i class="fas fa-external-link-alt"></i>
                         </button>
                     </div>
@@ -346,32 +353,30 @@ class SearchManager {
             this.careerInsights.innerHTML = '<p>No career insights available.</p>';
             return;
         }
-        
+
         if (insights.relevant_careers) {
-            // Display degree-based career suggestions
             this.careerInsights.innerHTML = `
                 <h5>Relevant Career Paths</h5>
                 <div class="career-suggestions">
                     ${insights.relevant_careers.slice(0, 5).map(career => `
                         <div class="career-suggestion">
-                            <strong>${career}</strong>
+                            <strong>${_esc(career)}</strong>
                         </div>
                     `).join('')}
                 </div>
-                <p class="insight-explanation">${insights.explanation}</p>
+                <p class="insight-explanation">${_esc(insights.explanation)}</p>
             `;
         } else if (insights.length > 0) {
-            // Display career transition recommendations
             this.careerInsights.innerHTML = `
                 <h5>Career Transition Opportunities</h5>
                 <div class="transition-suggestions">
                     ${insights.slice(0, 3).map(rec => `
                         <div class="transition-suggestion">
-                            <strong>${rec.target_role}</strong>
-                            <div class="skill-overlap">${rec.overlap_percentage}% skill match</div>
+                            <strong>${_esc(rec.target_role)}</strong>
+                            <div class="skill-overlap">${_esc(rec.overlap_percentage)}% skill match</div>
                             ${rec.missing_skills && rec.missing_skills.length > 0 ? `
                                 <div class="missing-skills">
-                                    Skills to develop: ${rec.missing_skills.join(', ')}
+                                    Skills to develop: ${rec.missing_skills.map(s => _esc(s)).join(', ')}
                                 </div>
                             ` : ''}
                         </div>
@@ -413,7 +418,7 @@ class SearchManager {
                 ` : ''}
             </div>
             ${salary.data_coverage ? `
-                <p class="salary-coverage">Based on ${salary.data_coverage.count} job postings</p>
+                <p class="salary-coverage">Based on ${_esc(salary.data_coverage.count)} job postings</p>
             ` : ''}
         `;
     }
