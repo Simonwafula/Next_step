@@ -110,3 +110,45 @@ Branch: `feat/T-610-unified-post-processing`
 - `backend/venv3.11/bin/ruff check .` (pass)
 - `backend/venv3.11/bin/ruff format --check .` (pass)
 - `.venv/bin/python -m pytest -q` (pass; 128 passed, 1 skipped)
+
+---
+
+## 2026-02-10 (T-620 Public Search + Apply Redirect)
+
+Branch: `main`
+
+### Summary
+- Phase 1 (O0/P0): `/api/search` now returns title clusters and companies hiring aggregates (plus jobs list) and supports filtering by `title` and `company`.
+- Added public redirect endpoint: `GET /r/apply/{job_id}` logs an `apply` event and redirects to `JobPost.application_url` with fallback to `source_url`/`url`. Anonymous users get an `ns_session` cookie for analytics continuity.
+- Canonicalized URLs in `JobPost`:
+  - `source_url` (discovery URL)
+  - `application_url` (where the user should apply)
+  Migration backfills both from legacy `url`.
+- Fixed ingestion writers to populate the new URL fields across RSS/ATS/Government connectors.
+- Production parity fix: normalized SkillNER alias variants (e.g. `python (programming language)` -> `python`) so tests and extracted skills are stable across environments.
+
+### Commits
+- `e20bbad` `[T-620] Implement public search aggregates and apply redirect`
+- `9af05a0` `[T-620] Normalize SkillNER alias variants`
+
+### Tests Run
+- Local:
+  - `backend/venv3.11/bin/ruff check .` (pass)
+  - `backend/venv3.11/bin/ruff format .` (pass)
+  - `.venv/bin/pytest -q` (pass; 131 passed, 1 skipped)
+- VPS:
+  - `/home/nextstep.co.ke/.venv/bin/ruff check .` (pass)
+  - `/home/nextstep.co.ke/.venv/bin/ruff format --check .` (pass)
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q` (pass; 131 passed, 1 skipped)
+
+### Ops / Deployment Notes (VPS)
+- Repo: `/home/nextstep.co.ke/public_html`
+- `.env`: `/home/nextstep.co.ke/.env`
+- Ran migrations:
+  - `9c1d7c3b6a21_add_application_and_source_urls.py`
+  - `0f3a9b7d1b4d_user_analytics_user_id_nullable.py`
+- Restarted: `systemctl restart nextstep-backend.service`
+- Smoke checks:
+  - `http://127.0.0.1:8010/api/search` returns `title_clusters` and `companies_hiring`
+  - `http://127.0.0.1:8010/r/apply/{job_id}` returns `307` + `Set-Cookie: ns_session=...`
+  - `https://nextstep.co.ke/api/search` returns the same aggregates and `apply_url` fields
