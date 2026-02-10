@@ -3,6 +3,8 @@
     "amazon web services": "aws",
     "google cloud platform": "gcp",
     "microsoft azure": "azure",
+    "python (programming language)": "python",
+    "sql (programming language)": "sql",
     "node js": "node.js",
     "nodejs": "node.js",
     "reactjs": "react",
