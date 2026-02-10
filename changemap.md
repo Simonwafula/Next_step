@@ -108,6 +108,7 @@
 - (T-620) Phase 1 (O0/P0): public search now returns title clusters + companies hiring aggregates, and `/r/apply/{job_id}` logs + redirects to `application_url` with fallback to `source_url`/`url`. Added canonical URL fields (`source_url`, `application_url`) to `JobPost` and backfilled from `url`.
 - (T-620) Stabilized SkillNER alias normalization across environments by mapping common variants (e.g. `python (programming language)`, `sql (programming language)`) to canonical skills.
 - (T-621) Government ingestion hardening: normalize `www.` URL variants into the same `url_hash`, filter obvious non-job documents/notices (tenders/memoranda/downloads), and automatically run deterministic post-processing after government ingestion (admin endpoint + Celery task).
+- (T-622) Fix Postgres skill upsert integrity: ensure `skill.aliases` is set on insert (raw SQL upsert) and add Alembic migration to set a server default for `skill.aliases` to avoid NOT NULL violations during processing.
 - Tests run:
   - `backend/venv3.11/bin/ruff check .` (pass)
   - `backend/venv3.11/bin/ruff format --check .` (pass)

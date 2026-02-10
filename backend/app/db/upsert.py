@@ -177,9 +177,12 @@ def upsert_skill(db: Session, name: str) -> int | None:
     if not name:
         return None
     if _is_postgres(db):
+        # Note: production Postgres schema enforces NOT NULL on skill.aliases.
+        # When using raw SQL inserts (instead of ORM defaults), we must provide
+        # a concrete value to avoid integrity errors.
         result = db.execute(
             text(
-                "INSERT INTO skill (name) VALUES (:name) "
+                "INSERT INTO skill (name, aliases) VALUES (:name, '{}'::jsonb) "
                 "ON CONFLICT (name) DO NOTHING "
                 "RETURNING id"
             ),
