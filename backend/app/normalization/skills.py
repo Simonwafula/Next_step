@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+from pathlib import Path
 from typing import Any, Dict, List
 
 from .skill_mapping import canonicalize_skill, custom_skills
@@ -55,6 +56,82 @@ SECTION_MARKERS = [
     "qualifications",
     "competencies",
 ]
+
+_SKILL_DENYLIST: set[str] | None = None
+
+
+def _load_skill_denylist() -> set[str]:
+    """Load a small, auditable denylist of known-bad SkillNER outputs.
+
+    This repo prefers deterministic, explainable extraction. SkillNER's public
+    database includes many obscure "skills" (standards, product names, etc.)
+    that can surface as noisy matches depending on the page/text. We keep a
+    minimal JSON denylist to block repeated offenders without hiding the logic.
+    """
+
+    global _SKILL_DENYLIST
+    if _SKILL_DENYLIST is not None:
+        return _SKILL_DENYLIST
+
+    path = Path(__file__).with_name("skill_denylist.json")
+    if not path.exists():
+        _SKILL_DENYLIST = set()
+        return _SKILL_DENYLIST
+
+    try:
+        import json
+
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        _SKILL_DENYLIST = set()
+        return _SKILL_DENYLIST
+
+    if isinstance(data, list):
+        _SKILL_DENYLIST = {str(x).strip().lower() for x in data if str(x).strip()}
+    else:
+        _SKILL_DENYLIST = set()
+    return _SKILL_DENYLIST
+
+
+_RE_NOISY_STANDARDS = re.compile(
+    r"(^|\b)(z\d{1,3}\.\d{1,3}|pd\s*\d{3,}|read\s*\d{2,4})(\b|$)", re.IGNORECASE
+)
+
+
+def _should_keep_skill_match(
+    canonical: str,
+    confidence: float,
+    source: str,
+) -> bool:
+    if not canonical:
+        return False
+
+    deny = _load_skill_denylist()
+    if canonical.lower() in deny:
+        return False
+
+    # SkillNER n-gram matches are the main driver of false positives; require
+    # a higher minimum confidence than full/abbreviation matches.
+    if source == "skillner_ngram":
+        min_conf = float(os.getenv("SKILLNER_NGRAM_MIN_CONFIDENCE", "0.82"))
+        if confidence < min_conf:
+            return False
+
+    # Generic "standard/grade" style strings with digits are almost never
+    # useful job skills for our use-cases (and have shown up as obvious noise).
+    lower = canonical.lower()
+    if (
+        "standard" in lower
+        and re.search(r"\d", lower)
+        and _RE_NOISY_STANDARDS.search(lower)
+    ):
+        return False
+
+    # Sanity limits.
+    if len(lower) > 80:
+        return False
+
+    return True
 
 
 def _skillner_enabled() -> bool:
@@ -179,14 +256,18 @@ def extract_skills_detailed(text: str) -> Dict[str, Dict[str, Any]]:
         try:
             for match in extract_skillner_matches(text):
                 canonical = canonicalize_skill(match["skill"])
+                confidence = float(match["confidence"])
+                source = match.get("source", "skillner")
+                if not _should_keep_skill_match(canonical, confidence, source):
+                    continue
                 _upsert_skill_result(
                     results,
                     canonical,
-                    float(match["confidence"]),
+                    confidence,
                     match.get("evidence", ""),
                     match.get("start"),
                     match.get("end"),
-                    match.get("source", "skillner"),
+                    source,
                 )
         except Exception:
             # SkillNER is an optional dependency; in environments where it's not
