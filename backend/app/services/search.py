@@ -434,17 +434,60 @@ def generate_match_explanation(
     """Generate explanation for why a job matches the search"""
 
     explanations = []
+    q = (query or "").lower()
+
+    def _skill_values(raw_skills: object) -> list[str]:
+        """Best-effort extraction of skill strings from JobEntities.skills.
+
+        In production this is typically a list[dict] like:
+        {"value": "python", "confidence": 0.8, ...}
+        but older rows or other processors may store strings or dicts.
+        """
+
+        if not raw_skills:
+            return []
+        if isinstance(raw_skills, list):
+            out: list[str] = []
+            for item in raw_skills:
+                if isinstance(item, str):
+                    s = item.strip()
+                    if s:
+                        out.append(s)
+                    continue
+                if isinstance(item, dict):
+                    v = (
+                        item.get("value")
+                        or item.get("name")
+                        or item.get("skill")
+                        or item.get("text")
+                    )
+                    if isinstance(v, str):
+                        s = v.strip()
+                        if s:
+                            out.append(s)
+            return out
+        if isinstance(raw_skills, dict):
+            # Handle rare cases like {"python": 0.8, "sql": 0.7}
+            return [str(k).strip() for k in raw_skills.keys() if str(k).strip()]
+        return []
 
     # Title match
-    if query.lower() in job_post.title_raw.lower():
+    if q and q in (job_post.title_raw or "").lower():
         explanations.append("title matches search")
 
     # Entity/Skill match
-    if entities and query.lower() in [s.lower() for s in entities.skills]:
+    raw_skills = None
+    if entities:
+        if isinstance(entities, dict):
+            raw_skills = entities.get("skills")
+        else:
+            raw_skills = getattr(entities, "skills", None)
+    skills_lc = {s.lower() for s in _skill_values(raw_skills)}
+    if q and skills_lc and q in skills_lc:
         explanations.append(f"requires {query} skill")
 
     # Normalized title match
-    if title_norm and query.lower() in title_norm.canonical_title.lower():
+    if title_norm and q and q in (title_norm.canonical_title or "").lower():
         explanations.append(f"major {title_norm.canonical_title} role")
 
     # Semantic similarity

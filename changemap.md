@@ -112,12 +112,14 @@
 - (T-623) Fix post-ingestion processing crash on long titles by clamping `TitleNorm.family`/`canonical_title` to schema limits and adding regression coverage.
 - (T-624) Improve gov data quality observability: treat empty descriptions as missing in quality snapshots; set gov `description_raw` to NULL when empty; add stricter gov job-page filter so non-job “opportunities/news” pages are skipped.
 - (T-625) Add `job_post.is_active` quarantine flag; exclude inactive jobs from public search; add admin endpoint to quarantine obvious gov non-job pages and a regression test for quarantine behavior.
+- (T-626) Fix `/api/search` 500 caused by `JobEntities.skills` storing dict payloads; make `generate_match_explanation()` robust to list[dict]/list[str] skills and add regression tests.
 - Tests run:
   - `backend/venv3.11/bin/ruff check .` (pass)
   - `backend/venv3.11/bin/ruff format --check .` (pass)
   - `backend/venv3.11/bin/ruff format backend` (pass)
   - `backend/venv3.11/bin/ruff check backend` (pass)
   - `.venv/bin/python -m pytest -q` (pass; 128 passed, 1 skipped)
+  - `.venv/bin/pytest -q backend/tests/test_search_match_explanation_skills_shape.py` (pass; 2 passed)
   - `.venv/bin/pytest -q` (pass; 131 passed, 1 skipped)
   - `/home/nextstep.co.ke/.venv/bin/pytest -q` (pass, VPS; 131 passed, 1 skipped)
   - `.venv/bin/pytest -q` (pass; 133 passed, 1 skipped)
