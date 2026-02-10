@@ -80,12 +80,13 @@ def test_quality_snapshot_includes_source_breakdown(db_session_factory):
             url="https://example.com/jobs/2",
             url_hash="hash-rss-2",
             title_raw="Job posting",
-            description_raw=None,
+            description_raw="",
         )
     )
     db.commit()
 
     snap = quality_snapshot(db)
     assert "by_source" in snap
-    assert any(row["source"] == "rss" for row in snap["by_source"])
+    rss = next(row for row in snap["by_source"] if row["source"] == "rss")
+    assert rss["coverage"]["description_raw"] == 0
     db.close()

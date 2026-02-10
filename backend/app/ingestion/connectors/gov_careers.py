@@ -95,6 +95,20 @@ _JOB_POSITIVE_HINTS = (
     "fellowship",
 )
 
+_JOB_PAGE_SIGNALS = (
+    "vacan",
+    "recruit",
+    "job",
+    "position",
+    "apply",
+    "application",
+    "deadline",
+    "closing",
+    "qualifications",
+    "requirements",
+    "how to apply",
+)
+
 
 def _coerce_list(value) -> List[str]:
     if not value:
@@ -321,6 +335,30 @@ def _looks_like_non_job_document(title: str, description: str) -> bool:
     return False
 
 
+def _looks_like_job_page(
+    url: str, title: str, description: str, *, is_doc: bool
+) -> bool:
+    """Heuristic: keep pages that look like actual job postings.
+
+    Government sites contain many pages with 'opportunities' that are not jobs.
+    This filter aims to remove obvious non-job pages while retaining job adverts.
+    """
+
+    if is_doc:
+        # Documents are handled separately; only exclude if they look explicitly non-job.
+        return not _looks_like_non_job_document(title, description)
+
+    combined = f"{url} {title} {description}".lower()
+    if _looks_like_non_job_document(title, description):
+        return False
+
+    # If nothing suggests an employment posting, treat it as non-job.
+    if not any(sig in combined for sig in _JOB_PAGE_SIGNALS):
+        return False
+
+    return True
+
+
 def ingest_gov_careers(db: Session, **src) -> int:
     list_urls = _coerce_list(src.get("list_urls") or src.get("url"))
     if not list_urls:
@@ -472,7 +510,9 @@ def ingest_gov_careers(db: Session, **src) -> int:
                     # store the surrounding list-page context for later processing.
                     description = text[:MAX_DESCRIPTION_CHARS]
 
-                if _looks_like_non_job_document(title, description):
+                if not _looks_like_job_page(
+                    link_url, title, description, is_doc=is_doc
+                ):
                     continue
 
                 # Extract salary and seniority from description
@@ -490,7 +530,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                     title_raw=title[:255],
                     org_id=org.id if org else None,
                     location_id=location.id if location else None,
-                    description_raw=description,
+                    description_raw=description or None,
                     attachment_flag=is_doc,
                     salary_min=salary_min,
                     salary_max=salary_max,
@@ -529,7 +569,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                             title_raw=title[:255],
                             org_id=org.id if org else None,
                             location_id=location.id if location else None,
-                            description_raw=description,
+                            description_raw=description or None,
                             salary_min=salary_min,
                             salary_max=salary_max,
                             currency=currency,

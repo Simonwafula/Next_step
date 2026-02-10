@@ -297,7 +297,9 @@ def quality_snapshot(db: Session) -> Dict[str, Any]:
     )
     with_desc = (
         db.execute(
-            select(func.count(JobPost.id)).where(JobPost.description_raw.is_not(None))
+            select(func.count(JobPost.id)).where(
+                func.length(func.trim(JobPost.description_raw)) > 0
+            )
         ).scalar()
         or 0
     )
@@ -314,7 +316,9 @@ def quality_snapshot(db: Session) -> Dict[str, Any]:
             JobPost.source,
             func.count(JobPost.id),
             func.sum(case((JobPost.processed_at.is_not(None), 1), else_=0)),
-            func.sum(case((JobPost.description_raw.is_not(None), 1), else_=0)),
+            func.sum(
+                case((func.length(func.trim(JobPost.description_raw)) > 0, 1), else_=0)
+            ),
             func.sum(case((JobPost.quality_score.is_not(None), 1), else_=0)),
         ).group_by(JobPost.source)
     ).all()
