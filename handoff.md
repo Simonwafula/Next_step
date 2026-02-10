@@ -89,3 +89,24 @@ Branch: `feat/T-800-comprehensive-audit`
 ### Next Steps
 1. Decide whether the browser frontend should switch to cookie-first auth (requires explicit `CORS_ORIGINS` and likely CSRF protection for cross-site scenarios).
 2. For Postgres deployments, set `PGVECTOR_CREATE_INDEX=true` during a controlled maintenance window (index builds can be expensive on large tables).
+
+---
+
+## 2026-02-10 (T-610 Unified Post-Ingestion Processing)
+
+Branch: `feat/T-610-unified-post-processing`
+
+### Summary
+- Implemented deterministic post-ingestion processing for any `job_post` rows (title normalization, skills + evidence, education/experience/seniority/tasks evidence, `description_clean`, `quality_score`, `processed_at`) and persist extraction evidence in `job_entities`.
+- Added admin endpoints for visibility and execution:
+  - `POST /api/admin/process` (optional `source=` filter)
+  - `GET /api/admin/quality` (global + per-source coverage)
+  - Kept gov-specific wrappers: `POST /api/admin/government/process`, `GET /api/admin/government/quality`
+
+### Commit
+- `5a356c7` `[T-610] Unify post-ingestion processing and quality endpoints`
+
+### Tests Run
+- `backend/venv3.11/bin/ruff check .` (pass)
+- `backend/venv3.11/bin/ruff format --check .` (pass)
+- `.venv/bin/python -m pytest -q` (pass; 128 passed, 1 skipped)
