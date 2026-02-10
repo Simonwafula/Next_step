@@ -46,6 +46,8 @@ def ingest_rss(db: Session, **src) -> int:
         jp = JobPost(
             source="rss",
             url=jurl,
+            source_url=jurl,
+            application_url=jurl,
             title_raw=title,
             org_id=org.id if org else None,
             description_raw="",

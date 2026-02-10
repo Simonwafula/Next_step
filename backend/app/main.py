@@ -13,6 +13,7 @@ from .api.routes import api_router
 from .api.admin_routes import router as admin_router
 from .api.workflow_routes import router as workflow_router
 from .api.integration_routes import router as integration_router
+from .api.redirect_routes import router as redirect_router
 from .webhooks.whatsapp import router as whatsapp_router
 
 # Initialize logging
@@ -278,6 +279,7 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 
 
 # API routers
+app.include_router(redirect_router)
 app.include_router(api_router, prefix="/api")
 app.include_router(admin_router)
 app.include_router(workflow_router)

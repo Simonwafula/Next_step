@@ -43,6 +43,8 @@ def ingest_greenhouse(db: Session, **src) -> int:
         jp = JobPost(
             source="greenhouse",
             url=jurl,
+            source_url=jurl,
+            application_url=jurl,
             title_raw=j.get("title", ""),
             org_id=org.id if org else None,
             location_id=loc.id if loc else None,

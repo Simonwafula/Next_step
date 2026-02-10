@@ -5,6 +5,9 @@ const seniorityFilter = document.getElementById('seniorityFilter');
 const resultsGrid = document.getElementById('resultsGrid');
 const resultsMeta = document.getElementById('resultsMeta');
 const resultsTitle = document.getElementById('resultsTitle');
+const resultsFilters = document.getElementById('resultsFilters');
+const titleClustersEl = document.getElementById('titleClusters');
+const companyClustersEl = document.getElementById('companyClusters');
 const focusSearchBtn = document.getElementById('focusSearch');
 const authModal = document.getElementById('authModal');
 const authTabs = document.querySelectorAll('[data-auth-tab]');
@@ -62,6 +65,9 @@ const apiBase = (() => {
 
 const authStorageKey = 'nextstep_auth';
 const pendingProfileKey = 'nextstep_pending_profile';
+
+let selectedTitleCluster = null;
+let selectedCompany = null;
 
 const saveAuth = (payload) => {
     localStorage.setItem(authStorageKey, JSON.stringify(payload));
@@ -307,11 +313,12 @@ const renderResults = (items) => {
     if (!items.length) {
         resultsMeta.textContent = 'No matches yet. Try another skill or course.';
         resultsTitle.textContent = 'No results';
+        if (resultsFilters) resultsFilters.hidden = true;
         return;
     }
 
-    resultsMeta.textContent = `${items.length} roles matched your search.`;
-    resultsTitle.textContent = 'Recommended roles';
+    resultsMeta.textContent = `${items.length} openings found.`;
+    resultsTitle.textContent = 'Openings you can act on';
 
     items.forEach((item) => {
         const card = document.createElement('article');
@@ -320,13 +327,97 @@ const renderResults = (items) => {
         const location = escapeHtml(
             item.location || item.location_raw || 'Location unspecified'
         );
-        const link = escapeHtml(safeUrl(item.url));
+        const applyLink = escapeHtml(safeUrl(item.apply_url || item.url));
         card.innerHTML = `
             <h3 class="result-title">${escapeHtml(item.title || 'Untitled role')}</h3>
             <div class="result-meta">${org} · ${location}</div>
-            <a class="result-link" href="${link}" target="_blank" rel="noopener">Open posting</a>
+            <a class="result-link" href="${applyLink}" target="_blank" rel="noopener">Apply</a>
         `;
         resultsGrid.appendChild(card);
+    });
+};
+
+const renderAggregates = (payload) => {
+    if (!payload || !resultsFilters || !titleClustersEl || !companyClustersEl) return;
+
+    const titleClusters = Array.isArray(payload.title_clusters) ? payload.title_clusters : [];
+    const companies = Array.isArray(payload.companies_hiring) ? payload.companies_hiring : [];
+
+    if (!titleClusters.length && !companies.length) {
+        resultsFilters.hidden = true;
+        return;
+    }
+
+    resultsFilters.hidden = false;
+    titleClustersEl.innerHTML = '';
+    companyClustersEl.innerHTML = '';
+
+    const makeChip = ({ label, pressed, onClick }) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'chip';
+        btn.setAttribute('aria-pressed', pressed ? 'true' : 'false');
+        btn.textContent = label;
+        btn.addEventListener('click', onClick);
+        return btn;
+    };
+
+    titleClustersEl.appendChild(
+        makeChip({
+            label: 'All',
+            pressed: !selectedTitleCluster,
+            onClick: () => {
+                selectedTitleCluster = null;
+                selectedCompany = null;
+                fetchResults();
+            },
+        })
+    );
+
+    titleClusters.slice(0, 24).forEach((row) => {
+        const t = row.title;
+        const c = row.count_ads;
+        titleClustersEl.appendChild(
+            makeChip({
+                label: `${t} (${c})`,
+                pressed: selectedTitleCluster === t,
+                onClick: () => {
+                    selectedTitleCluster = t;
+                    selectedCompany = null;
+                    fetchResults();
+                },
+            })
+        );
+    });
+
+    const companiesForTitle = selectedTitleCluster
+        ? companies.filter((row) => row.title === selectedTitleCluster)
+        : companies;
+
+    companyClustersEl.appendChild(
+        makeChip({
+            label: 'All',
+            pressed: !selectedCompany,
+            onClick: () => {
+                selectedCompany = null;
+                fetchResults();
+            },
+        })
+    );
+
+    companiesForTitle.slice(0, 24).forEach((row) => {
+        const co = row.company;
+        const c = row.count_ads;
+        companyClustersEl.appendChild(
+            makeChip({
+                label: `${co} (${c})`,
+                pressed: selectedCompany === co,
+                onClick: () => {
+                    selectedCompany = co;
+                    fetchResults();
+                },
+            })
+        );
     });
 };
 
@@ -342,6 +433,8 @@ const fetchResults = async () => {
     });
     if (locationFilter.value) params.append('location', locationFilter.value);
     if (seniorityFilter.value) params.append('seniority', seniorityFilter.value);
+    if (selectedTitleCluster) params.append('title', selectedTitleCluster);
+    if (selectedCompany) params.append('company', selectedCompany);
 
     try {
         const response = await fetch(`${apiBase}/search?${params.toString()}`);
@@ -350,13 +443,15 @@ const fetchResults = async () => {
         }
 
         const payload = await response.json();
-        const rawItems = Array.isArray(payload) ? payload : payload.results || [];
+        const rawItems = Array.isArray(payload) ? payload : payload.results || payload.jobs || [];
+        renderAggregates(Array.isArray(payload) ? null : payload);
         renderResults(rawItems);
         document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         resultsMeta.textContent = 'We could not reach the API. Is the backend running?';
         resultsTitle.textContent = 'Search unavailable';
         resultsGrid.innerHTML = '';
+        if (resultsFilters) resultsFilters.hidden = true;
         console.error(error);
     }
 };

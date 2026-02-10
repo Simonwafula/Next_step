@@ -48,6 +48,8 @@ def ingest_lever(db: Session, **src) -> int:
         jp = JobPost(
             source="lever",
             url=jurl,
+            source_url=jurl,
+            application_url=jurl,
             title_raw=j.get("text", ""),
             org_id=org.id if org else None,
             location_id=loc.id if loc else None,

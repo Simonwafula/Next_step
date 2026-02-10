@@ -434,6 +434,8 @@ def ingest_gov_careers(db: Session, **src) -> int:
                 jp = JobPost(
                     source="gov_careers",
                     url=link_url,
+                    source_url=link_url,
+                    application_url=link_url,
                     url_hash=url_hash,
                     title_raw=title[:255],
                     org_id=org.id if org else None,
@@ -471,6 +473,8 @@ def ingest_gov_careers(db: Session, **src) -> int:
                         jp = JobPost(
                             source="gov_careers",
                             url=list_url,
+                            source_url=list_url,
+                            application_url=list_url,
                             url_hash=url_hash,
                             title_raw=title[:255],
                             org_id=org.id if org else None,

@@ -37,11 +37,15 @@ api_router.include_router(analytics_router, tags=["analytics"])
 
 
 # Enhanced Job Search & Title Translation
-@api_router.get("/search", response_model=list[dict])
+@api_router.get("/search")
 def search(
     q: str = Query("", description="Search query, job title, or 'I studied [degree]'"),
     location: str | None = Query(None, description="Location filter"),
     seniority: str | None = Query(None, description="Seniority level"),
+    title: str | None = Query(None, description="Selected title cluster filter"),
+    company: str | None = Query(None, description="Selected company filter"),
+    limit: int = Query(20, ge=1, le=50, description="Jobs page size"),
+    offset: int = Query(0, ge=0, description="Jobs page offset"),
     personalized: bool = Query(False, description="Enable personalized results"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_optional),
@@ -57,18 +61,29 @@ def search(
     """
     # Enhanced search with optional personalization
     # Note: personalization will be implemented in P0.3
-    results = search_jobs(db, q=q, location=location, seniority=seniority)
+    payload = search_jobs(
+        db,
+        q=q,
+        location=location,
+        seniority=seniority,
+        title=title,
+        company=company,
+        limit=limit,
+        offset=offset,
+    )
 
     # Add personalization metadata if user is authenticated
     if current_user and personalized:
         return {
-            "results": results,
+            **(payload if isinstance(payload, dict) else {"results": payload}),
             "personalized": True,
             "user_profile_used": bool(current_user.profile),
-            "total": len(results),
+            "total": (
+                payload.get("total") if isinstance(payload, dict) else len(payload)
+            ),
         }
 
-    return results
+    return payload
 
 
 @api_router.get("/translate-title")

@@ -80,6 +80,11 @@ class JobPost(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String(120))
     url: Mapped[str] = mapped_column(Text, unique=True)
+    # Canonical URLs for product behavior:
+    # - source_url: where the posting was discovered (crawl/listing URL)
+    # - application_url: where the user should be sent to apply (may equal source_url)
+    source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
+    application_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     url_hash: Mapped[str | None] = mapped_column(String(32), index=True)
     first_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_seen: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -639,7 +644,7 @@ class InterviewPreparation(Base):
 class UserAnalytics(Base):
     __tablename__ = "user_analytics"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
     # Session tracking
     session_id: Mapped[str] = mapped_column(String(100))

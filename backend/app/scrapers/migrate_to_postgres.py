@@ -171,9 +171,12 @@ class JobDataMigrator:
                         source = self.extract_domain_from_url(row["full_link"])
 
                         # Create job post
+                        url = row["full_link"] or ""
                         job_post = JobPost(
                             source=source,
-                            url=row["full_link"],
+                            url=url,
+                            source_url=url,
+                            application_url=url,
                             first_seen=datetime.utcnow(),
                             last_seen=datetime.utcnow(),
                             org_id=org_id,

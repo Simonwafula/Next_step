@@ -105,13 +105,14 @@
 - (T-610) Generalized post-ingestion processing to all sources with global visibility endpoints (`/api/admin/process`, `/api/admin/quality`) via `backend/app/services/post_ingestion_processing_service.py`. Government processing now wraps the unified processor.
 - (GOV) Improved skill extraction fallback: when SkillNER is enabled but unavailable, fall back to deterministic pattern extraction so quality/coverage stays observable.
 - (T-611) Tightened SkillNER skills output by filtering known-noise skills (denylist) and applying a higher minimum confidence threshold for `skillner_ngram` matches (`SKILLNER_NGRAM_MIN_CONFIDENCE`, default `0.82`).
+- (T-620) Phase 1 (O0/P0): public search now returns title clusters + companies hiring aggregates, and `/r/apply/{job_id}` logs + redirects to `application_url` with fallback to `source_url`/`url`. Added canonical URL fields (`source_url`, `application_url`) to `JobPost` and backfilled from `url`.
 - Tests run:
   - `backend/venv3.11/bin/ruff check .` (pass)
   - `backend/venv3.11/bin/ruff format --check .` (pass)
   - `backend/venv3.11/bin/ruff format backend` (pass)
   - `backend/venv3.11/bin/ruff check backend` (pass)
   - `.venv/bin/python -m pytest -q` (pass; 128 passed, 1 skipped)
-  - `.venv/bin/pytest -q` (pass; 130 passed, 1 skipped)
+  - `.venv/bin/pytest -q` (pass; 131 passed, 1 skipped)
 
 ### 2026-02-09
 - (T-403d) Added 42 dashboard/analytics endpoint tests covering all public analytics + admin routes (`backend/tests/test_dashboard_endpoints.py`).

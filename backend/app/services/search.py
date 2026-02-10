@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select, or_
+from sqlalchemy import select, or_, func
 from ..db.models import JobPost, Organization, Location, TitleNorm
 from ..ml.embeddings import embed_text
 from ..normalization.titles import (
@@ -8,6 +8,7 @@ from ..normalization.titles import (
 )
 import numpy as np
 import re
+from collections import Counter
 
 
 def cosine_similarity(a, b):
@@ -38,17 +39,50 @@ def extract_degree_from_query(query: str) -> str | None:
 
 
 def search_jobs(
-    db: Session, q: str = "", location: str | None = None, seniority: str | None = None
+    db: Session,
+    q: str = "",
+    location: str | None = None,
+    seniority: str | None = None,
+    title: str | None = None,
+    company: str | None = None,
+    limit: int = 20,
+    offset: int = 0,
 ):
-    """Enhanced job search with semantic matching and explanations"""
+    """Public search (O0): jobs + title/company aggregates for filtering."""
 
     # Check if query contains degree information
     degree = extract_degree_from_query(q)
     if degree:
-        return search_by_degree(db, degree, location, seniority)
+        jobs = search_by_degree(db, degree, location, seniority) or []
+        clusters = Counter()
+        companies = Counter()
+        for row in jobs:
+            title_value = row.get("title")
+            company_value = row.get("organization")
+            if title_value:
+                clusters[title_value] += 1
+            if title_value and company_value:
+                companies[(title_value, company_value)] += 1
 
-    # Build base query
-    stmt = (
+        return {
+            "results": jobs,
+            "jobs": jobs,
+            "total": len(jobs),
+            "limit": int(limit),
+            "offset": int(offset),
+            "title_clusters": [
+                {"title": t, "count_ads": int(c)} for t, c in clusters.most_common(50)
+            ],
+            "companies_hiring": [
+                {"title": t, "company": co, "count_ads": int(c)}
+                for (t, co), c in companies.most_common(200)
+            ],
+            "selected": {"title": title, "company": company},
+            "meta": {"degree": degree},
+        }
+
+    # Base joined query (jobs)
+    stmt_jobs = (
         select(JobPost, Organization, Location, TitleNorm)
         .join(Organization, Organization.id == JobPost.org_id, isouter=True)
         .join(Location, Location.id == JobPost.location_id, isouter=True)
@@ -91,12 +125,57 @@ def search_jobs(
         conditions.append(JobPost.seniority.ilike(f"%{seniority.lower()}%"))
 
     if conditions:
-        stmt = stmt.where(*conditions)
+        stmt_jobs = stmt_jobs.where(*conditions)
 
-    # Execute query
-    # In production (Postgres), we use pgvector <-> or <=> operators
-    # For now, we keep the SQLAlchemy base query but prepare for vector retrieval
-    rows = db.execute(stmt.limit(20)).all()
+    # Aggregate clusters and companies from the unselected result set so the UI
+    # can offer filters that refine to the job list.
+    cluster_title_expr = func.coalesce(TitleNorm.canonical_title, JobPost.title_raw)
+    stmt_base = (
+        select(
+            JobPost.id.label("job_id"),
+            cluster_title_expr.label("cluster_title"),
+            Organization.name.label("org_name"),
+        )
+        .select_from(JobPost)
+        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+        .join(Location, Location.id == JobPost.location_id, isouter=True)
+        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+    )
+    if conditions:
+        stmt_base = stmt_base.where(*conditions)
+
+    base_subq = stmt_base.subquery()
+    clusters_rows = db.execute(
+        select(base_subq.c.cluster_title, func.count(base_subq.c.job_id))
+        .group_by(base_subq.c.cluster_title)
+        .order_by(func.count(base_subq.c.job_id).desc())
+        .limit(50)
+    ).all()
+
+    companies_rows = db.execute(
+        select(
+            base_subq.c.cluster_title,
+            base_subq.c.org_name,
+            func.count(base_subq.c.job_id),
+        )
+        .group_by(base_subq.c.cluster_title, base_subq.c.org_name)
+        .order_by(func.count(base_subq.c.job_id).desc())
+        .limit(200)
+    ).all()
+
+    # Apply selected refinements for the job list.
+    if title:
+        stmt_jobs = stmt_jobs.where(cluster_title_expr == title)
+    if company:
+        stmt_jobs = stmt_jobs.where(Organization.name.ilike(f"%{company}%"))
+
+    total_jobs = (
+        db.execute(select(func.count()).select_from(stmt_jobs.subquery())).scalar() or 0
+    )
+
+    rows = db.execute(
+        stmt_jobs.order_by(JobPost.first_seen.desc()).limit(limit).offset(offset)
+    ).all()
 
     # Process results with explanations
     results = []
@@ -138,6 +217,9 @@ def search_jobs(
                 "organization": org.name if org else "Unknown Company",
                 "location": format_location(loc),
                 "url": jp.url,
+                "source_url": getattr(jp, "source_url", None) or jp.url,
+                "application_url": getattr(jp, "application_url", None) or jp.url,
+                "apply_url": f"/r/apply/{jp.id}",
                 "salary_range": format_salary(
                     jp.salary_min, jp.salary_max, jp.currency
                 ),
@@ -159,7 +241,32 @@ def search_jobs(
     if not results and q:
         return suggest_alternatives(db, q, location, seniority)
 
-    return results
+    return {
+        # Back-compat: older clients expect `results` to be a list of jobs.
+        "results": results,
+        "jobs": results,
+        "total": int(total_jobs),
+        "limit": int(limit),
+        "offset": int(offset),
+        "title_clusters": [
+            {"title": title_value, "count_ads": int(count or 0)}
+            for title_value, count in clusters_rows
+            if title_value
+        ],
+        "companies_hiring": [
+            {
+                "title": title_value,
+                "company": company_name,
+                "count_ads": int(count or 0),
+            }
+            for title_value, company_name, count in companies_rows
+            if title_value and company_name
+        ],
+        "selected": {
+            "title": title,
+            "company": company,
+        },
+    }
 
 
 def search_by_degree(

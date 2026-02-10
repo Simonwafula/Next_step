@@ -674,9 +674,12 @@ class ATSService:
         self, ats_integration: ATSIntegration, job_info: Dict[str, Any]
     ) -> JobPost:
         """Create a new JobPost from ATS job information"""
+        url = job_info.get("job_url", "") or ""
         return JobPost(
             source=f"ats_{ats_integration.ats_provider}",
-            url=job_info.get("job_url", ""),
+            url=url,
+            source_url=url,
+            application_url=url,
             org_id=ats_integration.organization_id,
             title_raw=job_info.get("title", ""),
             description_raw=job_info.get("description", ""),

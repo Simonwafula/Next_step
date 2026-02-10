@@ -53,6 +53,10 @@ class JobDatabaseSaver:
             job_post = JobPost(
                 source=cleaned_data.get("source", ""),
                 url=cleaned_data.get("url", ""),
+                source_url=cleaned_data.get("source_url")
+                or cleaned_data.get("url", ""),
+                application_url=cleaned_data.get("application_url")
+                or cleaned_data.get("url", ""),
                 first_seen=cleaned_data.get("extracted_at", datetime.utcnow()),
                 last_seen=cleaned_data.get("extracted_at", datetime.utcnow()),
                 org_id=org_id,
@@ -68,7 +72,6 @@ class JobDatabaseSaver:
                 requirements_raw=cleaned_data.get("requirements_raw"),
                 education=cleaned_data.get("education"),
                 attachment_flag=False,  # Default
-                embedding=None,  # Will be populated later by ML pipeline
             )
 
             # Check if job post already exists (by URL)

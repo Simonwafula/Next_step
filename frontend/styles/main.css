@@ -342,6 +342,44 @@ a {
     max-width: 320px;
 }
 
+.results-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.2rem;
+    margin-bottom: 1.6rem;
+}
+
+.filter-block {
+    background: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(17, 19, 21, 0.08);
+    border-radius: 18px;
+    padding: 1rem;
+}
+
+.filter-title {
+    margin: 0 0 0.7rem;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+}
+
+.filter-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.filter-chips .chip {
+    padding: 0.35rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.filter-chips .chip[aria-pressed="true"] {
+    border-color: rgba(13, 148, 136, 0.55);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+}
+
 .results-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
