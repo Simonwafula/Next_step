@@ -152,3 +152,43 @@ Branch: `main`
   - `http://127.0.0.1:8010/api/search` returns `title_clusters` and `companies_hiring`
   - `http://127.0.0.1:8010/r/apply/{job_id}` returns `307` + `Set-Cookie: ns_session=...`
   - `https://nextstep.co.ke/api/search` returns the same aggregates and `apply_url` fields
+
+---
+
+## 2026-02-10 (T-625 Gov Quarantine + T-626 Search Crash Fix)
+
+Branch: `main`
+
+### Summary
+- Ran government cleanup/quarantine against production DB: set `job_post.is_active = false` for obvious gov non-job pages (prevents polluting public search).
+- Fixed a production crash in `/api/search`: `generate_match_explanation()` assumed `JobEntities.skills` was `list[str]`, but processing stores `list[dict]` (e.g. `{"value": "python", ...}`), causing 500s.
+- Fixed public `/r/apply/{job_id}` routing: OpenLiteSpeed was proxying `/api/*` but not `/r/*`, so apply links worked on localhost but were 404 on `https://nextstep.co.ke`. Added `/r/` proxy context and restarted `lshttpd`.
+
+### Commits
+- `a793ab5` `[T-625] Quarantine gov non-job pages and hide from search`
+- `4b6f774` `[T-626] Fix /api/search crash on dict skills`
+
+### Ops / Deployment Notes (VPS)
+- Government quarantine run (prod DB):
+  - scanned: `1766`
+  - quarantined: `296` (reasons: `opportunities_non_job=73`, `non_job_terms=170`, `low_info_non_job=53`)
+  - post-run counts: `gov_careers total=2334, active=2038, inactive=296`
+- OpenLiteSpeed routing:
+  - Edited: `/usr/local/lsws/conf/vhosts/nextstep.co.ke/vhost.conf` (backup created)
+  - Added: `context /r/ { type proxy; handler nextstep_backend; ... }`
+  - Restarted: `systemctl restart lshttpd.service`
+- Smoke checks:
+  - `http://127.0.0.1:8010/api/search` -> `200` JSON
+  - `https://nextstep.co.ke/api/search` -> `200` JSON
+  - `http://127.0.0.1:8010/r/apply/{job_id}` -> `307` redirect
+  - `https://nextstep.co.ke/r/apply/{job_id}` -> `307` redirect (no longer 404)
+
+### Tests Run
+- Local:
+  - `backend/venv3.11/bin/ruff check backend/app/services/search.py backend/tests/test_search_match_explanation_skills_shape.py` (pass)
+  - `backend/venv3.11/bin/ruff format --check backend/app/services/search.py backend/tests/test_search_match_explanation_skills_shape.py` (pass)
+  - `.venv/bin/pytest -q backend/tests/test_search_match_explanation_skills_shape.py` (pass; 2 passed)
+- VPS:
+  - `/home/nextstep.co.ke/.venv/bin/ruff check backend/app/services/search.py backend/tests/test_search_match_explanation_skills_shape.py` (pass)
+  - `/home/nextstep.co.ke/.venv/bin/ruff format --check backend/app/services/search.py backend/tests/test_search_match_explanation_skills_shape.py` (pass)
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_match_explanation_skills_shape.py` (pass; 2 passed)
