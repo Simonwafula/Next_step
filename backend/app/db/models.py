@@ -105,6 +105,8 @@ class JobPost(Base):
     attachment_flag: Mapped[bool] = mapped_column(Boolean, default=False)
     quality_score: Mapped[float | None] = mapped_column(Float)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    # Soft delete / quarantine control for low-quality or non-job pages.
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
     # Relationships
     organization: Mapped["Organization"] = relationship(

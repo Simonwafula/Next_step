@@ -111,6 +111,7 @@
 - (T-622) Fix Postgres skill upsert integrity: ensure `skill.aliases` is set on insert (raw SQL upsert) and add Alembic migration to set a server default for `skill.aliases` to avoid NOT NULL violations during processing.
 - (T-623) Fix post-ingestion processing crash on long titles by clamping `TitleNorm.family`/`canonical_title` to schema limits and adding regression coverage.
 - (T-624) Improve gov data quality observability: treat empty descriptions as missing in quality snapshots; set gov `description_raw` to NULL when empty; add stricter gov job-page filter so non-job “opportunities/news” pages are skipped.
+- (T-625) Add `job_post.is_active` quarantine flag; exclude inactive jobs from public search; add admin endpoint to quarantine obvious gov non-job pages and a regression test for quarantine behavior.
 - Tests run:
   - `backend/venv3.11/bin/ruff check .` (pass)
   - `backend/venv3.11/bin/ruff format --check .` (pass)

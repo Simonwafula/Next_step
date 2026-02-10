@@ -87,6 +87,7 @@ def search_jobs(
         .join(Organization, Organization.id == JobPost.org_id, isouter=True)
         .join(Location, Location.id == JobPost.location_id, isouter=True)
         .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
     )
 
     # Apply filters
@@ -140,6 +141,7 @@ def search_jobs(
         .join(Organization, Organization.id == JobPost.org_id, isouter=True)
         .join(Location, Location.id == JobPost.location_id, isouter=True)
         .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
     )
     if conditions:
         stmt_base = stmt_base.where(*conditions)
@@ -283,6 +285,7 @@ def search_by_degree(
         .join(Organization, Organization.id == JobPost.org_id, isouter=True)
         .join(Location, Location.id == JobPost.location_id, isouter=True)
         .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
     )
 
     # Build conditions for career-relevant jobs
@@ -370,6 +373,7 @@ def suggest_alternatives(
             .join(Organization, Organization.id == JobPost.org_id, isouter=True)
             .join(Location, Location.id == JobPost.location_id, isouter=True)
             .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+            .where(JobPost.is_active.is_(True))
         )
 
         conditions = [TitleNorm.family.ilike(f"%{normalized_family}%")]

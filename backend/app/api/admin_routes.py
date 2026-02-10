@@ -37,6 +37,7 @@ from ..services.gov_processing_service import (
     government_quality_snapshot,
     process_government_posts,
 )
+from ..services.gov_quarantine_service import quarantine_government_nonjobs
 from ..services.post_ingestion_processing_service import (
     process_job_posts,
     quality_snapshot,
@@ -353,6 +354,30 @@ def admin_government_process(
         db,
         status="success" if result.get("status") == "success" else "error",
         message="Government post-processing executed",
+        details={"triggered_by": current_user.email, "result": result},
+    )
+    return result
+
+
+@router.post("/government/quarantine")
+def admin_government_quarantine(
+    limit: int = Query(2000, ge=1, le=20000),
+    dry_run: bool = Query(True),
+    max_quality_score: float = Query(0.5, ge=0.0, le=1.0),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    """Quarantine obvious non-job gov pages so they don't pollute public search."""
+    result = quarantine_government_nonjobs(
+        db,
+        limit=limit,
+        dry_run=dry_run,
+        max_quality_score=max_quality_score,
+    )
+    log_monitoring_event(
+        db,
+        status="success" if result.get("status") == "success" else "error",
+        message="Government quarantine executed",
         details={"triggered_by": current_user.email, "result": result},
     )
     return result
