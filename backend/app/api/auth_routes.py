@@ -372,7 +372,11 @@ async def google_callback(
     """Exchange Google OAuth code for tokens and sign in the user."""
     # Validate CSRF state token
     expected_state = request.cookies.get(OAUTH_STATE_COOKIE)
-    if not expected_state or not state or not hmac.compare_digest(expected_state, state):
+    if (
+        not expected_state
+        or not state
+        or not hmac.compare_digest(expected_state, state)
+    ):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Invalid or missing OAuth state parameter",

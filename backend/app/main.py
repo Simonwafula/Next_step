@@ -198,6 +198,7 @@ def ingestion_status():
 # Exception handlers – JSON for API clients, HTML for browsers
 # ---------------------------------------------------------------------------
 
+
 def _wants_json(request: Request) -> bool:
     accept = request.headers.get("accept", "")
     return "application/json" in accept
