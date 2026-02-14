@@ -1,39 +1,35 @@
 from datetime import datetime, timedelta
+
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, JSONResponse
+from sqlalchemy import func, select, text
 from starlette.exceptions import HTTPException as StarletteHTTPException
-from sqlalchemy import select, func, text
-from .core.config import settings
-from .core.rate_limiter import rate_limit_middleware
-from .core.logging_config import setup_logging, logging_middleware, get_logger
-from .db.database import init_db, SessionLocal, DATABASE_URL
-from .db.models import JobPost, Organization
-from .api.routes import api_router
+
 from .api.admin_routes import router as admin_router
-from .api.workflow_routes import router as workflow_router
-from .api.integration_routes import router as integration_router
 from .api.redirect_routes import router as redirect_router
+from .api.routes import api_router
+from .api.workflow_routes import router as workflow_router
+from .core.config import settings
+from .core.logging_config import get_logger, logging_middleware, setup_logging
+from .core.rate_limiter import rate_limit_middleware
+from .db.database import DATABASE_URL, SessionLocal, init_db
+from .db.models import JobPost, Organization
 from .webhooks.whatsapp import router as whatsapp_router
 
-# Initialize logging
 setup_logging()
 logger = get_logger(__name__)
 
 app = FastAPI(title="Career Translator + LMI", version="0.1.0")
 
-# Logging middleware (request tracing)
 app.middleware("http")(logging_middleware)
 
-# Rate limiting middleware
 app.middleware("http")(rate_limit_middleware)
 
-# CORS
 origins = [o.strip() for o in settings.CORS_ORIGINS.split(",") if o.strip()]
 allow_credentials = True
 allow_origins = origins
 
-# Browsers will reject `Access-Control-Allow-Credentials: true` when the origin is `*`.
 if not allow_origins:
     allow_credentials = False
 elif "*" in allow_origins:
@@ -71,7 +67,6 @@ def health_detailed():
         "checks": {},
     }
 
-    # Check database connectivity
     try:
         db = SessionLocal()
         db.execute(text("SELECT 1"))
@@ -96,15 +91,12 @@ def ingestion_status():
         last_24h = now - timedelta(hours=24)
         last_7d = now - timedelta(days=7)
 
-        # Total jobs
         total_jobs = db.execute(select(func.count(JobPost.id))).scalar() or 0
 
-        # Jobs by source
         source_counts = db.execute(
             select(JobPost.source, func.count(JobPost.id)).group_by(JobPost.source)
         ).all()
 
-        # Recent ingestion (last 24h)
         jobs_last_24h = (
             db.execute(
                 select(func.count(JobPost.id)).where(JobPost.first_seen >= last_24h)
@@ -112,7 +104,6 @@ def ingestion_status():
             or 0
         )
 
-        # Last 7 days
         jobs_last_7d = (
             db.execute(
                 select(func.count(JobPost.id)).where(JobPost.first_seen >= last_7d)
@@ -120,10 +111,8 @@ def ingestion_status():
             or 0
         )
 
-        # Latest job timestamp
         latest_job = db.execute(select(func.max(JobPost.first_seen))).scalar()
 
-        # Data quality metrics
         jobs_with_org = (
             db.execute(
                 select(func.count(JobPost.id)).where(JobPost.org_id.is_not(None))
@@ -193,11 +182,6 @@ def ingestion_status():
         }
     finally:
         db.close()
-
-
-# ---------------------------------------------------------------------------
-# Exception handlers – JSON for API clients, HTML for browsers
-# ---------------------------------------------------------------------------
 
 
 def _wants_json(request: Request) -> bool:
@@ -278,10 +262,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
     )
 
 
-# API routers
 app.include_router(redirect_router)
 app.include_router(api_router, prefix="/api")
 app.include_router(admin_router)
 app.include_router(workflow_router)
-app.include_router(integration_router)
 app.include_router(whatsapp_router, prefix="/whatsapp")

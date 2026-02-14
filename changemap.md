@@ -23,8 +23,8 @@
   - [x] (T-107) Pipeline logging/metrics
   - [x] (T-108) Tests for parsers + dedupe (`backend/test_processors.py`, etc.)
 
-## 2. NLP extraction (Partially Implemented)
-- [x] (T-200) description_clean builder
+## 2. NLP extraction (Implemented; hardening pending)
+- [/] (T-200) description_clean builder
   - [x] (T-201) skills taxonomy + matcher (`backend/app/normalization/skills.py`)
   - [x] (T-202) tools taxonomy (integrated in skills matcher)
   - [x] (T-203) education extractor
@@ -33,14 +33,24 @@
   - [x] (T-206) entity storage job_entities (`backend/app/db/models.py`)
   - [x] (T-207) evaluation harness on labeled sample
   - [x] (T-208) extraction confidence reporting
+  - [ ] (T-209) extraction hardening (coverage thresholds + stricter regression gates)
 
 ## 3. Embeddings + matching (Partially Implemented)
-- [x] (T-300) embedding builder (batch + resume)
+- [/] (T-300) embedding builder (batch + resume)
   - [x] (T-301) vector index abstraction (`backend/app/ml/embeddings.py`)
   - [x] (T-302) profile embedding builder (integrated in `generate_embeddings.py`)
-  - [x] (T-303) matching (`backend/app/services/search.py`, `backend/app/services/recommend.py`)
+  - [/] (T-303) matching (`backend/app/services/search.py`, `backend/app/services/recommend.py`)
   - [x] (T-304) explanation generator (`backend/app/services/search.py`)
   - [x] (T-305) tests for deterministic retrieval (`backend/test_integration.py`)
+  - [ ] (T-306) learned ranking/classification pipeline (LTR/classifier) for production relevance tuning
+
+## 3.1 Content Generation + RAG (Planned)
+- [ ] (T-800) production content generation with grounded retrieval
+  - [/] (T-801) prompt-based content generation service (`backend/app/services/career_tools_service.py`)
+  - [ ] (T-802) retrieval layer over verified labor market corpus (RAG context builder)
+  - [ ] (T-803) grounded generation with source attribution/citations
+  - [ ] (T-804) safety + factual guardrails (policy filters, hallucination checks)
+  - [ ] (T-805) evaluation suite (faithfulness + relevance + style) and regression tests
 
 ## 4. Intelligence analytics (planned)
 - [x] (T-400) skill trends (`backend/app/services/analytics.py`)
@@ -99,6 +109,30 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-14 (Scope Cleanup)
+- **Scope Creep Reduction**: Moved ~3,000 lines of incomplete/speculative features to `later_features/`:
+  - `payment_service.py` (~500 lines) - M-Pesa/Stripe integration with hardcoded creds, no working endpoints
+  - `linkedin_service.py` (~600 lines) - OAuth scaffolded, no actual profile sync
+  - `calendar_service.py` (~700 lines) - Google/Microsoft calendar OAuth, no functional use case
+  - `ats_service.py` (~900 lines) - ATS integration, unclear intent (ingestion already works)
+  - `integration_routes.py` (~600 lines) - API routes for all above features
+  - `integration_models.py` (copied) - DB models for above features (still in schema but unused)
+- Commented out integration routes in `main.py` and `routes.py` - app no longer exposes these endpoints
+- Created `later_features/README.md` documenting restoration criteria and process
+- Created `SCOPE_CLEANUP.md` with impact analysis and recommendations
+- **Recommendation**: Run tests to verify no breakage, consider DB migration to drop unused tables
+- **Next**: Focus on MVP per `OUTCOMES_PLAN.md` phases 1-3 (public search, student/early-career/professional outcomes)
+
+### 2026-02-14
+- (T-000c) Capability status reconciliation:
+  - Extraction from job ads: implemented with deterministic + SkillNER-assisted extraction and evidence/confidence persistence (`extractors.py`, `skills.py`, `skillner_adapter.py`, `post_ingestion_processing_service.py`, `JobEntities`).
+  - Ranking/matching: partially implemented (embeddings + heuristic weighted scoring and semantic similarity are in place; learned ranking/classification remains pending).
+  - Content generation + RAG: not implemented as a production grounded pipeline; current career tools service is prompt/mock-oriented and lacks retrieval-grounded generation and citation guardrails.
+- Updated task states accordingly:
+  - `T-200` moved to partial (`[/]`) with hardening subtask `T-209`.
+  - `T-300` and `T-303` moved to partial (`[/]`) with ranking gap task `T-306`.
+  - Added new section `3.1 Content Generation + RAG` (`T-800` to `T-805`) to track delivery explicitly.
 
 ### 2026-02-10
 - (GOV) Added deterministic post-ingestion processing for `gov_careers` (persist title_norm, skills + evidence, education/experience/seniority/tasks, and `quality_score`) and admin endpoints to run it and inspect coverage (`/api/admin/government/process`, `/api/admin/government/quality`).

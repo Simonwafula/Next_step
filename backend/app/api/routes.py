@@ -1,43 +1,39 @@
 from datetime import datetime
+
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
+
 from ..db.database import get_db
-from ..services.search import search_jobs
-from ..services.recommend import (
-    transitions_for,
-    get_trending_transitions,
-    get_salary_insights_for_transition,
-)
+from ..ingestion.runner import run_all_sources, run_government_sources
+from ..normalization.titles import get_careers_for_degree, normalize_title
+from ..services.auth_service import get_current_user_optional, require_admin
 from ..services.lmi import (
-    get_weekly_insights,
+    get_attachment_companies,
     get_market_trends,
     get_salary_insights,
-    get_attachment_companies,
     get_trending_skills,
+    get_weekly_insights,
+)
+from ..services.post_ingestion_processing_service import process_job_posts
+from ..services.processing_log_service import log_processing_event
+from ..services.recommend import (
+    get_salary_insights_for_transition,
+    get_trending_transitions,
+    transitions_for,
 )
 from ..services.scraper_service import scraper_service
-from ..services.auth_service import get_current_user_optional, require_admin
-from ..services.processing_log_service import log_processing_event
-from ..services.post_ingestion_processing_service import process_job_posts
-from ..normalization.titles import get_careers_for_degree, normalize_title
-from ..ingestion.runner import run_all_sources, run_government_sources
+from ..services.search import search_jobs
+from .analytics_routes import router as analytics_router
 from .auth_routes import router as auth_router
 from .user_routes import router as user_router
-from .integration_routes import router as integration_router
-from .analytics_routes import router as analytics_router
 
 api_router = APIRouter()
 
-# Include authentication and user management routes
 api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 api_router.include_router(user_router, prefix="/users", tags=["user-management"])
-api_router.include_router(
-    integration_router, prefix="/integrations", tags=["integrations"]
-)
 api_router.include_router(analytics_router, tags=["analytics"])
 
 
-# Enhanced Job Search & Title Translation
 @api_router.get("/search")
 def search(
     q: str = Query("", description="Search query, job title, or 'I studied [degree]'"),
@@ -60,7 +56,6 @@ def search(
     - "I studied economics"
     - "statistician jobs"
     """
-    # Enhanced search with optional personalization
     # Note: personalization will be implemented in P0.3
     payload = search_jobs(
         db,
@@ -73,7 +68,6 @@ def search(
         offset=offset,
     )
 
-    # Add personalization metadata if user is authenticated
     if current_user and personalized:
         return {
             **(payload if isinstance(payload, dict) else {"results": payload}),
@@ -120,7 +114,6 @@ def careers_for_degree(
     }
 
 
-# Enhanced Career Pathways & Transitions
 @api_router.get("/recommend", response_model=list[dict])
 def recommend(
     current: str = Query(..., description="Current role or background"),
@@ -154,7 +147,6 @@ def transition_salary(
     return {"target_role": target_role, "salary_insights": insights}
 
 
-# Labour Market Intelligence (LMI)
 @api_router.get("/lmi/weekly-insights")
 def weekly_insights(
     location: str | None = Query(None, description="Location filter"),
@@ -217,7 +209,8 @@ def trending_skills(
 @api_router.get("/lmi/coverage-stats")
 def coverage_stats(db: Session = Depends(get_db)):
     """Get data coverage statistics for transparency."""
-    from sqlalchemy import select, func
+    from sqlalchemy import func, select
+
     from ..db.models import JobPost, JobSkill
 
     total_posts = db.execute(select(func.count(JobPost.id))).scalar() or 0
@@ -252,7 +245,6 @@ def coverage_stats(db: Session = Depends(get_db)):
     }
 
 
-# Attachments & Graduate Intakes
 @api_router.get("/attachments")
 def attachments(
     location: str | None = Query(None, description="Location filter"),
@@ -276,8 +268,9 @@ def graduate_programs(
     db: Session = Depends(get_db),
 ):
     """Get graduate trainee programs and entry-level opportunities."""
-    from sqlalchemy import select, and_, or_
-    from ..db.models import JobPost, Organization, Location
+    from sqlalchemy import and_, or_, select
+
+    from ..db.models import JobPost, Location, Organization
 
     conditions = [
         or_(
@@ -335,7 +328,6 @@ def graduate_programs(
     }
 
 
-# Scraper endpoints
 @api_router.get("/scrapers/status")
 async def scraper_status():
     """Get status of scrapers and database."""
@@ -398,7 +390,6 @@ async def get_recent_jobs(
     return await scraper_service.get_recent_jobs(limit)
 
 
-# Admin endpoints
 @api_router.post("/admin/ingest")
 def admin_ingest(
     process_after: bool = Query(
