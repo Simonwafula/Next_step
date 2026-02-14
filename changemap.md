@@ -203,7 +203,19 @@
   - 102,169 jobs in `job_post`
   - 2,933 organizations
   - 925 locations
-- **Pending: Upload to VPS and import into PostgreSQL**
+- **VPS upload + PostgreSQL import completed:**
+  - Uploaded `backend/data/migration/jobs_export.json` to VPS at `/home/nextstep.co.ke/jobs_export.json` (sha256 verified match).
+  - Fixed `backend/scripts/import_jobs_to_db.py` for production schema:
+    - Ensure `job_post.attachment_flag` is always set (NOT NULL on VPS).
+    - Avoid ballooning `location` rows by selecting before insert (no uniqueness constraint in prod schema).
+    - Added in-memory caches for org/location lookups to speed up import.
+  - Import run (VPS): `python scripts/import_jobs_to_db.py --input /home/nextstep.co.ke/jobs_export.json --batch-size 2000`
+    - Processed: 102,169
+    - Imported: 77,669
+    - Skipped (existing): 24,500
+    - Errors: 0
+  - Verified (VPS Postgres `career_lmi`): `job_post` = 104,690; `organization` = 2,800; `location` = 787
+  - Note: `job_entities` still 27,021 and `job_embeddings` 0 (needs pipeline run to backfill).
 - Files created:
   - `backend/scripts/migrate_raw_jobs.py`
   - `backend/scripts/import_jobs_to_db.py`

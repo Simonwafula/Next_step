@@ -30,6 +30,78 @@ except ImportError:
     sys.exit(1)
 
 
+def iter_json_array(fp, *, chunk_size: int = 1024 * 1024):
+    """Yield objects from a top-level JSON array without loading the entire file.
+
+    The migration file can be hundreds of MB; json.load(...) builds the full
+    Python list and can OOM on small VPS machines. This streaming decoder keeps
+    memory bounded.
+    """
+
+    decoder = json.JSONDecoder()
+    buf = ""
+    idx = 0
+
+    def read_more() -> bool:
+        nonlocal buf
+        chunk = fp.read(chunk_size)
+        if not chunk:
+            return False
+        buf += chunk
+        return True
+
+    # Seek the initial '['
+    while True:
+        if idx >= len(buf) and not read_more():
+            raise ValueError("Unexpected EOF while looking for '['")
+
+        while idx < len(buf) and buf[idx].isspace():
+            idx += 1
+
+        if idx < len(buf):
+            if buf[idx] != "[":
+                raise ValueError("Expected '[' at start of JSON array")
+            idx += 1
+            break
+
+    while True:
+        # Skip whitespace and commas between elements.
+        while True:
+            if idx >= len(buf) and not read_more():
+                raise ValueError("Unexpected EOF inside JSON array")
+
+            while idx < len(buf) and buf[idx].isspace():
+                idx += 1
+
+            if idx < len(buf) and buf[idx] == ",":
+                idx += 1
+                continue
+
+            break
+
+        if idx >= len(buf):
+            continue
+
+        if buf[idx] == "]":
+            return
+
+        # Decode one element; read more data if needed.
+        while True:
+            try:
+                obj, end = decoder.raw_decode(buf, idx)
+                idx = end
+                yield obj
+
+                # Compact buffer periodically to avoid unbounded growth.
+                if idx > chunk_size:
+                    buf = buf[idx:]
+                    idx = 0
+                break
+            except json.JSONDecodeError:
+                if not read_more():
+                    raise
+
+
 def parse_args():
     parser = argparse.ArgumentParser(description="Import jobs into database")
     parser.add_argument(
@@ -42,8 +114,17 @@ def parse_args():
         "--dry-run", action="store_true", help="Validate without importing"
     )
     parser.add_argument(
-        "--skip-existing", action="store_true", default=True, help="Skip existing URLs"
+        "--skip-existing",
+        action="store_true",
+        help="Skip URLs that already exist in job_post (default)",
     )
+    parser.add_argument(
+        "--no-skip-existing",
+        dest="skip_existing",
+        action="store_false",
+        help="Do not skip existing URLs (allow ON CONFLICT updates)",
+    )
+    parser.set_defaults(skip_existing=True)
     return parser.parse_args()
 
 
@@ -195,12 +276,21 @@ def create_tables_if_needed(engine):
     print("Tables verified/created")
 
 
+_ORG_CACHE: dict[str, int] = {}
+_LOC_CACHE: dict[tuple[str, str, str, str], int] = {}
+
+
 def get_or_create_org(conn, name: str) -> int | None:
     """Get or create organization, return ID."""
     if not name:
         return None
 
     is_sqlite = "sqlite" in str(conn.engine.url)
+    name = name.strip()[:255]
+
+    cached = _ORG_CACHE.get(name)
+    if cached is not None:
+        return cached
 
     if is_sqlite:
         result = conn.execute(
@@ -208,23 +298,33 @@ def get_or_create_org(conn, name: str) -> int | None:
         ).fetchone()
 
         if result:
+            _ORG_CACHE[name] = result[0]
             return result[0]
 
         result = conn.execute(
-            text("INSERT INTO organization (name) VALUES (:name)"), {"name": name}
+            # Explicitly set verified to avoid NOT NULL issues if the table
+            # was created via migrations (no server default).
+            text("INSERT INTO organization (name, verified) VALUES (:name, 0)"),
+            {"name": name},
         )
-        return result.lastrowid
+        org_id = result.lastrowid
+        if org_id is not None:
+            _ORG_CACHE[name] = org_id
+        return org_id
     else:
         result = conn.execute(
             text("""
-                INSERT INTO organization (name) 
-                VALUES (:name) 
+                INSERT INTO organization (name, verified) 
+                VALUES (:name, FALSE)
                 ON CONFLICT (name) DO UPDATE SET name = EXCLUDED.name
                 RETURNING id
             """),
             {"name": name},
         ).fetchone()
-        return result[0] if result else None
+        org_id = result[0] if result else None
+        if org_id is not None:
+            _ORG_CACHE[name] = org_id
+        return org_id
 
 
 def get_or_create_location(
@@ -235,6 +335,16 @@ def get_or_create_location(
         return None
 
     is_sqlite = "sqlite" in str(conn.engine.url)
+
+    country_norm = (country or "").strip()[:100]
+    region_norm = (region or "").strip()[:100]
+    city_norm = (city or "").strip()[:100]
+    raw_norm = (raw or "").strip()[:255]
+    cache_key = (country_norm, region_norm, city_norm, raw_norm)
+
+    cached = _LOC_CACHE.get(cache_key)
+    if cached is not None:
+        return cached
 
     if is_sqlite:
         result = conn.execute(
@@ -247,47 +357,74 @@ def get_or_create_location(
                 LIMIT 1
             """),
             {
-                "country": country or "",
-                "region": region or "",
-                "city": city or "",
-                "raw": raw or "",
+                "country": country_norm,
+                "region": region_norm,
+                "city": city_norm,
+                "raw": raw_norm,
             },
         ).fetchone()
 
         if result:
+            _LOC_CACHE[cache_key] = result[0]
             return result[0]
 
         result = conn.execute(
             text(
                 "INSERT INTO location (country, region, city, raw) VALUES (:country, :region, :city, :raw)"
             ),
-            {"country": country, "region": region, "city": city, "raw": raw},
+            {
+                "country": country_norm or None,
+                "region": region_norm or None,
+                "city": city_norm or None,
+                "raw": raw_norm or None,
+            },
         )
-        return result.lastrowid
+        loc_id = result.lastrowid
+        if loc_id is not None:
+            _LOC_CACHE[cache_key] = loc_id
+        return loc_id
     else:
+        # The production schema does NOT enforce uniqueness on location fields,
+        # so ON CONFLICT is ineffective. Do a SELECT first to avoid ballooning
+        # the location table with duplicates.
+        result = conn.execute(
+            text("""
+                SELECT id FROM location 
+                WHERE COALESCE(country, '') = COALESCE(:country, '')
+                AND COALESCE(region, '') = COALESCE(:region, '')
+                AND COALESCE(city, '') = COALESCE(:city, '')
+                AND COALESCE(raw, '') = COALESCE(:raw, '')
+                LIMIT 1
+            """),
+            {
+                "country": country_norm,
+                "region": region_norm,
+                "city": city_norm,
+                "raw": raw_norm,
+            },
+        ).fetchone()
+        if result:
+            _LOC_CACHE[cache_key] = result[0]
+            return result[0]
+
         result = conn.execute(
             text("""
                 INSERT INTO location (country, region, city, raw) 
                 VALUES (:country, :region, :city, :raw)
-                ON CONFLICT DO NOTHING
                 RETURNING id
             """),
-            {"country": country, "region": region, "city": city, "raw": raw},
+            {
+                "country": country_norm or None,
+                "region": region_norm or None,
+                "city": city_norm or None,
+                "raw": raw_norm or None,
+            },
         ).fetchone()
 
-        if not result:
-            result = conn.execute(
-                text("""
-                    SELECT id FROM location 
-                    WHERE COALESCE(country, '') = COALESCE(:country, '')
-                    AND COALESCE(region, '') = COALESCE(:region, '')
-                    AND COALESCE(city, '') = COALESCE(:city, '')
-                    LIMIT 1
-                """),
-                {"country": country or "", "region": region or "", "city": city or ""},
-            ).fetchone()
-
-        return result[0] if result else None
+        loc_id = result[0] if result else None
+        if loc_id is not None:
+            _LOC_CACHE[cache_key] = loc_id
+        return loc_id
 
 
 def import_job(conn, job: dict, skip_existing: bool = True) -> tuple[bool, str]:
@@ -325,17 +462,32 @@ def import_job(conn, job: dict, skip_existing: bool = True) -> tuple[bool, str]:
     else:
         first_seen = datetime.utcnow()
 
+    last_seen = job.get("last_seen")
+    if isinstance(last_seen, str):
+        try:
+            last_seen = datetime.fromisoformat(last_seen.replace("Z", "+00:00"))
+        except ValueError:
+            last_seen = datetime.utcnow()
+    else:
+        last_seen = datetime.utcnow()
+
+    title_raw = (job.get("title_raw") or "").strip()[:255]
+
+    # Production schema requires a non-null attachment_flag, but the migration
+    # JSON does not include it.
+    attachment_flag = bool(job.get("attachment_flag") or False)
+
     if is_sqlite:
         insert_sql = text("""
             INSERT INTO job_post (
                 source, url, source_url, application_url, url_hash,
-                first_seen, last_seen, org_id, title_raw, location_id,
-                tenure, salary_min, salary_max, currency, seniority,
+                first_seen, last_seen, repost_count, org_id, title_raw, location_id,
+                tenure, salary_min, salary_max, currency, seniority, attachment_flag,
                 description_raw, education, is_active
             ) VALUES (
                 :source, :url, :source_url, :application_url, :url_hash,
-                :first_seen, :last_seen, :org_id, :title_raw, :location_id,
-                :tenure, :salary_min, :salary_max, :currency, :seniority,
+                :first_seen, :last_seen, :repost_count, :org_id, :title_raw, :location_id,
+                :tenure, :salary_min, :salary_max, :currency, :seniority, :attachment_flag,
                 :description_raw, :education, :is_active
             )
         """)
@@ -343,13 +495,13 @@ def import_job(conn, job: dict, skip_existing: bool = True) -> tuple[bool, str]:
         insert_sql = text("""
             INSERT INTO job_post (
                 source, url, source_url, application_url, url_hash,
-                first_seen, last_seen, org_id, title_raw, location_id,
-                tenure, salary_min, salary_max, currency, seniority,
+                first_seen, last_seen, repost_count, org_id, title_raw, location_id,
+                tenure, salary_min, salary_max, currency, seniority, attachment_flag,
                 description_raw, education, is_active
             ) VALUES (
                 :source, :url, :source_url, :application_url, :url_hash,
-                :first_seen, :last_seen, :org_id, :title_raw, :location_id,
-                :tenure, :salary_min, :salary_max, :currency, :seniority,
+                :first_seen, :last_seen, :repost_count, :org_id, :title_raw, :location_id,
+                :tenure, :salary_min, :salary_max, :currency, :seniority, :attachment_flag,
                 :description_raw, :education, :is_active
             )
             ON CONFLICT (url) DO UPDATE SET
@@ -366,19 +518,25 @@ def import_job(conn, job: dict, skip_existing: bool = True) -> tuple[bool, str]:
             "application_url": job.get("application_url"),
             "url_hash": job.get("url_hash"),
             "first_seen": first_seen,
-            "last_seen": datetime.utcnow(),
+            "last_seen": last_seen,
+            "repost_count": 0,
             "org_id": org_id,
-            "title_raw": job.get("title_raw", "")[:255]
-            if job.get("title_raw")
-            else None,
+            "title_raw": title_raw,
             "location_id": location_id,
-            "tenure": job.get("tenure"),
+            "tenure": (job.get("tenure") or None)[:50]
+            if isinstance(job.get("tenure"), str)
+            else job.get("tenure"),
             "salary_min": job.get("salary_min"),
             "salary_max": job.get("salary_max"),
-            "currency": job.get("currency", "KES"),
-            "seniority": job.get("seniority"),
+            "currency": (job.get("currency") or "KES")[:10],
+            "seniority": (job.get("seniority") or None)[:50]
+            if isinstance(job.get("seniority"), str)
+            else job.get("seniority"),
+            "attachment_flag": attachment_flag,
             "description_raw": job.get("description_raw"),
-            "education": job.get("education"),
+            "education": (job.get("education") or None)[:120]
+            if isinstance(job.get("education"), str)
+            else job.get("education"),
             "is_active": True,
         },
     )
@@ -395,19 +553,19 @@ def main():
         sys.exit(1)
 
     print(f"Loading jobs from: {input_path}")
-    with open(input_path, "r", encoding="utf-8") as f:
-        jobs = json.load(f)
-
-    print(f"Loaded {len(jobs):,} jobs")
 
     if args.dry_run:
         print("\nDRY RUN - Validating jobs...")
         errors = []
-        for i, job in enumerate(jobs[:100]):
-            if not job.get("url"):
-                errors.append(f"Job {i}: Missing URL")
-            if not job.get("title_raw"):
-                errors.append(f"Job {i}: Missing title")
+        with open(input_path, "r", encoding="utf-8") as f:
+            jobs_iter = iter_json_array(f)
+            for i, job in enumerate(jobs_iter):
+                if i >= 100:
+                    break
+                if not job.get("url"):
+                    errors.append(f"Job {i}: Missing URL")
+                if not job.get("title_raw"):
+                    errors.append(f"Job {i}: Missing title")
 
         if errors:
             print(f"Found {len(errors)} errors in first 100 jobs:")
@@ -423,32 +581,49 @@ def main():
     create_tables_if_needed(engine)
 
     stats = {
-        "total": len(jobs),
+        "processed": 0,
         "imported": 0,
         "skipped": 0,
         "errors": 0,
     }
 
-    with engine.connect() as conn:
-        for i, job in enumerate(jobs):
-            if (i + 1) % 1000 == 0:
-                print(f"  Processing {i + 1:,} / {len(jobs):,}...")
-                conn.commit()
+    batch_size = max(1, int(args.batch_size))
 
-            try:
-                success, message = import_job(conn, job, args.skip_existing)
-                if success:
-                    stats["imported"] += 1
-                elif "Already exists" in message:
-                    stats["skipped"] += 1
-                else:
+    with open(input_path, "r", encoding="utf-8") as f:
+        jobs_iter = iter_json_array(f)
+        with engine.connect() as conn:
+            for job in jobs_iter:
+                stats["processed"] += 1
+                try:
+                    # Savepoint per job: a single bad row shouldn't poison the
+                    # whole transaction (Postgres aborts the transaction on
+                    # error until a rollback).
+                    with conn.begin_nested():
+                        success, message = import_job(conn, job, args.skip_existing)
+                    if success:
+                        stats["imported"] += 1
+                    elif "Already exists" in message:
+                        stats["skipped"] += 1
+                    else:
+                        stats["errors"] += 1
+                except Exception as e:
                     stats["errors"] += 1
-            except Exception as e:
-                stats["errors"] += 1
-                if stats["errors"] <= 10:
-                    print(f"  Error on job {i}: {e}")
+                    if stats["errors"] <= 10:
+                        print(f"  Error on job {stats['processed']}: {e}")
+                    # If the outer transaction is aborted, recover so we can
+                    # keep importing (may drop uncommitted work in the batch).
+                    if "InFailedSqlTransaction" in str(e):
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+                    continue
 
-        conn.commit()
+                if stats["processed"] % batch_size == 0:
+                    print(f"  Processing {stats['processed']:,}...")
+                    conn.commit()
+
+            conn.commit()
 
     # Use a fresh connection to avoid querying on a closed connection.
     with engine.connect() as conn:
@@ -458,7 +633,7 @@ def main():
     print(f"\n{'=' * 50}")
     print("IMPORT COMPLETE")
     print(f"{'=' * 50}")
-    print(f"Total jobs in file:  {stats['total']:,}")
+    print(f"Total jobs processed:{stats['processed']:,}")
     print(f"Imported:            {stats['imported']:,}")
     print(f"Skipped (existing):  {stats['skipped']:,}")
     print(f"Errors:              {stats['errors']:,}")
