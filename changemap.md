@@ -205,6 +205,26 @@
 - Tests run:
   - `/Users/hp/Library/CloudStorage/OneDrive-Personal/Codes/Next_step/.venv/bin/python -m pytest backend/tests/test_job_alert_hooks.py -q` (1 passed)
 
+### 2026-02-14 (Learned Ranking Production - T-306 Complete)
+- Implemented full production pipeline for learned ranking model
+- Training pipeline: collect implicit feedback (apply clicks from UserAnalytics), train LogisticRegression classifier on 8-dim feature vectors
+- CLI commands: `train-ranking --days-back N`, `ranking-info` (model status, training metadata)
+- Systemd timers: daily retraining at 03:00 UTC with 10min random delay
+- Admin API endpoints: GET `/api/admin/ranking/model-info`, POST `/api/admin/ranking/train?days_back=N`
+- Files created:
+  - `backend/app/services/ranking_trainer.py` (collect_training_data, train_ranking_model, get_model_info)
+  - `backend/tests/test_ranking_trainer.py` (5 tests for insuffic data, success cases, model info)
+  - `deploy/systemd/nextstep-ranking-train.service` (systemd service for CLI train-ranking)
+  - `deploy/systemd/nextstep-ranking-train.timer` (daily trigger at 03:00 UTC)
+- Modified files:
+  - `backend/cli.py` (added train_ranking and ranking_info commands)
+  - `backend/app/api/admin_routes.py` (added model-info GET, train POST endpoints)
+- Tests run:
+  - `venv3.11/bin/pytest tests/test_ranking_trainer.py -v` (5 passed)
+  - `venv3.11/bin/pytest --ignore=tests/test_admin_processing_endpoints.py --ignore=tests/test_dashboard_endpoints.py --ignore=tests/test_job_alert_hooks.py --ignore=tests/test_public_apply_redirect.py --ignore=tests/test_twilio_whatsapp_webhook.py -q` (95 passed, 2 failed in test_regression.py - skill extraction issues, not ranking)
+- Dependencies installed: numpy, scikit-learn, httpx, datasketch, rapidfuzz, skillner, jellyfish, python-dotenv, pyyaml, fastapi-mail, twilio, python-jose, passlib, bcrypt, python-multipart
+- Lint checks: All files pass ruff check (E402 noqa annotations added for sys.path imports in cli.py)
+
 ### 2026-02-14 (Learned Ranking - T-306)
 - Implemented lightweight learned-to-rank hook for job search results
 - Built classification-based re-ranker using scikit-learn LogisticRegression
