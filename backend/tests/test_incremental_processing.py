@@ -138,6 +138,18 @@ class TestIncrementalEmbeddings:
             assert len(vec) > 0
         db.close()
 
+    def test_batching_does_not_skip_pending_rows(self, db_session_factory):
+        db = db_session_factory()
+        for i in range(1, 6):
+            _add_job(db, i, f"Job {i} description about Python and data {i}")
+        db.commit()
+
+        result = run_incremental_embeddings(db, batch_size=2)
+        assert result["processed"] == 5
+
+        assert db.query(JobEmbedding).count() == 5
+        db.close()
+
     def test_incremental_skips_already_embedded(self, db_session_factory):
         db = db_session_factory()
         _add_job(db, 1, "Data analyst role with SQL and Python")

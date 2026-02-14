@@ -168,19 +168,22 @@ def run_incremental_embeddings(
         .where(JobPost.id.not_in(embedded_sq))
         .order_by(JobPost.id)
     )
-    total_pending = db.execute(
-        select(func.count()).select_from(pending_q.subquery())
-    ).scalar()
+    total_pending = int(
+        db.execute(select(func.count()).select_from(pending_q.subquery())).scalar() or 0
+    )
 
     if total_pending == 0:
         logger.info("Incremental embeddings: nothing to process.")
         return {"status": "success", "processed": 0, "model": model_name}
 
-    processed = 0
-    offset = 0
+    if batch_size <= 0:
+        raise ValueError("batch_size must be > 0")
 
-    while offset < total_pending:
-        rows = db.execute(pending_q.offset(offset).limit(batch_size)).all()
+    processed = 0
+    while True:
+        # Don't use OFFSET-based pagination here: the pending set shrinks as we
+        # insert new JobEmbedding rows, which would cause us to skip items.
+        rows = db.execute(pending_q.limit(batch_size)).all()
         if not rows:
             break
 
@@ -202,7 +205,6 @@ def run_incremental_embeddings(
 
         db.commit()
         processed += len(ids)
-        offset += batch_size
         logger.info(
             "Incremental embeddings: %d / %d processed.", processed, total_pending
         )

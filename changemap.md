@@ -244,6 +244,10 @@
   - `T-200` moved to partial (`[/]`) with hardening subtask `T-209`.
   - `T-300` and `T-303` moved to partial (`[/]`) with ranking gap task `T-306`.
   - Added new section `3.1 Content Generation + RAG` (`T-800` to `T-805`) to track delivery explicitly.
+- (T-632) Fixed incremental embeddings batch pagination to avoid skipping rows when processing in small batches; removed OFFSET-based paging because the pending set shrinks as embeddings are inserted. Added regression test `test_batching_does_not_skip_pending_rows`.
+- Tests run:
+  - `backend/venv3.11/bin/ruff check .` (pass, local)
+  - `backend/venv3.11/bin/ruff format --check .` (pass, local)
 
 ### 2026-02-10
 - (GOV) Added deterministic post-ingestion processing for `gov_careers` (persist title_norm, skills + evidence, education/experience/seniority/tasks, and `quality_score`) and admin endpoints to run it and inspect coverage (`/api/admin/government/process`, `/api/admin/government/quality`).
