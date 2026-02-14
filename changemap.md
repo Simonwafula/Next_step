@@ -62,6 +62,15 @@
   - [x] (T-403c) wire admin/user dashboard UI to analytics endpoints (`frontend/js/dashboard-ui.js`, `frontend/js/admin.js`)
   - [x] (T-403d) dashboard endpoint tests (`backend/tests/test_dashboard_endpoints.py` — 42 tests)
 
+## 4.1 Career Insight Service (Student/Career Exploration)
+- [x] (T-410) Career insight pipeline
+  - [x] (T-411) Collection phase: fetch jobs by normalized title (`backend/app/services/career_insight_service.py`)
+  - [x] (T-412) Collation phase: extract responsibilities, skills, tools, education, experience (`backend/app/services/career_insight_service.py`)
+  - [x] (T-413) Summarization phase: generate career guides (`backend/app/services/career_insight_service.py`)
+  - [x] (T-414) API endpoints for career insights (`backend/app/api/career_insight_routes.py`)
+  - [x] (T-415) Visualization service: word clouds, bar charts, pie charts (`backend/app/services/career_visualization.py`)
+  - [x] (T-416) Tests for career insight service (`backend/tests/test_career_insight_service.py` — 14 tests)
+
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
 - [ ] (T-501) task→role mapping
@@ -109,6 +118,96 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-14 (Career Insight Feature)
+- (T-410) Implemented Career Insight Service for students/job seekers to understand what careers entail
+- Created 3-phase pipeline:
+  - **COLLECT**: Fetch jobs matching a normalized title from database
+  - **COLLATE**: Extract patterns (responsibilities, skills, tools, education, experience, salary)
+  - **SUMMARIZE**: Generate human-readable career guides with outlook
+- Files created:
+  - `backend/app/services/career_insight_service.py` — Core pipeline (780+ lines)
+  - `backend/app/services/career_visualization.py` — Word clouds, bar/pie charts (530+ lines)
+  - `backend/app/api/career_insight_routes.py` — API endpoints (220+ lines)
+  - `backend/tests/test_career_insight_service.py` — 14 tests
+- API endpoints added:
+  - `GET /api/career-insights/{title}` — Full career insight
+  - `GET /api/career-insights/{title}/summary` — Concise summary
+  - `GET /api/career-insights/{title}/visualizations` — All charts
+  - `GET /api/career-insights/{title}/skills-chart` — Skills bar chart
+  - `GET /api/career-insights/{title}/wordcloud` — Responsibilities wordcloud
+  - `GET /api/career-insights/{title}/education-chart` — Education pie chart
+  - `GET /api/career-insights/{title}/experience-chart` — Experience distribution
+  - `POST /api/career-insights/compare` — Compare multiple careers
+- Dependencies added: `matplotlib==3.9.1`, `wordcloud==1.9.3`, `seaborn==0.13.2`
+- Registered routes in `main.py`
+- Tests run:
+  - `backend/venv3.11/bin/ruff check app/services/career_insight_service.py app/services/career_visualization.py app/api/career_insight_routes.py` (pass)
+  - `backend/venv3.11/bin/ruff format app/services/career_insight_service.py app/services/career_visualization.py app/api/career_insight_routes.py` (pass)
+  - `backend/venv3.11/bin/python -m pytest tests/test_career_insight_service.py -v` (14 passed)
+
+### 2026-02-14 (The Crucible - Strategic Review)
+- Conducted adversarial review with 4 AI critics (Financial Realist, Cynical User, Competitor Analyst, Pragmatist)
+- **Critical vulnerabilities identified:**
+  1. No validated revenue model - users have no money
+  2. 65% skill accuracy destroys trust
+  3. No defensible moat against competitors
+  4. Zero brand awareness
+  5. Scraper maintenance debt
+- **Strategic pivot decided:**
+  - FROM: B2C job board for all users
+  - TO: B2B labor market intelligence for universities
+- **New target customer:** University Career Centers (KSh 200K-500K/year)
+- **New MVP product:** Skill Demand Report for [Degree Program] (KSh 5,000)
+- Created `docs/crucible-review.md` with full analysis
+- Created implementation todos for pivot execution
+
+### 2026-02-14 (The Crucible - 12-Round Adversarial Review)
+- Conducted extended 12-round review with 4 AI critics
+- **Monetization models destroyed:**
+  1. B2C premium (users have no money, ChatGPT is free)
+  2. B2B universities (broke, 90-day payment, no relationships)
+  3. B2B recruiters (0 candidates in database, nothing to sell)
+  4. "Career intelligence" (65% accuracy destroys trust)
+- **Brutal truth exposed:** 0 users, 0 profiles, 0 revenue, 0 traffic
+- **Final plan approved:** Skill-Based Job Alerts MVP
+  - User enters skills → Preview jobs → Save alert → Get daily notifications
+  - Target: Fresh graduates (0-3 years) in Kenya
+  - KPI: Alerts Created (target: 50 in Week 1)
+  - Launch: 20 WhatsApp groups for first 100 users
+- **8-day sprint:**
+  - Day 1-2: Migrate 102K jobs to app DB (CRITICAL PATH)
+  - Day 3-5: Build alert creation form
+  - Day 6-8: Build alert delivery (email/WhatsApp)
+  - Day 9-14: Launch and iterate
+- **Critical risks identified:**
+  - Data not in app DB (102K in raw SQLite, only 500 in app)
+  - WhatsApp API requires Twilio verification
+  - Skill extraction not run in production
+- Created `docs/crucible-12-rounds.md` with full transcript
+- Updated todos with new implementation priorities
+- **Condition of approval:** Do not pivot for 8 days. Ship on Day 8.
+
+### 2026-02-14 (Day 1-2 Sprint: Data Migration)
+- Created migration scripts:
+  - `backend/scripts/migrate_raw_jobs.py` - Extract jobs from raw SQLite → JSON export
+  - `backend/scripts/import_jobs_to_db.py` - Import JSON → PostgreSQL/SQLite app DB
+- **Migration completed (LOCAL):**
+  - 102,169 jobs processed
+  - 97.7% have organization names
+  - 99.4% have location info
+  - 90.9% have seniority level
+  - 99.9% have education requirements
+  - Output: `data/migration/jobs_export.json` (688 MB)
+- **Local SQLite import verified:**
+  - 102,169 jobs in `job_post`
+  - 2,933 organizations
+  - 925 locations
+- **Pending: Upload to VPS and import into PostgreSQL**
+- Files created:
+  - `backend/scripts/migrate_raw_jobs.py`
+  - `backend/scripts/import_jobs_to_db.py`
+  - `backend/data/migration/jobs_export.json` (not committed - too large)
 
 ### 2026-02-14 (Scope Cleanup)
 - **Scope Creep Reduction**: Moved ~3,000 lines of incomplete/speculative features to `later_features/`:

@@ -65,6 +65,7 @@ data/samples/*.json
 *.parquet
 *.pkl
 *.joblib
+backend/data/migration/jobs_export.json
 
 # Logs
 logs/
@@ -81,3 +82,4 @@ temp/
 
 # Notebooks
 .ipynb_checkpoints/
+.worktrees/

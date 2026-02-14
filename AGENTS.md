@@ -58,3 +58,11 @@ Build Next Step: job matching + labor market intelligence from jobs.sqlite3.
 ## Safety / Privacy
 - Scraped text may contain sensitive info.
 - Redact personal data before committing samples.
+
+<!-- pilot-core:begin -->
+## pilot-core
+- Load and follow `.pilot/templates/agent-rules.md`.
+- Source of truth for task state: `.pilot/tasks/*.json`.
+- Use `pilot handoff` and `pilot resume` for session continuity.
+- Active provider adapter: `codex`.
+<!-- pilot-core:end -->

@@ -67,6 +67,11 @@ Pillow==10.4.0
 python-slugify==8.0.4
 phonenumbers==8.13.40
 
+# Visualization (for career insights)
+matplotlib==3.9.1
+wordcloud==1.9.3
+seaborn==0.13.2
+
 # LinkedIn Integration
 linkedin-api==2.2.0
 requests-oauthlib==1.3.1
