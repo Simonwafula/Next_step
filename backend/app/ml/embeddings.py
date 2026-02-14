@@ -152,8 +152,6 @@ def run_incremental_embeddings(
 
     Returns a summary dict suitable for ProcessingLog.
     """
-    import json
-
     from sqlalchemy import func, select
 
     from ..db.models import JobEmbedding, JobPost
@@ -196,7 +194,9 @@ def run_incremental_embeddings(
                 JobEmbedding(
                     job_id=job_id,
                     model_name=model_name,
-                    vector_json=json.dumps(vec) if isinstance(vec, list) else vec,
+                    # Store as a JSON array (list[float]) so consumers can use it
+                    # directly without needing json.loads(...).
+                    vector_json=vec,
                 )
             )
 

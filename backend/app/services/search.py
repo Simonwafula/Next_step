@@ -198,6 +198,11 @@ def search_jobs(
             try:
                 # In Postgres this would be a real vector; in SQLite it's JSON
                 job_vec = emb_record.vector_json
+                if isinstance(job_vec, str):
+                    # Back-compat: older data stored the vector as a JSON string.
+                    import json
+
+                    job_vec = json.loads(job_vec)
                 similarity_score = cosine_similarity(query_embedding, job_vec)
             except Exception:
                 similarity_score = 0.0
