@@ -43,6 +43,15 @@
   - [x] (T-304) explanation generator (`backend/app/services/search.py`)
   - [x] (T-305) tests for deterministic retrieval (`backend/test_integration.py`)
   - [x] (T-306) learned ranking/classification pipeline (LTR/classifier) for production relevance tuning
+    - [x] (T-306a) Core ranking module with feature extraction (`backend/app/ml/ranking.py`)
+    - [x] (T-306b) Training pipeline with user analytics (`backend/app/services/ranking_trainer.py`)
+    - [x] (T-306c) Integration with search service (`backend/app/services/search.py`)
+    - [x] (T-306d) CLI commands (train_ranking, ranking_info) (`backend/cli.py`)
+    - [x] (T-306e) Admin API endpoints (model-info, train) (`backend/app/api/admin_routes.py`)
+    - [x] (T-306f) Unit tests for ranking module (`backend/tests/test_ranking.py` — 11 tests)
+    - [x] (T-306g) Unit tests for training pipeline (`backend/tests/test_ranking_trainer.py` — 5 tests)
+    - [x] (T-306h) Integration tests for end-to-end ranking system (`backend/tests/test_ranking_integration.py` — 5 tests)
+    - Status: PRODUCTION — All tests passing (21 total), integrated with search, CLI, and admin APIs
 
 ## 3.1 Content Generation + RAG (Planned)
 - [ ] (T-800) production content generation with grounded retrieval
@@ -332,6 +341,18 @@
   - `/home/nextstep.co.ke/.venv/bin/ruff check .` (pass, VPS)
   - `/home/nextstep.co.ke/.venv/bin/ruff format --check .` (pass, VPS)
   - `/home/nextstep.co.ke/.venv/bin/pytest -q` (pass, VPS; 122 passed, 1 skipped)
+
+### 2026-02-07
+- (T-306h) Completed integration tests for ranking system:
+  - Created `backend/tests/test_ranking_integration.py` with 5 end-to-end integration tests.
+  - Fixed test schema mismatches (User.full_name, JobPost.url, UserAnalytics.event_data JSON structure).
+  - Fixed tuple return type handling from collect_training_data and train_ranking_model APIs.
+  - All ranking tests now passing: 11 unit tests (test_ranking.py) + 5 unit tests (test_ranking_trainer.py) + 5 integration tests (test_ranking_integration.py) = 21 total.
+  - Full backend test suite verified: 142 tests passing with no regressions.
+  - Status: PRODUCTION — Ranking system fully integrated and verified with search, CLI, and admin APIs.
+- Tests run:
+  - `backend/venv3.11/bin/pytest tests/test_ranking_integration.py -v` (5 passed)
+  - `backend/venv3.11/bin/pytest tests/ -v --tb=short` (142 passed, 7 warnings)
 
 ### 2026-01-26
 - Added SkillNER-backed skill extraction adapter with local data files and custom mapping expansion.
