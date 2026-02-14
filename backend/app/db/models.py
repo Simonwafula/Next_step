@@ -1,17 +1,17 @@
-from sqlalchemy.orm import DeclarativeBase, relationship, Mapped, mapped_column
-from sqlalchemy import (
-    String,
-    Integer,
-    Text,
-    ForeignKey,
-    Float,
-    DateTime,
-    Boolean,
-    Index,
-)
 import os
 
-# Use PostgreSQL JSONB when available, but fall back to generic JSON for SQLite
+from sqlalchemy import (
+    Boolean,
+    DateTime,
+    Float,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+)
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
+
 if os.getenv("DATABASE_URL", "").startswith("sqlite"):
     from sqlalchemy import JSON as JSONB
 
@@ -23,9 +23,9 @@ else:
         from sqlalchemy import JSON as JSONB
 
         UUID = String(36)
+import uuid
 from datetime import datetime
 from typing import List
-import uuid
 
 
 class Base(DeclarativeBase):
@@ -80,9 +80,6 @@ class JobPost(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String(120))
     url: Mapped[str] = mapped_column(Text, unique=True)
-    # Canonical URLs for product behavior:
-    # - source_url: where the posting was discovered (crawl/listing URL)
-    # - application_url: where the user should be sent to apply (may equal source_url)
     source_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     application_url: Mapped[str | None] = mapped_column(Text, nullable=True)
     url_hash: Mapped[str | None] = mapped_column(String(32), index=True)
@@ -99,16 +96,14 @@ class JobPost(Base):
     currency: Mapped[str | None] = mapped_column(String(10))
     seniority: Mapped[str | None] = mapped_column(String(50))
     description_raw: Mapped[str | None] = mapped_column(Text)
-    description_clean: Mapped[str | None] = mapped_column(Text)  # Added for A2 in plan
+    description_clean: Mapped[str | None] = mapped_column(Text)
     requirements_raw: Mapped[str | None] = mapped_column(Text)
     education: Mapped[str | None] = mapped_column(String(120))
     attachment_flag: Mapped[bool] = mapped_column(Boolean, default=False)
     quality_score: Mapped[float | None] = mapped_column(Float)
     processed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    # Soft delete / quarantine control for low-quality or non-job pages.
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, index=True)
 
-    # Relationships
     organization: Mapped["Organization"] = relationship(
         "Organization", foreign_keys=[org_id], lazy="select"
     )
@@ -123,37 +118,34 @@ class JobPost(Base):
     )
 
 
-class JobDedupeMap(Base):  # B3.3 in plan
+class JobDedupeMap(Base):
     __tablename__ = "job_dedupe_map"
     job_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), primary_key=True)
     canonical_job_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), index=True)
     similarity_score: Mapped[float] = mapped_column(Float)
 
 
-class JobEntities(Base):  # B3.4 in plan
+class JobEntities(Base):
     __tablename__ = "job_entities"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     job_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), unique=True)
-    entities: Mapped[dict] = mapped_column(
-        JSONB, default=dict
-    )  # JSON storage for confidence/evidence
+    entities: Mapped[dict] = mapped_column(JSONB, default=dict)
     skills: Mapped[list] = mapped_column(JSONB, default=list)
     tools: Mapped[list] = mapped_column(JSONB, default=list)
     education: Mapped[dict] = mapped_column(JSONB, default=dict)
     experience: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
-class JobEmbedding(Base):  # B3.5 in plan
+class JobEmbedding(Base):
     __tablename__ = "job_embeddings"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     job_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"))
     model_name: Mapped[str] = mapped_column(String(100))
     # Note: vector type will be added via pgvector extension in Postgres
-    # For now we use the existing text/blob fallback if needed, but the migration will use 'vector'
     vector_json: Mapped[dict] = mapped_column(JSONB, nullable=True)
 
 
-class SkillTrendsMonthly(Base):  # B3.6.1 in plan
+class SkillTrendsMonthly(Base):
     __tablename__ = "skill_trends_monthly"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     skill: Mapped[str] = mapped_column(String(120), index=True)
@@ -163,7 +155,7 @@ class SkillTrendsMonthly(Base):  # B3.6.1 in plan
     share: Mapped[float] = mapped_column(Float, default=0.0)
 
 
-class RoleEvolution(Base):  # B3.6.2 in plan
+class RoleEvolution(Base):
     __tablename__ = "role_evolution"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title_norm: Mapped[str] = mapped_column(String(120), index=True)
@@ -171,7 +163,7 @@ class RoleEvolution(Base):  # B3.6.2 in plan
     top_skills: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
-class TitleAdjacency(Base):  # B3.6.3 in plan
+class TitleAdjacency(Base):
     __tablename__ = "title_adjacency"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     title_a: Mapped[str] = mapped_column(String(120), index=True)
@@ -179,7 +171,7 @@ class TitleAdjacency(Base):  # B3.6.3 in plan
     similarity: Mapped[float] = mapped_column(Float)
 
 
-class TenderNotice(Base):  # T-500
+class TenderNotice(Base):
     __tablename__ = "tender_notice"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source: Mapped[str] = mapped_column(String(120), index=True)
@@ -196,7 +188,7 @@ class TenderNotice(Base):  # T-500
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
-class SignalEvidence(Base):  # T-503
+class SignalEvidence(Base):
     __tablename__ = "signal_evidence"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     evidence_type: Mapped[str] = mapped_column(String(120), index=True)
@@ -208,7 +200,7 @@ class SignalEvidence(Base):  # T-503
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
-class TaskRoleMapping(Base):  # T-501
+class TaskRoleMapping(Base):
     __tablename__ = "task_role_mapping"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     task_text: Mapped[str] = mapped_column(Text)
@@ -218,7 +210,7 @@ class TaskRoleMapping(Base):  # T-501
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
-class HiringSignal(Base):  # T-502
+class HiringSignal(Base):
     __tablename__ = "hiring_signal"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     signal_type: Mapped[str] = mapped_column(String(120), index=True)
@@ -232,7 +224,7 @@ class HiringSignal(Base):  # T-502
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
-class IngestionState(Base):  # T-601
+class IngestionState(Base):
     __tablename__ = "ingestion_state"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     source_key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
@@ -251,7 +243,6 @@ class JobSkill(Base):
     skill_id: Mapped[int] = mapped_column(ForeignKey("skill.id"))
     confidence: Mapped[float] = mapped_column(Float, default=0.5)
 
-    # Relationships
     job_post: Mapped["JobPost"] = relationship(
         "JobPost", back_populates="skills", lazy="select"
     )
@@ -279,7 +270,6 @@ class MetricsDaily(Base):
     top_skills_json: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
-# User Authentication & Profile Models
 class User(Base):
     __tablename__ = "users"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -293,16 +283,13 @@ class User(Base):
     whatsapp_number: Mapped[str | None] = mapped_column(String(20), nullable=True)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    subscription_tier: Mapped[str] = mapped_column(
-        String(50), default="basic"
-    )  # basic, professional, enterprise
+    subscription_tier: Mapped[str] = mapped_column(String(50), default="basic")
     subscription_expires: Mapped[datetime | None] = mapped_column(
         DateTime, nullable=True
     )
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_login: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # Relationships
     profile: Mapped["UserProfile"] = relationship(
         "UserProfile", back_populates="user", uselist=False
     )
@@ -325,27 +312,18 @@ class UserProfile(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), unique=True)
 
-    # Career Information
     current_role: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    experience_level: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
-    )  # entry, mid, senior, executive
+    experience_level: Mapped[str | None] = mapped_column(String(50), nullable=True)
     education: Mapped[str | None] = mapped_column(Text, nullable=True)
-    skills: Mapped[dict] = mapped_column(
-        JSONB, default=dict
-    )  # {"skill_name": confidence_score}
+    skills: Mapped[dict] = mapped_column(JSONB, default=dict)
     career_goals: Mapped[str | None] = mapped_column(Text, nullable=True)
     preferred_locations: Mapped[list] = mapped_column(JSONB, default=list)
-    salary_expectations: Mapped[dict] = mapped_column(
-        JSONB, default=dict
-    )  # {"min": 50000, "max": 80000, "currency": "KSH"}
+    salary_expectations: Mapped[dict] = mapped_column(JSONB, default=dict)
 
-    # Preferences
     job_alert_preferences: Mapped[dict] = mapped_column(JSONB, default=dict)
     notification_preferences: Mapped[dict] = mapped_column(JSONB, default=dict)
     privacy_settings: Mapped[dict] = mapped_column(JSONB, default=dict)
 
-    # Profile completeness and optimization
     profile_completeness: Mapped[float] = mapped_column(Float, default=0.0)
     cv_data: Mapped[dict] = mapped_column(JSONB, default=dict)
     linkedin_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
@@ -355,7 +333,6 @@ class UserProfile(Base):
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    # Relationships
     user: Mapped["User"] = relationship("User", back_populates="profile")
 
 
@@ -366,11 +343,8 @@ class SavedJob(Base):
     job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"))
     saved_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    folder: Mapped[str | None] = mapped_column(
-        String(100), nullable=True
-    )  # For organizing saved jobs
+    folder: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
-    # Relationships
     user: Mapped["User"] = relationship("User", back_populates="saved_jobs")
     job_post: Mapped["JobPost"] = relationship("JobPost")
 
@@ -384,29 +358,22 @@ class JobApplication(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"))
-    status: Mapped[str] = mapped_column(
-        String(50), default="applied"
-    )  # applied, screening, interview, offer, rejected, withdrawn
+    status: Mapped[str] = mapped_column(String(50), default="applied")
     applied_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_updated: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
     )
 
-    # Application details
     cover_letter: Mapped[str | None] = mapped_column(Text, nullable=True)
     cv_version: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    application_source: Mapped[str | None] = mapped_column(
-        String(100), nullable=True
-    )  # direct, platform, referral
+    application_source: Mapped[str | None] = mapped_column(String(100), nullable=True)
     referrer_info: Mapped[dict] = mapped_column(JSONB, default=dict)
 
-    # Interview and follow-up tracking
     interview_dates: Mapped[list] = mapped_column(JSONB, default=list)
     feedback_received: Mapped[str | None] = mapped_column(Text, nullable=True)
     salary_offered: Mapped[dict] = mapped_column(JSONB, default=dict)
     notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Relationships
     user: Mapped["User"] = relationship("User", back_populates="job_applications")
     job_post: Mapped["JobPost"] = relationship("JobPost")
 
@@ -420,18 +387,13 @@ class SearchHistory(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     query: Mapped[str] = mapped_column(String(500))
-    filters: Mapped[dict] = mapped_column(
-        JSONB, default=dict
-    )  # location, seniority, etc.
+    filters: Mapped[dict] = mapped_column(JSONB, default=dict)
     results_count: Mapped[int] = mapped_column(Integer, default=0)
-    clicked_jobs: Mapped[list] = mapped_column(
-        JSONB, default=list
-    )  # job_post_ids that were clicked
+    clicked_jobs: Mapped[list] = mapped_column(JSONB, default=list)
     searched_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, index=True
     )
 
-    # Relationships
     user: Mapped["User"] = relationship("User", back_populates="search_history")
 
 
@@ -439,20 +401,13 @@ class UserNotification(Base):
     __tablename__ = "user_notifications"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
-    type: Mapped[str] = mapped_column(
-        String(50)
-    )  # job_alert, career_advice, system, marketing
+    type: Mapped[str] = mapped_column(String(50))
     title: Mapped[str] = mapped_column(String(255))
     message: Mapped[str] = mapped_column(Text)
-    data: Mapped[dict] = mapped_column(
-        JSONB, default=dict
-    )  # Additional structured data
+    data: Mapped[dict] = mapped_column(JSONB, default=dict)
 
-    # Delivery tracking
     is_read: Mapped[bool] = mapped_column(Boolean, default=False)
-    delivered_via: Mapped[list] = mapped_column(
-        JSONB, default=list
-    )  # email, whatsapp, push, in_app
+    delivered_via: Mapped[list] = mapped_column(JSONB, default=list)
     delivery_status: Mapped[dict] = mapped_column(JSONB, default=dict)
 
     created_at: Mapped[datetime] = mapped_column(
@@ -461,37 +416,31 @@ class UserNotification(Base):
     read_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # Relationships
     user: Mapped["User"] = relationship("User", back_populates="notifications")
 
 
-# Enhanced Job Matching and Recommendations
 class UserJobRecommendation(Base):
     __tablename__ = "user_job_recommendations"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"))
 
-    # Recommendation scoring
-    match_score: Mapped[float] = mapped_column(Float)  # 0.0 to 1.0
+    match_score: Mapped[float] = mapped_column(Float)
     skill_match_score: Mapped[float] = mapped_column(Float)
     location_match_score: Mapped[float] = mapped_column(Float)
     salary_match_score: Mapped[float] = mapped_column(Float)
     experience_match_score: Mapped[float] = mapped_column(Float)
 
-    # Explanation and reasoning
     match_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
     missing_skills: Mapped[list] = mapped_column(JSONB, default=list)
     matching_skills: Mapped[list] = mapped_column(JSONB, default=list)
 
-    # Recommendation metadata
     recommended_at: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, index=True
     )
     algorithm_version: Mapped[str] = mapped_column(String(50), default="v1.0")
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
 
-    # User interaction tracking
     viewed: Mapped[bool] = mapped_column(Boolean, default=False)
     clicked: Mapped[bool] = mapped_column(Boolean, default=False)
     dismissed: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -501,17 +450,13 @@ class UserJobRecommendation(Base):
     )
 
 
-# Company Reviews and Ratings
 class CompanyReview(Base):
     __tablename__ = "company_reviews"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     organization_id: Mapped[int] = mapped_column(ForeignKey("organization.id"))
-    user_id: Mapped[int | None] = mapped_column(
-        ForeignKey("users.id"), nullable=True
-    )  # Anonymous reviews allowed
+    user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
-    # Review content
-    overall_rating: Mapped[float] = mapped_column(Float)  # 1.0 to 5.0
+    overall_rating: Mapped[float] = mapped_column(Float)
     work_life_balance: Mapped[float | None] = mapped_column(Float, nullable=True)
     compensation: Mapped[float | None] = mapped_column(Float, nullable=True)
     career_growth: Mapped[float | None] = mapped_column(Float, nullable=True)
@@ -524,47 +469,33 @@ class CompanyReview(Base):
     cons: Mapped[str | None] = mapped_column(Text, nullable=True)
     advice_to_management: Mapped[str | None] = mapped_column(Text, nullable=True)
 
-    # Review metadata
     job_title: Mapped[str | None] = mapped_column(String(255), nullable=True)
-    employment_status: Mapped[str | None] = mapped_column(
-        String(50), nullable=True
-    )  # current, former
+    employment_status: Mapped[str | None] = mapped_column(String(50), nullable=True)
     employment_duration: Mapped[str | None] = mapped_column(String(100), nullable=True)
 
     is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
     is_anonymous: Mapped[bool] = mapped_column(Boolean, default=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
-    # Moderation
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
     moderation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
-# Skills Assessment and Certification
 class SkillAssessment(Base):
     __tablename__ = "skill_assessments"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
     skill_id: Mapped[int] = mapped_column(ForeignKey("skill.id"))
 
-    # Assessment results
-    score: Mapped[float] = mapped_column(Float)  # 0.0 to 100.0
-    level: Mapped[str] = mapped_column(
-        String(50)
-    )  # beginner, intermediate, advanced, expert
-    percentile: Mapped[float | None] = mapped_column(
-        Float, nullable=True
-    )  # Compared to other users
+    score: Mapped[float] = mapped_column(Float)
+    level: Mapped[str] = mapped_column(String(50))
+    percentile: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    # Assessment metadata
-    assessment_type: Mapped[str] = mapped_column(
-        String(50)
-    )  # quiz, practical, portfolio
+    assessment_type: Mapped[str] = mapped_column(String(50))
     questions_total: Mapped[int] = mapped_column(Integer)
     questions_correct: Mapped[int] = mapped_column(Integer)
     time_taken_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
 
-    # Certification
     is_certified: Mapped[bool] = mapped_column(Boolean, default=False)
     certificate_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     expires_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
@@ -574,29 +505,19 @@ class SkillAssessment(Base):
     __table_args__ = (Index("idx_user_skill_assessment", "user_id", "skill_id"),)
 
 
-# Real-time Job Alerts
 class JobAlert(Base):
     __tablename__ = "job_alerts"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"))
 
-    # Alert criteria
     name: Mapped[str] = mapped_column(String(255))
     query: Mapped[str] = mapped_column(String(500))
-    filters: Mapped[dict] = mapped_column(
-        JSONB, default=dict
-    )  # location, salary, seniority, etc.
+    filters: Mapped[dict] = mapped_column(JSONB, default=dict)
 
-    # Alert settings
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
-    frequency: Mapped[str] = mapped_column(
-        String(50), default="daily"
-    )  # immediate, daily, weekly
-    delivery_methods: Mapped[list] = mapped_column(
-        JSONB, default=list
-    )  # email, whatsapp, push
+    frequency: Mapped[str] = mapped_column(String(50), default="daily")
+    delivery_methods: Mapped[list] = mapped_column(JSONB, default=list)
 
-    # Alert performance
     jobs_found_total: Mapped[int] = mapped_column(Integer, default=0)
     last_triggered: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     last_jobs_count: Mapped[int] = mapped_column(Integer, default=0)
@@ -607,7 +528,6 @@ class JobAlert(Base):
     )
 
 
-# Interview Preparation and Tracking
 class InterviewPreparation(Base):
     __tablename__ = "interview_preparations"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
@@ -616,22 +536,15 @@ class InterviewPreparation(Base):
         ForeignKey("job_applications.id"), nullable=True
     )
 
-    # Interview details
     company_name: Mapped[str] = mapped_column(String(255))
     role_title: Mapped[str] = mapped_column(String(255))
-    interview_type: Mapped[str] = mapped_column(
-        String(50)
-    )  # phone, video, in_person, technical
+    interview_type: Mapped[str] = mapped_column(String(50))
     scheduled_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
 
-    # Preparation materials
     questions_practiced: Mapped[list] = mapped_column(JSONB, default=list)
     research_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
-    preparation_score: Mapped[float | None] = mapped_column(
-        Float, nullable=True
-    )  # 0.0 to 100.0
+    preparation_score: Mapped[float | None] = mapped_column(Float, nullable=True)
 
-    # AI-generated content
     suggested_questions: Mapped[list] = mapped_column(JSONB, default=list)
     company_insights: Mapped[dict] = mapped_column(JSONB, default=dict)
     role_specific_tips: Mapped[list] = mapped_column(JSONB, default=list)
@@ -642,25 +555,60 @@ class InterviewPreparation(Base):
     )
 
 
-# Analytics and User Behavior Tracking
 class UserAnalytics(Base):
     __tablename__ = "user_analytics"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
     user_id: Mapped[int | None] = mapped_column(ForeignKey("users.id"), nullable=True)
 
-    # Session tracking
     session_id: Mapped[str] = mapped_column(String(100))
-    event_type: Mapped[str] = mapped_column(
-        String(50)
-    )  # search, view_job, save_job, apply, etc.
+    event_type: Mapped[str] = mapped_column(String(50))
     event_data: Mapped[dict] = mapped_column(JSONB, default=dict)
 
-    # Context
     page_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
     referrer: Mapped[str | None] = mapped_column(String(500), nullable=True)
     user_agent: Mapped[str | None] = mapped_column(String(500), nullable=True)
     ip_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
 
+    timestamp: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
+
+
+class BetaSignup(Base):
+    """Beta program participant (VIP Beta Program for proof generation)."""
+
+    __tablename__ = "beta_signups"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    full_name: Mapped[str] = mapped_column(String(255))
+    email: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    phone: Mapped[str] = mapped_column(String(20))
+    university: Mapped[str] = mapped_column(String(255), index=True)
+    year_of_study: Mapped[str] = mapped_column(String(50))
+    field_of_study: Mapped[str] = mapped_column(String(255))
+    skills: Mapped[str] = mapped_column(Text)
+    career_goals: Mapped[str] = mapped_column(Text)
+
+    status: Mapped[str] = mapped_column(String(50), default="pending")
+    signed_up_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    activated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    rewarded_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    profile_completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    jobs_viewed: Mapped[int] = mapped_column(Integer, default=0)
+    jobs_saved: Mapped[int] = mapped_column(Integer, default=0)
+    jobs_applied: Mapped[int] = mapped_column(Integer, default=0)
+    searches_performed: Mapped[int] = mapped_column(Integer, default=0)
+    last_active_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class BetaActivity(Base):
+    """Track beta user activity for analytics and ROI proof."""
+
+    __tablename__ = "beta_activities"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    beta_id: Mapped[int] = mapped_column(ForeignKey("beta_signups.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String(50), index=True)
+    event_data: Mapped[dict] = mapped_column(JSONB, default=dict)
     timestamp: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, index=True
     )
