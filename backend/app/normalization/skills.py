@@ -135,14 +135,16 @@ def _should_keep_skill_match(
 
 
 def _skillner_enabled() -> bool:
-    return os.getenv("SKILL_EXTRACTOR_MODE", "skillner").lower() in {
+    # Default to "hybrid" so deterministic patterns can backstop SkillNER misses
+    # (e.g., common terms like "Excel") without requiring env configuration.
+    return os.getenv("SKILL_EXTRACTOR_MODE", "hybrid").lower() in {
         "skillner",
         "hybrid",
     }
 
 
 def _pattern_enabled() -> bool:
-    return os.getenv("SKILL_EXTRACTOR_MODE", "skillner").lower() in {
+    return os.getenv("SKILL_EXTRACTOR_MODE", "hybrid").lower() in {
         "patterns",
         "hybrid",
     }
@@ -197,19 +199,19 @@ def _upsert_skill_result(
 
 def _extract_pattern_matches(text: str) -> List[Dict[str, Any]]:
     matches = []
-    lowered = text.lower()
     for skill, needles in SKILL_PATTERNS.items():
         for needle in needles:
             needle_clean = needle.strip()
             if not needle_clean:
                 continue
-            match = re.search(re.escape(needle_clean), lowered)
+            pattern = _build_word_boundary_pattern(needle_clean)
+            match = pattern.search(text)
             if match:
                 matches.append(
                     {
                         "skill": skill,
                         "confidence": 0.7,
-                        "evidence": lowered[match.start() : match.end()],
+                        "evidence": text[match.start() : match.end()].lower(),
                         "start": match.start(),
                         "end": match.end(),
                         "source": "pattern",
