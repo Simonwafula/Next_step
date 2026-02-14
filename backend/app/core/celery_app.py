@@ -14,6 +14,7 @@ celery_app = Celery(
         "app.tasks.scraper_tasks",
         "app.tasks.gov_monitor_tasks",
         "app.tasks.processing_tasks",
+        "app.tasks.pipeline_tasks",
     ],
 )
 
@@ -76,12 +77,20 @@ celery_app.conf.update(
             "args": ["weekly"],
             "options": {"queue": "processing"},
         },
+        # Optional: Run the production incremental pipeline every 6 hours.
+        # Guarded by `ENABLE_CELERY_PIPELINE=true` in the task itself.
+        "incremental-pipeline": {
+            "task": "app.tasks.pipeline_tasks.run_incremental_pipeline",
+            "schedule": 60.0 * 60.0 * 6.0,  # 6 hours
+            "options": {"queue": "workflow"},
+        },
     },
     task_routes={
         "app.tasks.workflow_tasks.*": {"queue": "workflow"},
         "app.tasks.scraper_tasks.*": {"queue": "scrapers"},
         "app.tasks.gov_monitor_tasks.*": {"queue": "scrapers"},
         "app.tasks.processing_tasks.*": {"queue": "processing"},
+        "app.tasks.pipeline_tasks.*": {"queue": "workflow"},
     },
 )
 

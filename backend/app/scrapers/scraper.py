@@ -43,7 +43,13 @@ class JobListing:
 
 
 class SiteSpider:
-    def __init__(self, site_name: str):
+    def __init__(
+        self,
+        site_name: str,
+        *,
+        use_postgres: bool | None = None,
+        max_pages: int | None = None,
+    ):
         cfg = get_site_cfg(site_name)
         self.base_url = cfg["base_url"]
         self.list_path = cfg["listing_path"]
@@ -51,9 +57,15 @@ class SiteSpider:
         self.title_attr = cfg["title_attribute"]
         self.content_sel = cfg["content_selector"]
 
+        # Default behavior is config-driven; pipeline/orchestrators can override.
+        if use_postgres is None:
+            use_postgres = USE_POSTGRES
+        self.use_postgres = bool(use_postgres)
+        self.max_pages = max_pages
+
         self.session = get_session()
         # Use PostgreSQL or SQLite based on configuration
-        if USE_POSTGRES:
+        if self.use_postgres:
             self.db = PostgresJobDatabase()
         else:
             self.db = Database()
@@ -79,13 +91,16 @@ class SiteSpider:
         node = soup.select_one(self.content_sel)
         return node.get_text(strip=True) if node else ""
 
-    def run(self):
+    def run(self) -> int:
         self.db.connect()
         logging.info("Starting scraper run until non-200 or empty page...")
 
         page = 1
         jobs = []
         while True:
+            if self.max_pages is not None and page > self.max_pages:
+                logging.info("Reached max_pages=%s, stopping.", self.max_pages)
+                break
             url = self.base_url + self.list_path.format(page=page)
             resp = self.fetch(url)
             if not resp or resp.status_code != 200:
@@ -124,6 +139,7 @@ class SiteSpider:
         inserted = self.db.batch_insert(rows)
         self.db.close()
         logging.info(f"Inserted {inserted} jobs into database. Scraper done.")
+        return int(inserted)
 
 
 def main():
@@ -136,12 +152,36 @@ def main():
         choices=SITES.keys(),
         help="Which site to scrape (key in config.yaml)",
     )
+    parser.add_argument(
+        "--max-pages",
+        type=int,
+        default=None,
+        help="Stop after scraping this many listing pages (default: no limit)",
+    )
+    db_mode = parser.add_mutually_exclusive_group()
+    db_mode.add_argument(
+        "--postgres",
+        action="store_true",
+        help="Force PostgreSQL writes (ignores USE_POSTGRES env)",
+    )
+    db_mode.add_argument(
+        "--sqlite",
+        action="store_true",
+        help="Force SQLite writes (ignores USE_POSTGRES env)",
+    )
     args = parser.parse_args()
 
     setup_logging()
     logging.info(f"Running scraper for site: {args.site}")
-    spider = SiteSpider(args.site)
-    spider.run()
+    use_postgres = None
+    if args.postgres:
+        use_postgres = True
+    elif args.sqlite:
+        use_postgres = False
+
+    spider = SiteSpider(args.site, use_postgres=use_postgres, max_pages=args.max_pages)
+    inserted = spider.run()
+    logging.info("Inserted %s new jobs.", inserted)
 
 
 if __name__ == "__main__":

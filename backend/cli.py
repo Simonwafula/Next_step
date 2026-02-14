@@ -14,10 +14,16 @@ from app.ingestion.runner import (  # noqa: E402
 )
 from app.ml.embeddings import run_incremental_embeddings  # noqa: E402
 from app.normalization.dedupe import run_incremental_dedup  # noqa: E402
+from app.scrapers.main import scrape_all_sites  # noqa: E402
 from app.services.analytics import (  # noqa: E402
     refresh_analytics_baseline,
     run_drift_checks,
 )
+from app.services.pipeline_service import (  # noqa: E402
+    PipelineOptions,
+    run_incremental_pipeline,
+)
+from app.services.post_ingestion_processing_service import process_job_posts  # noqa: E402
 from app.services.processing_log_service import (  # noqa: E402
     log_processing_event,
 )
@@ -49,6 +55,97 @@ def ingest_incremental():
     try:
         count = run_incremental_sources(db)
         typer.echo(f"Incremental ingestion complete. Added {count} records.")
+    finally:
+        db.close()
+
+
+@app.command()
+def scrape_sites(
+    max_pages: int = typer.Option(5, help="Scrape only the first N pages per site"),
+    use_postgres: bool = typer.Option(
+        True, help="Write scraped jobs directly into the app DB (recommended)"
+    ),
+):
+    """Scrape configured HTML job boards and store results."""
+    typer.echo("Starting site scraping...")
+    result = scrape_all_sites(use_postgres=use_postgres, max_pages=max_pages)
+    typer.echo(
+        f"Scraping complete. Inserted {result.get('inserted_total', 0)} new jobs."
+    )
+
+
+@app.command()
+def post_process(
+    source: str = typer.Option(
+        None, help="Limit post-processing to a single job_post.source"
+    ),
+    limit: int = typer.Option(2000, help="Max jobs to process per run"),
+):
+    """Run deterministic post-ingestion processing (entities, skills, quality score)."""
+    typer.echo("Starting post-ingestion processing...")
+    db = SessionLocal()
+    try:
+        result = process_job_posts(
+            db,
+            source=source,
+            limit=limit,
+            only_unprocessed=True,
+            dry_run=False,
+        )
+        log_processing_event(
+            db,
+            process_type="post_process",
+            status=result["status"],
+            message=f"Processed {result.get('processed', 0)} jobs",
+            details=result,
+        )
+        typer.echo(
+            "Post-process complete: "
+            f"{result.get('processed', 0)} processed (source={source or 'all'})."
+        )
+    finally:
+        db.close()
+
+
+@app.command()
+def pipeline(
+    strict: bool = typer.Option(
+        True,
+        help="Exit non-zero if any pipeline step errors",
+    ),
+    scrape: bool = typer.Option(True, help="Run HTML site scraping step"),
+    ingest: bool = typer.Option(True, help="Run incremental ingestion connectors step"),
+    process: bool = typer.Option(True, help="Run deterministic post-processing step"),
+    dedupe: bool = typer.Option(True, help="Run incremental dedupe step"),
+    embed: bool = typer.Option(True, help="Run incremental embeddings step"),
+    analytics: bool = typer.Option(True, help="Refresh analytics baselines"),
+    process_limit: int = typer.Option(2000, help="Max jobs to post-process"),
+    scraper_max_pages: int = typer.Option(5, help="Max pages to scrape per site"),
+):
+    """Run the full incremental production pipeline in one command."""
+    typer.echo("Starting incremental pipeline...")
+    db = SessionLocal()
+    try:
+        opts = PipelineOptions(
+            ingest_incremental=ingest,
+            scrape_sites=scrape,
+            post_process=process,
+            post_process_limit=process_limit,
+            dedupe=dedupe,
+            embed=embed,
+            analytics=analytics,
+            scraper_max_pages=scraper_max_pages,
+            scraper_use_postgres=True,
+            strict=strict,
+        )
+        result = run_incremental_pipeline(db, opts=opts)
+        typer.echo(
+            f"Pipeline complete (status={result.get('status')}, "
+            f"duration={result.get('duration_seconds')}s)."
+        )
+    except Exception as exc:
+        typer.echo(f"Pipeline failed: {exc}", err=True)
+        raise typer.Exit(code=1)
     finally:
         db.close()
 

@@ -412,6 +412,9 @@
     <script>
         const API_BASE = document.body.getAttribute('data-api-base') || '/api';
 
+        let allUsers = []; // Store all users for filtering
+        let filteredUsers = []; // Currently filtered users
+
         async function loadDashboard() {
             try {
                 // Load stats
@@ -455,9 +458,15 @@
                 renderUniversityBreakdown(stats.by_university);
 
                 // Load recent users
-                const usersResponse = await fetch(`${API_BASE}/beta/users?limit=20`);
+                const usersResponse = await fetch(`${API_BASE}/beta/users?limit=50`);
                 const users = await usersResponse.json();
-                renderUsersTable(users.users || []);
+                allUsers = users.users || [];
+                filteredUsers = allUsers;
+
+                // Populate university filter
+                populateUniversityFilter(allUsers);
+
+                renderUsersTable(allUsers);
 
             } catch (error) {
                 console.error('Dashboard load error:', error);
@@ -516,25 +525,224 @@
             container.innerHTML = html;
         }
 
+        function calculateEngagementScore(user) {
+            let score = 0;
+            if (user.profile_completed) score += 25;
+            if (user.jobs_viewed > 0) score += 20;
+            if (user.jobs_saved > 0) score += 25;
+            if (user.jobs_applied > 0) score += 30;
+            return score;
+        }
+
+        function getEngagementBadge(score) {
+            if (score >= 75) return '<span style="color: #38a169; font-weight: 600;">🔥 High</span>';
+            if (score >= 50) return '<span style="color: #ed8936; font-weight: 600;">⚡ Medium</span>';
+            if (score >= 25) return '<span style="color: #f6ad55; font-weight: 600;">💤 Low</span>';
+            return '<span style="color: #a0aec0; font-weight: 600;">❌ None</span>';
+        }
+
         function renderUsersTable(users) {
             const tbody = document.getElementById('recentUsersTable');
             if (users.length === 0) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 24px;">No users yet</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 24px;">No users found</td></tr>';
                 return;
             }
 
-            const html = users.map(user => `
-                <tr>
-                    <td>${user.full_name}</td>
+            const html = users.map(user => {
+                const engagementScore = calculateEngagementScore(user);
+                return `
+                <tr data-email="${user.email}" data-university="${user.university}" data-status="${user.status}">
+                    <td>
+                        <div style="font-weight: 500;">${user.full_name}</div>
+                        <div style="font-size: 12px; color: #718096;">${user.email}</div>
+                    </td>
                     <td>${user.university}</td>
                     <td>Year ${user.year_of_study}</td>
                     <td>${user.field_of_study}</td>
                     <td><span class="status-badge ${user.status}">${user.status}</span></td>
-                    <td>${new Date(user.signed_up_at).toLocaleDateString()}</td>
-                    <td>${user.last_active_at ? new Date(user.last_active_at).toLocaleDateString() : '-'}</td>
+                    <td>
+                        <div style="font-weight: 600;">${engagementScore}%</div>
+                        <div style="font-size: 11px;">${getEngagementBadge(engagementScore)}</div>
+                    </td>
+                    <td>
+                        <div>${new Date(user.signed_up_at).toLocaleDateString()}</div>
+                        <div style="font-size: 11px; color: #718096;">${user.last_active_at ? new Date(user.last_active_at).toLocaleDateString() : 'Never'}</div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-primary" onclick="sendWhatsAppToUser('${user.phone}', '${user.full_name}')">📱</button>
+                        <button class="btn btn-sm btn-outline" onclick="viewUserDetails(${user.id})">👁️</button>
+                    </td>
                 </tr>
-            `).join('');
+            `}).join('');
             tbody.innerHTML = html;
+        }
+
+        // Filter functions
+        function populateUniversityFilter(users) {
+            const universities = [...new Set(users.map(u => u.university))].sort();
+            const select = document.getElementById('universityFilter');
+            universities.forEach(uni => {
+                const option = document.createElement('option');
+                option.value = uni;
+                option.textContent = uni;
+                select.appendChild(option);
+            });
+        }
+
+        function filterUsers() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('statusFilter').value;
+            const universityFilter = document.getElementById('universityFilter').value;
+
+            filteredUsers = allUsers.filter(user => {
+                const matchesSearch = !searchTerm ||
+                    user.full_name.toLowerCase().includes(searchTerm) ||
+                    user.email.toLowerCase().includes(searchTerm) ||
+                    user.university.toLowerCase().includes(searchTerm);
+
+                const matchesStatus = !statusFilter || user.status === statusFilter;
+                const matchesUniversity = !universityFilter || user.university === universityFilter;
+
+                return matchesSearch && matchesStatus && matchesUniversity;
+            });
+
+            renderUsersTable(filteredUsers);
+        }
+
+        function clearFilters() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('statusFilter').value = '';
+            document.getElementById('universityFilter').value = '';
+            filteredUsers = allUsers;
+            renderUsersTable(allUsers);
+        }
+
+        // Export function
+        function exportToCSV() {
+            if (filteredUsers.length === 0) {
+                alert('No users to export');
+                return;
+            }
+
+            const headers = ['Name', 'Email', 'Phone', 'University', 'Year', 'Field', 'Status', 'Engagement %', 'Jobs Viewed', 'Jobs Saved', 'Jobs Applied', 'Signed Up', 'Last Active'];
+            const rows = filteredUsers.map(user => {
+                const engagement = calculateEngagementScore(user);
+                return [
+                    user.full_name,
+                    user.email,
+                    user.phone,
+                    user.university,
+                    user.year_of_study,
+                    user.field_of_study,
+                    user.status,
+                    engagement,
+                    user.jobs_viewed,
+                    user.jobs_saved,
+                    user.jobs_applied,
+                    new Date(user.signed_up_at).toLocaleDateString(),
+                    user.last_active_at ? new Date(user.last_active_at).toLocaleDateString() : 'Never'
+                ];
+            });
+
+            const csvContent = [
+                headers.join(','),
+                ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+            ].join('\n');
+
+            const blob = new Blob([csvContent], { type: 'text/csv' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `beta-users-${new Date().toISOString().split('T')[0]}.csv`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            window.URL.revokeObjectURL(url);
+        }
+
+        // Bulk WhatsApp function
+        function sendBulkWhatsApp(status) {
+            const users = allUsers.filter(u => u.status === status);
+            if (users.length === 0) {
+                alert(`No ${status} users found`);
+                return;
+            }
+
+            const count = users.length;
+            const phones = users.map(u => u.phone).join(', ');
+
+            if (confirm(`Send WhatsApp message to ${count} ${status} users?\n\nPhones: ${phones.substring(0, 100)}${phones.length > 100 ? '...' : ''}`)) {
+                alert(`WhatsApp integration pending. Would send to ${count} users:\n${phones}`);
+                // TODO: Implement actual WhatsApp bulk send via backend endpoint
+            }
+        }
+
+        // Individual user actions
+        function sendWhatsAppToUser(phone, name) {
+            if (confirm(`Send WhatsApp message to ${name} (${phone})?`)) {
+                alert(`WhatsApp integration pending. Would send to ${phone}`);
+                // TODO: Implement actual WhatsApp send
+            }
+        }
+
+        function viewUserDetails(userId) {
+            const user = allUsers.find(u => u.id === userId);
+            if (!user) return;
+
+            const engagement = calculateEngagementScore(user);
+            const details = `
+📊 USER DETAILS
+
+Name: ${user.full_name}
+Email: ${user.email}
+Phone: ${user.phone}
+University: ${user.university}
+Year: ${user.year_of_study}
+Field: ${user.field_of_study}
+Status: ${user.status}
+
+ENGAGEMENT METRICS
+Overall Score: ${engagement}%
+Profile Completed: ${user.profile_completed ? 'Yes' : 'No'}
+Jobs Viewed: ${user.jobs_viewed}
+Jobs Saved: ${user.jobs_saved}
+Jobs Applied: ${user.jobs_applied}
+Searches: ${user.searches_performed}
+
+TIMELINE
+Signed Up: ${new Date(user.signed_up_at).toLocaleString()}
+Last Active: ${user.last_active_at ? new Date(user.last_active_at).toLocaleString() : 'Never'}
+            `;
+            alert(details);
+        }
+
+        // Engagement report
+        function showEngagementReport() {
+            const high = allUsers.filter(u => calculateEngagementScore(u) >= 75).length;
+            const medium = allUsers.filter(u => calculateEngagementScore(u) >= 50 && calculateEngagementScore(u) < 75).length;
+            const low = allUsers.filter(u => calculateEngagementScore(u) >= 25 && calculateEngagementScore(u) < 50).length;
+            const none = allUsers.filter(u => calculateEngagementScore(u) < 25).length;
+
+            const avgEngagement = allUsers.length > 0
+                ? Math.round(allUsers.reduce((sum, u) => sum + calculateEngagementScore(u), 0) / allUsers.length)
+                : 0;
+
+            const report = `
+📈 ENGAGEMENT REPORT
+
+Total Users: ${allUsers.length}
+Average Engagement: ${avgEngagement}%
+
+BREAKDOWN:
+🔥 High (75%+): ${high} users (${Math.round(high/allUsers.length*100)}%)
+⚡ Medium (50-74%): ${medium} users (${Math.round(medium/allUsers.length*100)}%)
+💤 Low (25-49%): ${low} users (${Math.round(low/allUsers.length*100)}%)
+❌ None (<25%): ${none} users (${Math.round(none/allUsers.length*100)}%)
+
+GOAL: 70%+ engagement rate for university pitch
+STATUS: ${avgEngagement >= 70 ? '✅ ACHIEVED' : `⏳ ${70 - avgEngagement}% to go`}
+            `;
+            alert(report);
         }
 
         // Load dashboard on page load

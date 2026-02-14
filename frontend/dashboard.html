@@ -47,6 +47,66 @@
 
         <section class="dashboard" id="dashboardApp" hidden>
             <div class="container">
+
+                <!-- Beta Program Progress (only for beta users) -->
+                <article class="panel beta-progress-panel" id="betaProgressPanel" style="display:none; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 24px; border-radius: 12px; margin-bottom: 24px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                        <div>
+                            <h3 style="margin: 0 0 4px; color: white;">🌟 VIP Beta Program</h3>
+                            <p style="margin: 0; opacity: 0.9; font-size: 14px;">You're part of the exclusive pilot group</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 32px; font-weight: 700;" id="betaDaysRemaining">-- days</div>
+                            <div style="font-size: 14px; opacity: 0.9;">until completion</div>
+                        </div>
+                    </div>
+                    <div style="background: rgba(255,255,255,0.1); padding: 16px; border-radius: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px;">
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">Engagement Score</div>
+                            <div style="font-size: 24px; font-weight: 600;" id="betaEngagementScore">--%</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">Profile Status</div>
+                            <div style="font-size: 16px; font-weight: 600;" id="betaProfileStatus">--</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">Jobs Viewed</div>
+                            <div style="font-size: 24px; font-weight: 600;" id="betaJobsViewed">--</div>
+                        </div>
+                        <div>
+                            <div style="font-size: 12px; opacity: 0.8; margin-bottom: 4px;">Applications</div>
+                            <div style="font-size: 24px; font-weight: 600;" id="betaApplications">--</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255,255,255,0.2);">
+                        <p style="margin: 0; font-size: 14px; opacity: 0.9;">🎁 <strong>Your Reward:</strong> Lifetime premium access + priority support</p>
+                    </div>
+                </article>
+
+                <!-- Quick Actions -->
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 24px;">
+                    <button onclick="window.location.href='index.html'" style="padding: 16px; background: white; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🔍</div>
+                        <div style="font-weight: 600; color: #2d3748; margin-bottom: 4px;">Search Jobs</div>
+                        <div style="font-size: 12px; color: #718096;">Find opportunities</div>
+                    </button>
+                    <button onclick="editProfile()" style="padding: 16px; background: white; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">👤</div>
+                        <div style="font-weight: 600; color: #2d3748; margin-bottom: 4px;">Edit Profile</div>
+                        <div style="font-size: 12px; color: #718096;">Update your info</div>
+                    </button>
+                    <button onclick="setupAlerts()" style="padding: 16px; background: white; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">🔔</div>
+                        <div style="font-weight: 600; color: #2d3748; margin-bottom: 4px;">Job Alerts</div>
+                        <div style="font-size: 12px; color: #718096;">Get notified</div>
+                    </button>
+                    <button onclick="viewActivity()" style="padding: 16px; background: white; border: 2px solid #e2e8f0; border-radius: 8px; cursor: pointer; text-align: left; transition: all 0.2s;">
+                        <div style="font-size: 24px; margin-bottom: 8px;">📊</div>
+                        <div style="font-weight: 600; color: #2d3748; margin-bottom: 4px;">My Activity</div>
+                        <div style="font-size: 12px; color: #718096;">Track progress</div>
+                    </button>
+                </div>
+
                 <div class="kpi-grid">
                     <article class="kpi-card" data-kpi="profile">
                         <p class="kpi-label">Profile completeness</p>
@@ -103,6 +163,45 @@
                         <div class="data-list" id="notificationsList"></div>
                     </article>
                 </div>
+
+                <!-- Profile Completion & Activity -->
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>✅ Complete Your Profile</h3>
+                            <span class="panel-note" id="profileCompletionPct">--% complete</span>
+                        </div>
+                        <div class="data-list" id="profileChecklistList">
+                            <div style="padding: 16px; color: #718096; font-size: 14px;">Loading checklist...</div>
+                        </div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>📈 Recent Activity</h3>
+                            <span class="panel-note">Last 7 days</span>
+                        </div>
+                        <div class="data-list" id="activityFeedList">
+                            <div style="padding: 16px; color: #718096; font-size: 14px;">No recent activity</div>
+                        </div>
+                    </article>
+                </div>
+
+                <!-- Career Momentum Tracker -->
+                <article class="panel" style="margin-bottom: 24px;">
+                    <div class="panel-header">
+                        <h3>🔥 Career Momentum</h3>
+                        <span class="panel-note">Your weekly activity</span>
+                    </div>
+                    <div style="padding: 16px;">
+                        <div id="momentumChart" style="display: flex; align-items: flex-end; justify-content: space-between; height: 120px; gap: 8px;">
+                            <!-- Weekly bars will be rendered here -->
+                        </div>
+                        <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: #718096;">
+                            <span>7 days ago</span>
+                            <span>Today</span>
+                        </div>
+                    </div>
+                </article>
 
                 <div class="dashboard-grid">
                     <article class="panel">

@@ -3,7 +3,7 @@
 import logging
 from datetime import datetime
 
-from app.db.database import get_session
+from app.db.database import get_db
 from app.db.models import BetaActivity, BetaSignup
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr
@@ -37,7 +37,7 @@ class BetaSignupResponse(BaseModel):
 
 @router.post("/signup", response_model=BetaSignupResponse)
 async def beta_signup(
-    signup: BetaSignupRequest, session: AsyncSession = Depends(get_session)
+    signup: BetaSignupRequest, session: AsyncSession = Depends(get_db)
 ):
     """
     Register a student for the VIP beta program.
@@ -59,7 +59,8 @@ async def beta_signup(
 
     if current_count >= 50:
         raise HTTPException(
-            status_code=400, detail="Beta program is full. Join the waitlist instead."
+            status_code=400,
+            detail="Beta program is full. Join the waitlist instead.",
         )
 
     beta_user = BetaSignup(
@@ -87,14 +88,16 @@ async def beta_signup(
     spots_remaining = 50 - (current_count + 1)
 
     return BetaSignupResponse(
-        message="Successfully registered for beta program! Check your email for next steps.",
+        message=(
+            "Successfully registered for beta program! Check your email for next steps."
+        ),
         beta_id=beta_user.id,
         spots_remaining=spots_remaining,
     )
 
 
 @router.get("/stats")
-async def beta_stats(session: AsyncSession = Depends(get_session)):
+async def beta_stats(session: AsyncSession = Depends(get_db)):
     """Get beta program statistics."""
 
     total = await session.execute(select(func.count()).select_from(BetaSignup))
@@ -135,7 +138,7 @@ async def beta_stats(session: AsyncSession = Depends(get_session)):
 
 @router.get("/activity")
 async def beta_activity(
-    session: AsyncSession = Depends(get_session), beta_id: int | None = None
+    session: AsyncSession = Depends(get_db), beta_id: int | None = None
 ):
     """Get beta user activity metrics."""
 
@@ -166,7 +169,7 @@ async def track_beta_activity(
     beta_id: int,
     event_type: str,
     event_data: dict[str, str] | None = None,
-    session: AsyncSession = Depends(get_session),
+    session: AsyncSession = Depends(get_db),
 ):
     """
     Track beta user activity.
@@ -209,7 +212,7 @@ async def track_beta_activity(
 
 
 @router.get("/metrics")
-async def beta_metrics(session: AsyncSession = Depends(get_session)):
+async def beta_metrics(session: AsyncSession = Depends(get_db)):
     """Detailed metrics for admin dashboard and ROI calculator."""
 
     profile_complete_query = await session.execute(
@@ -281,7 +284,7 @@ async def beta_metrics(session: AsyncSession = Depends(get_session)):
 
 
 @router.get("/users")
-async def beta_users(session: AsyncSession = Depends(get_session), limit: int = 20):
+async def beta_users(session: AsyncSession = Depends(get_db), limit: int = 20):
     """List beta users for admin dashboard."""
 
     query = select(BetaSignup).order_by(BetaSignup.signed_up_at.desc()).limit(limit)

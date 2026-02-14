@@ -73,6 +73,27 @@ const showGate = (message) => {
     }
 };
 
+function editProfile() {
+    window.location.href = 'index.html#account';
+}
+
+function setupAlerts() {
+    window.location.href = 'index.html#alerts';
+}
+
+function viewActivity() {
+    const section = document.getElementById('activityFeedList');
+    if (section) {
+        section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+    }
+    window.location.href = 'dashboard.html';
+}
+
+window.editProfile = editProfile;
+window.setupAlerts = setupAlerts;
+window.viewActivity = viewActivity;
+
 const renderList = (target, items, emptyMessage) => {
     if (!items.length) {
         target.innerHTML = `<p class="panel-note">${escapeHtml(emptyMessage)}</p>`;
