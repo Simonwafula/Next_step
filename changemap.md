@@ -293,9 +293,16 @@
   - `T-300` and `T-303` moved to partial (`[/]`) with ranking gap task `T-306`.
   - Added new section `3.1 Content Generation + RAG` (`T-800` to `T-805`) to track delivery explicitly.
 - (T-632) Fixed incremental embeddings batch pagination to avoid skipping rows when processing in small batches; removed OFFSET-based paging because the pending set shrinks as embeddings are inserted. Added regression test `test_batching_does_not_skip_pending_rows`.
+- (T-740) Built a runnable incremental pipeline for scheduled scraping + processing:
+  - New orchestrator: `backend/app/services/pipeline_service.py` (ingest-incremental -> scrape sites -> deterministic post-process -> dedupe -> embed -> analytics).
+  - New Celery task: `backend/app/tasks/pipeline_tasks.py` (+ Redis lock `backend/app/core/locks.py`); scheduled in `backend/app/core/celery_app.py` but guarded by `ENABLE_CELERY_PIPELINE=true`.
+  - Enhanced HTML SiteSpider scraper to support `max_pages`/DB-mode overrides + return inserted counts (`backend/app/scrapers/scraper.py`, `backend/app/scrapers/main.py`).
+  - Updated systemd template to call the unified pipeline command (`deploy/systemd/nextstep-pipeline.service`).
+- (FIX) Skill extraction: keep deterministic patterns enabled even when `SKILL_EXTRACTOR_MODE=skillner` so common skills (e.g., Excel) backstop SkillNER misses.
 - Tests run:
   - `backend/venv3.11/bin/ruff check .` (pass, local)
   - `backend/venv3.11/bin/ruff format --check .` (pass, local)
+  - `backend/venv3.11/bin/pytest -q` (pass; 161 passed, 1 skipped)
 
 ### 2026-02-10
 - (GOV) Added deterministic post-ingestion processing for `gov_careers` (persist title_norm, skills + evidence, education/experience/seniority/tasks, and `quality_score`) and admin endpoints to run it and inspect coverage (`/api/admin/government/process`, `/api/admin/government/quality`).

@@ -26,9 +26,18 @@ backend/venv3.11/bin/pytest backend
 ```
 
 ```bash
-python backend/cli.py ingest --source all
-python backend/cli.py process --batch-size 500
-python backend/cli.py analytics --refresh
+cd backend
+
+# Full incremental production pipeline (recommended for scheduled runs)
+python -m cli pipeline --strict
+
+# Individual stages
+python -m cli ingest-incremental
+python -m cli scrape-sites --max-pages 5
+python -m cli post-process --limit 2000
+python -m cli dedupe
+python -m cli embed
+python -m cli analytics
 ```
 
 ## Known Failure Modes

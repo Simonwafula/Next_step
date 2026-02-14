@@ -147,6 +147,9 @@ def _pattern_enabled() -> bool:
     return os.getenv("SKILL_EXTRACTOR_MODE", "hybrid").lower() in {
         "patterns",
         "hybrid",
+        # Keep deterministic patterns enabled even when SkillNER is selected so
+        # common skills (e.g., "Excel") backstop SkillNER misses.
+        "skillner",
     }
 
 
