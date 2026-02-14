@@ -11,11 +11,15 @@ import pytest
 
 from app.normalization.extractors import (
     classify_seniority,
+    classify_seniority_detailed,
+    extract_education_detailed,
     extract_education_level,
+    extract_experience_years_detailed,
     extract_experience_years,
 )
 from app.normalization.parsers import parse_salary
 from app.normalization.skills import extract_skills
+from app.normalization.skills import extract_skills_detailed
 from app.normalization.titles import normalize_title
 
 FIXTURES_PATH = (
@@ -35,13 +39,13 @@ def regression_jobs():
 
 
 class TestTitleNormalization:
-    @pytest.mark.parametrize("idx", range(5))
-    def test_family_matches_expected(self, regression_jobs, idx):
-        job = regression_jobs[idx]
-        family, _ = normalize_title(job["title"])
-        assert family == job["expected"]["title_family"], (
-            f"{job['id']}: expected family={job['expected']['title_family']}, got {family}"
-        )
+    def test_family_matches_expected(self, regression_jobs):
+        for job in regression_jobs:
+            family, _ = normalize_title(job["title"])
+            expected = job["expected"]["title_family"]
+            assert family == expected, (
+                f"{job['id']}: expected family={expected}, got {family}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -50,14 +54,14 @@ class TestTitleNormalization:
 
 
 class TestSeniorityClassification:
-    @pytest.mark.parametrize("idx", range(5))
-    def test_seniority_matches_expected(self, regression_jobs, idx):
-        job = regression_jobs[idx]
-        exp = extract_experience_years(job["description"])
-        seniority = classify_seniority(job["title"], exp)
-        assert seniority == job["expected"]["seniority"], (
-            f"{job['id']}: expected seniority={job['expected']['seniority']}, got {seniority}"
-        )
+    def test_seniority_matches_expected(self, regression_jobs):
+        for job in regression_jobs:
+            exp = extract_experience_years(job["description"])
+            seniority = classify_seniority(job["title"], exp)
+            expected = job["expected"]["seniority"]
+            assert seniority == expected, (
+                f"{job['id']}: expected seniority={expected}, got {seniority}"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -66,12 +70,16 @@ class TestSeniorityClassification:
 
 
 class TestExperienceExtraction:
-    @pytest.mark.parametrize("idx", range(5))
-    def test_experience_years(self, regression_jobs, idx):
-        job = regression_jobs[idx]
-        exp = extract_experience_years(job["description"])
-        expected = job["expected"]["experience_years"]
-        assert exp == expected, f"{job['id']}: expected exp={expected}, got {exp}"
+    def test_experience_years(self, regression_jobs):
+        for job in regression_jobs:
+            exp = extract_experience_years(job["description"])
+            expected = job["expected"]["experience_years"]
+            if expected is None:
+                assert exp is None, f"{job['id']}: expected exp=None, got {exp}"
+            else:
+                assert exp == expected, (
+                    f"{job['id']}: expected exp={expected}, got {exp}"
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -80,18 +88,17 @@ class TestExperienceExtraction:
 
 
 class TestEducationExtraction:
-    @pytest.mark.parametrize("idx", range(5))
-    def test_education_matches_expected(self, regression_jobs, idx):
-        job = regression_jobs[idx]
-        edu = extract_education_level(job["description"])
-        expected = job["expected"]["education"]
-        if expected is None:
-            assert edu is None, f"{job['id']}: expected None, got {edu}"
-        else:
-            assert edu is not None, f"{job['id']}: expected {expected}, got None"
-            assert expected.lower() in edu.lower(), (
-                f'{job["id"]}: expected "{expected}" in "{edu}"'
-            )
+    def test_education_matches_expected(self, regression_jobs):
+        for job in regression_jobs:
+            edu = extract_education_level(job["description"])
+            expected = job["expected"]["education"]
+            if expected is None:
+                assert edu is None, f"{job['id']}: expected None, got {edu}"
+            else:
+                assert edu is not None, f"{job['id']}: expected {expected}, got None"
+                assert expected.lower() in edu.lower(), (
+                    f'{job["id"]}: expected "{expected}" in "{edu}"'
+                )
 
 
 # ---------------------------------------------------------------------------
@@ -100,15 +107,13 @@ class TestEducationExtraction:
 
 
 class TestSalaryParsing:
-    @pytest.mark.parametrize("idx", range(5))
-    def test_salary_max(self, regression_jobs, idx):
-        job = regression_jobs[idx]
-        _, salary_max, _ = parse_salary(job["description"])
-        expected_max = job["expected"]["salary_max"]
-        if expected_max is None:
-            # No strict check — parser may pick up stray numbers
-            pass
-        else:
+    def test_salary_max(self, regression_jobs):
+        for job in regression_jobs:
+            _, salary_max, _ = parse_salary(job["description"])
+            expected_max = job["expected"]["salary_max"]
+            if expected_max is None:
+                # No strict check — parser may pick up stray numbers.
+                continue
             assert salary_max is not None, (
                 f"{job['id']}: expected salary_max={expected_max}"
             )
@@ -123,15 +128,16 @@ class TestSalaryParsing:
 
 
 class TestSkillExtraction:
-    @pytest.mark.parametrize("idx", range(5))
-    def test_expected_skills_present(self, regression_jobs, idx):
-        job = regression_jobs[idx]
-        skills = extract_skills(job["description"])
-        skills_lower = [s.lower() for s in skills]
-        for expected_skill in job["expected"]["skills_subset"]:
-            assert expected_skill.lower() in skills_lower, (
-                f'{job["id"]}: expected skill "{expected_skill}" not in {skills}'
-            )
+    def test_expected_skills_present(self, regression_jobs):
+        for job in regression_jobs:
+            expected = job["expected"]["skills_subset"]
+            if not expected:
+                continue
+            skills = extract_skills(job["description"])
+            skills_lower = [s.lower() for s in skills]
+            for expected_skill in expected:
+                msg = f'{job["id"]}: expected skill "{expected_skill}" not in {skills}'
+                assert expected_skill.lower() in skills_lower, msg
 
 
 # ---------------------------------------------------------------------------
@@ -164,3 +170,62 @@ class TestDeterminism:
             r1 = parse_salary(job["description"])
             r2 = parse_salary(job["description"])
             assert r1 == r2
+
+
+# ---------------------------------------------------------------------------
+# Evidence + confidence gates (hardening)
+# ---------------------------------------------------------------------------
+
+
+class TestEvidenceGates:
+    def test_skill_evidence_and_confidence(self, regression_jobs):
+        for job in regression_jobs:
+            expected = job["expected"]["skills_subset"]
+            if not expected:
+                continue
+            detailed = extract_skills_detailed(job["description"])
+            for expected_skill in expected:
+                msg = (
+                    f"{job['id']}: expected skill '{expected_skill}' in detailed skills"
+                )
+                assert expected_skill in detailed, msg
+                entry = detailed[expected_skill]
+                assert entry.get("confidence", 0) >= 0.5, (
+                    f"{job['id']}: low confidence for {expected_skill}"
+                )
+                assert entry.get("evidence"), (
+                    f"{job['id']}: missing evidence for {expected_skill}"
+                )
+
+    def test_education_evidence_and_confidence(self, regression_jobs):
+        for job in regression_jobs:
+            expected = job["expected"]["education"]
+            if expected is None:
+                continue
+            detailed = extract_education_detailed(job["description"])
+            assert detailed is not None, f"{job['id']}: expected education evidence"
+            assert detailed.get("confidence", 0) >= 0.5, (
+                f"{job['id']}: low education confidence"
+            )
+            assert detailed.get("evidence"), f"{job['id']}: missing education evidence"
+
+    def test_experience_evidence_and_confidence(self, regression_jobs):
+        for job in regression_jobs:
+            expected = job["expected"]["experience_years"]
+            if expected is None:
+                continue
+            detailed = extract_experience_years_detailed(job["description"])
+            assert detailed is not None, f"{job['id']}: expected experience evidence"
+            assert detailed.get("confidence", 0) >= 0.5, (
+                f"{job['id']}: low experience confidence"
+            )
+            assert detailed.get("evidence"), f"{job['id']}: missing experience evidence"
+
+    def test_seniority_evidence_present(self, regression_jobs):
+        for job in regression_jobs:
+            exp = extract_experience_years(job["description"])
+            detailed = classify_seniority_detailed(job["title"], exp)
+            assert detailed.get("confidence", 0) >= 0.4, (
+                f"{job['id']}: low seniority confidence"
+            )
+            assert detailed.get("source"), f"{job['id']}: missing seniority source"

@@ -1,11 +1,12 @@
 from sqlalchemy.orm import Session
-from sqlalchemy import select, or_, func
+from sqlalchemy import select, or_, func, union
 from ..db.models import JobPost, Organization, Location, TitleNorm
 from ..ml.embeddings import embed_text
 from ..normalization.titles import (
     normalize_title,
     get_careers_for_degree,
 )
+from .ranking import rank_results
 import numpy as np
 import re
 from collections import Counter
@@ -50,6 +51,8 @@ def search_jobs(
 ):
     """Public search (O0): jobs + title/company aggregates for filtering."""
 
+    has_more = False
+
     # Check if query contains degree information
     degree = extract_degree_from_query(q)
     if degree:
@@ -70,6 +73,7 @@ def search_jobs(
             "total": len(jobs),
             "limit": int(limit),
             "offset": int(offset),
+            "has_more": False,
             "title_clusters": [
                 {"title": t, "count_ads": int(c)} for t, c in clusters.most_common(50)
             ],
@@ -81,6 +85,13 @@ def search_jobs(
             "meta": {"degree": degree},
         }
 
+    try:
+        bind = db.get_bind()
+        dialect_name = bind.dialect.name if bind else ""
+    except Exception:
+        dialect_name = ""
+    is_postgres = dialect_name == "postgresql"
+
     # Base joined query (jobs)
     stmt_jobs = (
         select(JobPost, Organization, Location, TitleNorm)
@@ -90,46 +101,117 @@ def search_jobs(
         .where(JobPost.is_active.is_(True))
     )
 
-    # Apply filters
-    conditions = []
+    filters = []
+    location_condition = None
+    if location:
+        like_loc = f"%{location.lower()}%"
+        location_condition = or_(
+            Location.city.ilike(like_loc),
+            Location.region.ilike(like_loc),
+            Location.country.ilike(like_loc),
+            Location.raw.ilike(like_loc),
+        )
+        filters.append(location_condition)
+
+    seniority_condition = None
+    if seniority:
+        seniority_condition = JobPost.seniority.ilike(f"%{seniority.lower()}%")
+        filters.append(seniority_condition)
+
+    normalized_family = None
+    normalized_title = None
+    job_text = None
+    ids_subq = None
+    like = None
+    like_norm = None
 
     if q:
-        # Normalize the search query
         normalized_family, normalized_title = normalize_title(q)
-
-        # Search in multiple fields
         like = f"%{q.lower()}%"
         like_norm = f"%{normalized_title.lower()}%"
 
-        conditions.append(
-            or_(
-                JobPost.title_raw.ilike(like),
-                JobPost.description_raw.ilike(like),
-                JobPost.requirements_raw.ilike(like),
-                TitleNorm.canonical_title.ilike(like_norm),
-                TitleNorm.family.ilike(f"%{normalized_family}%"),
+        clauses = [
+            JobPost.title_raw.ilike(like),
+            JobPost.description_raw.ilike(like),
+            JobPost.requirements_raw.ilike(like),
+            TitleNorm.canonical_title.ilike(like_norm),
+        ]
+        if normalized_family and normalized_family != "other":
+            clauses.append(TitleNorm.family.ilike(f"%{normalized_family}%"))
+        job_text = or_(*clauses)
+
+    if filters:
+        stmt_jobs = stmt_jobs.where(*filters)
+
+    if q and job_text is not None:
+        if is_postgres:
+            # Fast probe to detect broad queries and pick a safer plan.
+            probe_limit = 200
+            stmt_probe = (
+                select(JobPost.id)
+                .select_from(JobPost)
+                .join(Location, Location.id == JobPost.location_id, isouter=True)
+                .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+                .where(JobPost.is_active.is_(True))
+                .where(job_text)
             )
-        )
+            if filters:
+                stmt_probe = stmt_probe.where(*filters)
+            probe_rows = db.execute(
+                stmt_probe.order_by(JobPost.first_seen.desc()).limit(probe_limit)
+            ).all()
+            is_broad = len(probe_rows) >= probe_limit
 
-    if location:
-        like_loc = f"%{location.lower()}%"
-        conditions.append(
-            or_(
-                Location.city.ilike(like_loc),
-                Location.region.ilike(like_loc),
-                Location.country.ilike(like_loc),
-                Location.raw.ilike(like_loc),
-            )
-        )
+            if is_broad:
+                stmt_jobs = stmt_jobs.where(job_text)
+            else:
+                candidate_limit = max(int(offset) + int(limit) + 1, 200)
+                ids_base = (
+                    select(JobPost.id.label("job_id"))
+                    .select_from(JobPost)
+                    .join(
+                        Location,
+                        Location.id == JobPost.location_id,
+                        isouter=True,
+                    )
+                    .join(
+                        TitleNorm,
+                        TitleNorm.id == JobPost.title_norm_id,
+                        isouter=True,
+                    )
+                    .where(JobPost.is_active.is_(True))
+                )
+                if filters:
+                    ids_base = ids_base.where(*filters)
 
-    if seniority:
-        conditions.append(JobPost.seniority.ilike(f"%{seniority.lower()}%"))
+                branches = [
+                    ids_base.where(JobPost.title_raw.ilike(like))
+                    .order_by(JobPost.first_seen.desc())
+                    .limit(candidate_limit),
+                    ids_base.where(JobPost.description_raw.ilike(like))
+                    .order_by(JobPost.first_seen.desc())
+                    .limit(candidate_limit),
+                    ids_base.where(JobPost.requirements_raw.ilike(like))
+                    .order_by(JobPost.first_seen.desc())
+                    .limit(candidate_limit),
+                    ids_base.where(TitleNorm.canonical_title.ilike(like_norm))
+                    .order_by(JobPost.first_seen.desc())
+                    .limit(candidate_limit),
+                ]
+                if normalized_family and normalized_family != "other":
+                    branches.append(
+                        ids_base.where(TitleNorm.family.ilike(f"%{normalized_family}%"))
+                        .order_by(JobPost.first_seen.desc())
+                        .limit(candidate_limit)
+                    )
 
-    if conditions:
-        stmt_jobs = stmt_jobs.where(*conditions)
+                ids_subq = union(*branches).subquery()
+                stmt_jobs = stmt_jobs.where(JobPost.id.in_(select(ids_subq.c.job_id)))
+        else:
+            stmt_jobs = stmt_jobs.where(job_text)
 
-    # Aggregate clusters and companies from the unselected result set so the UI
-    # can offer filters that refine to the job list.
+    # Aggregate clusters and companies from the unselected result set
+    # so the UI can offer filters that refine to the job list.
     cluster_title_expr = func.coalesce(TitleNorm.canonical_title, JobPost.title_raw)
     stmt_base = (
         select(
@@ -143,8 +225,19 @@ def search_jobs(
         .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
         .where(JobPost.is_active.is_(True))
     )
-    if conditions:
-        stmt_base = stmt_base.where(*conditions)
+    if filters:
+        stmt_base = stmt_base.where(*filters)
+    if q and job_text is not None:
+        if ids_subq is not None:
+            stmt_base = stmt_base.where(JobPost.id.in_(select(ids_subq.c.job_id)))
+        else:
+            stmt_base = stmt_base.where(job_text)
+
+    # In Postgres on large datasets, bound facet aggregation to a recent sample
+    # so the planner can use the (is_active, first_seen) index scan and stop early.
+    if is_postgres:
+        facet_limit = 500
+        stmt_base = stmt_base.order_by(JobPost.first_seen.desc()).limit(facet_limit)
 
     base_subq = stmt_base.subquery()
     clusters_rows = db.execute(
@@ -171,13 +264,24 @@ def search_jobs(
     if company:
         stmt_jobs = stmt_jobs.where(Organization.name.ilike(f"%{company}%"))
 
-    total_jobs = (
-        db.execute(select(func.count()).select_from(stmt_jobs.subquery())).scalar() or 0
-    )
-
-    rows = db.execute(
-        stmt_jobs.order_by(JobPost.first_seen.desc()).limit(limit).offset(offset)
+    # Pagination: fetch limit+1 to compute has_more without an extra COUNT.
+    page_rows = db.execute(
+        stmt_jobs.order_by(JobPost.first_seen.desc())
+        .limit(int(limit) + 1)
+        .offset(int(offset))
     ).all()
+    has_more = len(page_rows) > int(limit)
+    rows = page_rows[: int(limit)]
+
+    if is_postgres and q:
+        # COUNT(*) over a broad ILIKE set can be extremely expensive. Use a cheap
+        # lower bound and let the UI rely on `has_more` for pagination.
+        total_jobs = int(offset) + len(rows) + (1 if has_more else 0)
+    else:
+        total_jobs = (
+            db.execute(select(func.count()).select_from(stmt_jobs.subquery())).scalar()
+            or 0
+        )
 
     # Process results with explanations
     results = []
@@ -196,10 +300,12 @@ def search_jobs(
 
         if query_embedding and emb_record and emb_record.vector_json:
             try:
-                # In Postgres this would be a real vector; in SQLite it's JSON
+                # In Postgres this would be a real vector;
+                # in SQLite it's JSON
                 job_vec = emb_record.vector_json
                 if isinstance(job_vec, str):
-                    # Back-compat: older data stored the vector as a JSON string.
+                    # Back-compat: older data stored the vector
+                    # as a JSON string.
                     import json
 
                     job_vec = json.loads(job_vec)
@@ -225,7 +331,10 @@ def search_jobs(
                 "location": format_location(loc),
                 "url": jp.url,
                 "source_url": getattr(jp, "source_url", None) or jp.url,
-                "application_url": getattr(jp, "application_url", None) or jp.url,
+                "application_url": (getattr(jp, "application_url", None) or jp.url),
+                "first_seen": jp.first_seen.isoformat()
+                if getattr(jp, "first_seen", None)
+                else None,
                 "apply_url": f"/r/apply/{jp.id}",
                 "salary_range": format_salary(
                     jp.salary_min, jp.salary_max, jp.currency
@@ -240,9 +349,13 @@ def search_jobs(
             }
         )
 
-    # Sort by similarity score if available
-    if query_embedding:
-        results.sort(key=lambda x: x.get("similarity_score") or 0, reverse=True)
+    # Apply learned ranking with fallback to similarity sort
+    user_context = {}
+    if location:
+        user_context["location"] = location
+    if seniority:
+        user_context["seniority"] = seniority
+    results = rank_results(results, q, user_context)
 
     # If no results, provide suggestions
     if not results and q:
@@ -255,6 +368,7 @@ def search_jobs(
         "total": int(total_jobs),
         "limit": int(limit),
         "offset": int(offset),
+        "has_more": bool(has_more),
         "title_clusters": [
             {"title": title_value, "count_ads": int(count or 0)}
             for title_value, count in clusters_rows
@@ -277,7 +391,10 @@ def search_jobs(
 
 
 def search_by_degree(
-    db: Session, degree: str, location: str | None = None, seniority: str | None = None
+    db: Session,
+    degree: str,
+    location: str | None = None,
+    seniority: str | None = None,
 ):
     """Search jobs based on degree/field of study"""
 
@@ -347,6 +464,9 @@ def search_by_degree(
                 "organization": org.name if org else "Unknown Company",
                 "location": format_location(loc),
                 "url": jp.url,
+                "first_seen": jp.first_seen.isoformat()
+                if getattr(jp, "first_seen", None)
+                else None,
                 "salary_range": format_salary(
                     jp.salary_min, jp.salary_max, jp.currency
                 ),
@@ -375,9 +495,17 @@ def suggest_alternatives(
     if normalized_family != "other":
         stmt = (
             select(JobPost, Organization, Location, TitleNorm)
-            .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+            .join(
+                Organization,
+                Organization.id == JobPost.org_id,
+                isouter=True,
+            )
             .join(Location, Location.id == JobPost.location_id, isouter=True)
-            .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+            .join(
+                TitleNorm,
+                TitleNorm.id == JobPost.title_norm_id,
+                isouter=True,
+            )
             .where(JobPost.is_active.is_(True))
         )
 
@@ -409,7 +537,10 @@ def suggest_alternatives(
                         "salary_range": format_salary(
                             jp.salary_min, jp.salary_max, jp.currency
                         ),
-                        "why_match": f"Broader match in {normalized_family.replace('_', ' ')} field",
+                        "why_match": (
+                            f"Broader match in "
+                            f"{normalized_family.replace('_', ' ')} field"
+                        ),
                         "is_suggestion": True,
                     }
                 )
@@ -423,7 +554,10 @@ def suggest_alternatives(
             "organization": None,
             "location": None,
             "url": None,
-            "why_match": f"Try broader terms like '{normalized_family.replace('_', ' ')}' or check spelling",
+            "why_match": (
+                f"Try broader terms like "
+                f"'{normalized_family.replace('_', ' ')}' or check spelling"
+            ),
             "is_suggestion": True,
         }
     ]

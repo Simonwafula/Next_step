@@ -187,7 +187,11 @@ def _calculate_overlap(
     return len(recent_keys & baseline_keys) / max(len(recent_keys), len(baseline_keys))
 
 
-def _fetch_skill_counts(db: Session, since: datetime) -> dict[str, int]:
+def _fetch_skill_counts(
+    db: Session,
+    since: datetime,
+    until: datetime | None = None,
+) -> dict[str, int]:
     stmt = (
         select(Skill.name, func.count(JobSkill.id))
         .join(JobSkill, JobSkill.skill_id == Skill.id)
@@ -195,25 +199,39 @@ def _fetch_skill_counts(db: Session, since: datetime) -> dict[str, int]:
         .where(JobPost.first_seen >= since)
         .group_by(Skill.name)
     )
+    if until is not None:
+        stmt = stmt.where(JobPost.first_seen < until)
     return {name: count for name, count in db.execute(stmt).all() if name}
 
 
-def _fetch_title_counts(db: Session, since: datetime) -> dict[str, int]:
+def _fetch_title_counts(
+    db: Session,
+    since: datetime,
+    until: datetime | None = None,
+) -> dict[str, int]:
     stmt = (
         select(TitleNorm.family, func.count(JobPost.id))
         .join(JobPost, JobPost.title_norm_id == TitleNorm.id)
         .where(JobPost.first_seen >= since)
         .group_by(TitleNorm.family)
     )
+    if until is not None:
+        stmt = stmt.where(JobPost.first_seen < until)
     return {name: count for name, count in db.execute(stmt).all() if name}
 
 
-def _fetch_salary_series(db: Session, since: datetime) -> list[float]:
+def _fetch_salary_series(
+    db: Session,
+    since: datetime,
+    until: datetime | None = None,
+) -> list[float]:
     stmt = (
         select(JobPost.salary_min)
         .where(JobPost.first_seen >= since)
         .where(JobPost.salary_min.is_not(None))
     )
+    if until is not None:
+        stmt = stmt.where(JobPost.first_seen < until)
     return [value for (value,) in db.execute(stmt).all() if value]
 
 
@@ -239,9 +257,9 @@ def run_drift_checks(
     )
 
     recent_skills = _fetch_skill_counts(db, recent_since)
-    baseline_skills = _fetch_skill_counts(db, baseline_since)
+    baseline_skills = _fetch_skill_counts(db, baseline_since, until=recent_since)
     recent_titles = _fetch_title_counts(db, recent_since)
-    baseline_titles = _fetch_title_counts(db, baseline_since)
+    baseline_titles = _fetch_title_counts(db, baseline_since, until=recent_since)
 
     recent_skill_top = _top_counts(recent_skills, top_n)
     baseline_skill_top = _top_counts(baseline_skills, top_n)
@@ -252,7 +270,9 @@ def run_drift_checks(
     title_overlap = _calculate_overlap(recent_title_top, baseline_title_top)
 
     recent_salary = _median(_fetch_salary_series(db, recent_since))
-    baseline_salary = _median(_fetch_salary_series(db, baseline_since))
+    baseline_salary = _median(
+        _fetch_salary_series(db, baseline_since, until=recent_since)
+    )
     salary_delta = None
     if recent_salary and baseline_salary:
         salary_delta = (recent_salary - baseline_salary) / baseline_salary

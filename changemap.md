@@ -42,7 +42,7 @@
   - [/] (T-303) matching (`backend/app/services/search.py`, `backend/app/services/recommend.py`)
   - [x] (T-304) explanation generator (`backend/app/services/search.py`)
   - [x] (T-305) tests for deterministic retrieval (`backend/test_integration.py`)
-  - [ ] (T-306) learned ranking/classification pipeline (LTR/classifier) for production relevance tuning
+  - [x] (T-306) learned ranking/classification pipeline (LTR/classifier) for production relevance tuning
 
 ## 3.1 Content Generation + RAG (Planned)
 - [ ] (T-800) production content generation with grounded retrieval
@@ -96,7 +96,7 @@
   - [x] (T-601c) incremental dedupe + embeddings refresh (`backend/app/normalization/dedupe.py`, `backend/app/ml/embeddings.py` — 10 tests)
   - [/] (T-602a) monitoring metrics + thresholds (`backend/app/services/processing_log_service.py`)
   - [x] (T-602b) drift detection checks (skills, titles, salary) (`backend/app/services/analytics.py`)
-  - [ ] (T-602c) alerting hooks (email/whatsapp) (`backend/app/services/notification_service.py`)
+  - [x] (T-602c) alerting hooks (email/whatsapp) (`backend/app/services/notification_service.py`)
   - [x] (T-603a) regression fixture dataset (`data/samples/regression_jobs.json`)
   - [x] (T-603b) regression tests for extraction + analytics (`backend/tests/test_regression.py` — 34 tests)
   - [x] (T-604a) runbook outline + SOPs (`docs/runbook.md`)
@@ -198,6 +198,25 @@
   - 99.4% have location info
   - 90.9% have seniority level
   - 99.9% have education requirements
+
+### 2026-02-14 (Alerting Hooks)
+- Implemented job alert delivery hooks for email + WhatsApp
+- Added test coverage for delivery flags and status tracking
+- Tests run:
+  - `/Users/hp/Library/CloudStorage/OneDrive-Personal/Codes/Next_step/.venv/bin/python -m pytest backend/tests/test_job_alert_hooks.py -q` (1 passed)
+
+### 2026-02-14 (Learned Ranking - T-306)
+- Implemented lightweight learned-to-rank hook for job search results
+- Built classification-based re-ranker using scikit-learn LogisticRegression
+- Feature extraction (8-dim): semantic similarity, keyword match, recency, seniority match, location match, salary presence, skill overlap
+- Integrated ranking hook into `search_jobs` with heuristic fallback
+- Model persistence at `backend/var/ranking_model.pkl` (train via implicit feedback from `/r/apply` logs)
+- Files created:
+  - `backend/app/services/ranking.py` (RankingModel, extract_ranking_features, rank_results)
+  - `backend/tests/test_ranking.py` (11 tests for feature extraction, model training/scoring, fallback behavior)
+- Tests run:
+  - `.venv/bin/python -m pytest backend/tests/test_ranking.py -q` (11 passed)
+  - `.venv/bin/python -m pytest backend/tests/ -q --tb=short` (132 passed, 284 warnings)
   - Output: `data/migration/jobs_export.json` (688 MB)
 - **Local SQLite import verified:**
   - 102,169 jobs in `job_post`

@@ -96,7 +96,10 @@ def seeded_db(db_session_factory):
     db.flush()
 
     loc = Location(
-        country="US", region="CA", city="San Francisco", raw="San Francisco, CA"
+        country="US",
+        region="CA",
+        city="San Francisco",
+        raw="San Francisco, CA",
     )
     db.add(loc)
     db.flush()
@@ -131,7 +134,11 @@ def seeded_db(db_session_factory):
     db.add(skill)
     db.flush()
 
-    job_skill = JobSkill(job_post_id=job.id, skill_id=skill.id, confidence=0.95)
+    job_skill = JobSkill(
+        job_post_id=job.id,
+        skill_id=skill.id,
+        confidence=0.95,
+    )
     db.add(job_skill)
 
     month_dt = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
@@ -153,19 +160,28 @@ def seeded_db(db_session_factory):
     )
     db.add(
         TitleAdjacency(
-            title_a="Software Engineer", title_b="Backend Engineer", similarity=0.85
+            title_a="Software Engineer",
+            title_b="Backend Engineer",
+            similarity=0.85,
         )
     )
 
     db.add(
         ProcessingLog(
             process_type="ingestion",
-            results={"status": "success", "message": "Ingested 50 jobs", "details": {}},
+            results={
+                "status": "success",
+                "message": "Ingested 50 jobs",
+                "details": {},
+            },
         )
     )
 
     db.add(
-        EducationNormalization(raw_value="BSc", normalized_value="Bachelor's Degree")
+        EducationNormalization(
+            raw_value="BSc",
+            normalized_value="Bachelor's Degree",
+        )
     )
 
     db.add(
@@ -229,7 +245,10 @@ class TestAnalyticsEndpoints:
         assert data["role_family"] == "engineering"
 
     def test_skill_trends_query_params(self, client):
-        resp = client.get("/analytics/skill-trends", params={"months": 3, "limit": 10})
+        resp = client.get(
+            "/analytics/skill-trends",
+            params={"months": 3, "limit": 10},
+        )
         assert resp.status_code == 200
 
     def test_skill_trends_invalid_months(self, client):
@@ -360,11 +379,17 @@ class TestAdminSources:
         assert resp.status_code == 200
 
     def test_list_government_sources(self, client):
-        resp = client.get("/api/admin/sources", params={"source_type": "government"})
+        resp = client.get(
+            "/api/admin/sources",
+            params={"source_type": "government"},
+        )
         assert resp.status_code == 200
 
     def test_invalid_source_type(self, client):
-        resp = client.get("/api/admin/sources", params={"source_type": "invalid"})
+        resp = client.get(
+            "/api/admin/sources",
+            params={"source_type": "invalid"},
+        )
         assert resp.status_code == 400
 
 
@@ -399,14 +424,20 @@ class TestAdminOperations:
 
 class TestAdminSummaries:
     def test_summaries_title(self, client, seeded_db):
-        resp = client.get("/api/admin/summaries", params={"dimension": "title"})
+        resp = client.get(
+            "/api/admin/summaries",
+            params={"dimension": "title"},
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["dimension"] == "title"
         assert len(data["items"]) >= 1
 
     def test_summaries_skill(self, client, seeded_db):
-        resp = client.get("/api/admin/summaries", params={"dimension": "skill"})
+        resp = client.get(
+            "/api/admin/summaries",
+            params={"dimension": "skill"},
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["dimension"] == "skill"
@@ -414,13 +445,19 @@ class TestAdminSummaries:
         assert data["items"][0]["specific_value"] == "Python"
 
     def test_summaries_education(self, client, seeded_db):
-        resp = client.get("/api/admin/summaries", params={"dimension": "education"})
+        resp = client.get(
+            "/api/admin/summaries",
+            params={"dimension": "education"},
+        )
         assert resp.status_code == 200
         data = resp.json()
         assert data["dimension"] == "education"
 
     def test_summaries_invalid_dimension(self, client):
-        resp = client.get("/api/admin/summaries", params={"dimension": "invalid"})
+        resp = client.get(
+            "/api/admin/summaries",
+            params={"dimension": "invalid"},
+        )
         assert resp.status_code == 400
 
     def test_summary_jobs_by_title(self, client, seeded_db):
@@ -546,6 +583,18 @@ class TestAdminDrift:
     def test_drift_with_data(self, client, seeded_db):
         resp = client.get("/api/admin/monitoring/drift")
         assert resp.status_code == 200
+
+
+class TestAdminMonitoringSummary:
+    def test_monitoring_summary_flags_drift(self, client, monkeypatch):
+        monkeypatch.setenv("DRIFT_SKILL_MAX", "0.5")
+        monkeypatch.setenv("DRIFT_TITLE_MAX", "0.5")
+
+        resp = client.get("/api/admin/monitoring/summary")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["overall_status"] == "fail"
+        assert data["drift"]["checks"]["skills"]["status"] == "fail"
 
 
 # ---------------------------------------------------------------------------

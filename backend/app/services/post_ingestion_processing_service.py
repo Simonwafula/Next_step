@@ -4,7 +4,7 @@ from collections import Counter
 from datetime import datetime
 from typing import Any, Dict
 
-from sqlalchemy import case, func, select
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..db.models import JobEntities, JobPost, JobSkill, TitleNorm
@@ -17,6 +17,7 @@ from ..normalization.extractors import (
 )
 from ..normalization.skills import extract_skills_detailed
 from ..normalization.titles import normalize_title
+from .processing_quality import calculate_quality_score, is_generic_title
 
 
 def _clean_text(text: str | None) -> str | None:
@@ -24,58 +25,6 @@ def _clean_text(text: str | None) -> str | None:
         return None
     cleaned = " ".join(str(text).split()).strip()
     return cleaned or None
-
-
-def _is_generic_title(title: str | None) -> bool:
-    if not title:
-        return True
-    t = title.strip().lower()
-    if not t:
-        return True
-    return t in {
-        "job posting",
-        "career opportunity",
-        "vacancies",
-        "vacancy",
-        "careers",
-        "jobs",
-        "job",
-        "opportunities",
-    }
-
-
-def _quality_score(
-    *,
-    title: str | None,
-    description: str | None,
-    org_id: int | None,
-    salary_min: float | None,
-    salary_max: float | None,
-    skills_count: int,
-) -> float:
-    """Deterministic quality score in [0, 1] for monitoring."""
-    score = 0.0
-
-    if title and not _is_generic_title(title):
-        score += 0.25
-
-    if description:
-        score += min(len(description) / 800.0, 1.0) * 0.35
-
-    if skills_count >= 5:
-        score += 0.2
-    elif skills_count >= 2:
-        score += 0.12
-    elif skills_count >= 1:
-        score += 0.07
-
-    if org_id is not None:
-        score += 0.1
-
-    if salary_min is not None or salary_max is not None:
-        score += 0.1
-
-    return round(min(max(score, 0.0), 1.0), 4)
 
 
 def _get_or_create_title_norm(
@@ -103,7 +52,11 @@ def _get_or_create_title_norm(
     return tn.id
 
 
-def _upsert_job_entities(db: Session, job_id: int, payload: Dict[str, Any]) -> None:
+def _upsert_job_entities(
+    db: Session,
+    job_id: int,
+    payload: Dict[str, Any],
+) -> None:
     existing = db.query(JobEntities).filter(JobEntities.job_id == job_id).one_or_none()
     if existing:
         existing.entities = payload
@@ -223,7 +176,7 @@ def process_job_posts(
         if seniority_d and seniority_d.get("value"):
             job.seniority = str(seniority_d["value"])
 
-        qscore = _quality_score(
+        qscore = calculate_quality_score(
             title=title_raw,
             description=desc_raw,
             org_id=job.org_id,
@@ -236,7 +189,7 @@ def process_job_posts(
 
         if not desc_raw:
             reasons["missing_description"] += 1
-        if _is_generic_title(title_raw):
+        if is_generic_title(title_raw):
             reasons["generic_title"] += 1
         if len(skills_sorted) == 0:
             reasons["no_skills"] += 1
@@ -284,94 +237,3 @@ def process_job_posts(
 
     db.commit()
     return result
-
-
-def quality_snapshot(db: Session) -> Dict[str, Any]:
-    """Coverage snapshot across all sources + per-source breakdown."""
-    total = db.execute(select(func.count(JobPost.id))).scalar() or 0
-    processed = (
-        db.execute(
-            select(func.count(JobPost.id)).where(JobPost.processed_at.is_not(None))
-        ).scalar()
-        or 0
-    )
-    with_desc = (
-        db.execute(
-            select(func.count(JobPost.id)).where(
-                func.length(func.trim(JobPost.description_raw)) > 0
-            )
-        ).scalar()
-        or 0
-    )
-    with_quality = (
-        db.execute(
-            select(func.count(JobPost.id)).where(JobPost.quality_score.is_not(None))
-        ).scalar()
-        or 0
-    )
-    with_entities = db.execute(select(func.count(JobEntities.id))).scalar() or 0
-
-    rows = db.execute(
-        select(
-            JobPost.source,
-            func.count(JobPost.id),
-            func.sum(case((JobPost.processed_at.is_not(None), 1), else_=0)),
-            func.sum(
-                case((func.length(func.trim(JobPost.description_raw)) > 0, 1), else_=0)
-            ),
-            func.sum(case((JobPost.quality_score.is_not(None), 1), else_=0)),
-        ).group_by(JobPost.source)
-    ).all()
-
-    by_source = []
-    for source, c_total, c_processed, c_desc, c_quality in rows:
-        c_total = int(c_total or 0)
-        c_processed = int(c_processed or 0)
-        c_desc = int(c_desc or 0)
-        c_quality = int(c_quality or 0)
-        by_source.append(
-            {
-                "source": source,
-                "total": c_total,
-                "processed": c_processed,
-                "coverage": {
-                    "description_raw": round(c_desc / c_total * 100, 1)
-                    if c_total
-                    else 0,
-                    "quality_score": round(c_quality / c_total * 100, 1)
-                    if c_total
-                    else 0,
-                    "processed_at": round(c_processed / c_total * 100, 1)
-                    if c_total
-                    else 0,
-                },
-            }
-        )
-
-    by_source.sort(key=lambda x: x["total"], reverse=True)
-
-    return {
-        "totals": {
-            "jobs": total,
-            "processed": processed,
-        },
-        "coverage": {
-            "description_raw": {
-                "count": with_desc,
-                "percentage": round(with_desc / total * 100, 1) if total else 0,
-            },
-            "quality_score": {
-                "count": with_quality,
-                "percentage": round(with_quality / total * 100, 1) if total else 0,
-            },
-            "job_entities": {
-                "count": with_entities,
-                "percentage": round(with_entities / total * 100, 1) if total else 0,
-            },
-            "processed_at": {
-                "count": processed,
-                "percentage": round(processed / total * 100, 1) if total else 0,
-            },
-        },
-        "by_source": by_source,
-    }

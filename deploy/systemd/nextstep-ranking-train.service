@@ -1,0 +1,15 @@
+[Unit]
+Description=NextStep Ranking Model Retraining (one-shot)
+After=network.target postgresql.service
+
+[Service]
+Type=oneshot
+User=nexts7595
+Group=nexts7595
+WorkingDirectory=/home/nextstep.co.ke/public_html/backend
+EnvironmentFile=/home/nextstep.co.ke/.env
+ExecStart=/home/nextstep.co.ke/.venv/bin/python -m cli train-ranking --days-back 30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nextstep-ranking-train
+TimeoutStartSec=1200

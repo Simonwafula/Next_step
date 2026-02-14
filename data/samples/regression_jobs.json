@@ -73,5 +73,50 @@
       "salary_max": 65000.0,
       "experience_years": 2
     }
+  },
+  {
+    "id": "REG-006",
+    "title": "BI Analyst",
+    "company": "InsightWorks",
+    "location": "Nairobi, Kenya",
+    "description": "BI Analyst role focused on data analysis and dashboarding. Must have SQL and Power BI experience. At least 3 years experience required. Bachelor's degree in Statistics or related field.",
+    "expected": {
+      "title_family": "data_analytics",
+      "seniority": "Mid-Level",
+      "education": "Bachelor",
+      "skills_subset": ["sql", "power bi"],
+      "salary_max": null,
+      "experience_years": 3
+    }
+  },
+  {
+    "id": "REG-007",
+    "title": "Frontend Developer",
+    "company": "PixelWorks",
+    "location": "Remote",
+    "description": "Frontend Developer to build web interfaces using JavaScript, React, HTML, and CSS. Minimum of 2 years experience. Diploma in IT or related field required.",
+    "expected": {
+      "title_family": "technology",
+      "seniority": "Mid-Level",
+      "education": "Diploma",
+      "skills_subset": ["javascript", "html/css"],
+      "salary_max": null,
+      "experience_years": 2
+    }
+  },
+  {
+    "id": "REG-008",
+    "title": "Finance Officer",
+    "company": "LedgerPoint",
+    "location": "Nairobi, Kenya",
+    "description": "Finance Officer to manage accounting and finance operations. Must be proficient in Excel and financial reporting. Minimum 5 years experience. Bachelor's degree in Accounting required.",
+    "expected": {
+      "title_family": "finance",
+      "seniority": "Senior",
+      "education": "Bachelor",
+      "skills_subset": ["excel"],
+      "salary_max": null,
+      "experience_years": 5
+    }
   }
 ]

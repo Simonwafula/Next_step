@@ -4,7 +4,8 @@ from typing import Any, Dict
 
 from sqlalchemy.orm import Session
 
-from .post_ingestion_processing_service import process_job_posts, quality_snapshot
+from .post_ingestion_processing_service import process_job_posts
+from .processing_quality import quality_snapshot
 
 
 def process_government_posts(
@@ -14,7 +15,9 @@ def process_government_posts(
     only_unprocessed: bool = True,
     dry_run: bool = False,
 ) -> Dict[str, Any]:
-    """Backwards-compatible wrapper around the unified post-ingestion processor."""
+    """Backwards-compatible wrapper around
+    unified post-ingestion processing.
+    """
     return process_job_posts(
         db,
         source="gov_careers",
@@ -25,7 +28,7 @@ def process_government_posts(
 
 
 def government_quality_snapshot(db: Session) -> Dict[str, Any]:
-    """Backwards-compatible gov-only quality snapshot derived from global snapshot."""
+    """Gov-only quality snapshot derived from the global quality snapshot."""
     snap = quality_snapshot(db)
     gov = next(
         (row for row in snap.get("by_source", []) if row["source"] == "gov_careers"),

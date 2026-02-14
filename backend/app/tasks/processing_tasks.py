@@ -12,14 +12,21 @@ from ..processors.job_processor import JobProcessor
 logger = logging.getLogger(__name__)
 
 
-@celery_app.task(bind=True, name="app.tasks.processing_tasks.process_raw_jobs")
+@celery_app.task(
+    bind=True,
+    name="app.tasks.processing_tasks.process_raw_jobs",
+)
 def process_raw_jobs(self, batch_size: int = 100):
     """
     Process raw job data in batches
     """
     try:
         self.update_state(
-            state="PROGRESS", meta={"status": "Starting job processing", "progress": 0}
+            state="PROGRESS",
+            meta={
+                "status": "Starting job processing",
+                "progress": 0,
+            },
         )
 
         result = asyncio.run(_process_raw_jobs_async(batch_size))
@@ -39,12 +46,18 @@ def process_raw_jobs(self, batch_size: int = 100):
         logger.error(f"Job processing failed: {str(e)}")
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Job processing failed: {str(e)}", "progress": 0},
+            meta={
+                "status": f"Job processing failed: {str(e)}",
+                "progress": 0,
+            },
         )
         raise
 
 
-@celery_app.task(bind=True, name="app.tasks.processing_tasks.clean_duplicate_jobs")
+@celery_app.task(
+    bind=True,
+    name="app.tasks.processing_tasks.clean_duplicate_jobs",
+)
 def clean_duplicate_jobs(self):
     """
     Clean duplicate job postings from the database
@@ -72,12 +85,18 @@ def clean_duplicate_jobs(self):
         logger.error(f"Duplicate cleanup failed: {str(e)}")
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Duplicate cleanup failed: {str(e)}", "progress": 0},
+            meta={
+                "status": f"Duplicate cleanup failed: {str(e)}",
+                "progress": 0,
+            },
         )
         raise
 
 
-@celery_app.task(bind=True, name="app.tasks.processing_tasks.extract_job_skills")
+@celery_app.task(
+    bind=True,
+    name="app.tasks.processing_tasks.extract_job_skills",
+)
 def extract_job_skills(self, job_ids: List[int] = None):
     """
     Extract skills from job descriptions
@@ -105,12 +124,18 @@ def extract_job_skills(self, job_ids: List[int] = None):
         logger.error(f"Skill extraction failed: {str(e)}")
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Skill extraction failed: {str(e)}", "progress": 0},
+            meta={
+                "status": f"Skill extraction failed: {str(e)}",
+                "progress": 0,
+            },
         )
         raise
 
 
-@celery_app.task(bind=True, name="app.tasks.processing_tasks.normalize_job_titles")
+@celery_app.task(
+    bind=True,
+    name="app.tasks.processing_tasks.normalize_job_titles",
+)
 def normalize_job_titles(self, job_ids: List[int] = None):
     """
     Normalize job titles using the title normalization service
@@ -138,7 +163,10 @@ def normalize_job_titles(self, job_ids: List[int] = None):
         logger.error(f"Title normalization failed: {str(e)}")
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Title normalization failed: {str(e)}", "progress": 0},
+            meta={
+                "status": f"Title normalization failed: {str(e)}",
+                "progress": 0,
+            },
         )
         raise
 
@@ -153,7 +181,10 @@ def calculate_job_quality_scores(self, job_ids: List[int] = None):
     try:
         self.update_state(
             state="PROGRESS",
-            meta={"status": "Starting quality score calculation", "progress": 0},
+            meta={
+                "status": "Starting quality score calculation",
+                "progress": 0,
+            },
         )
 
         result = asyncio.run(_calculate_job_quality_scores_async(job_ids))
@@ -181,7 +212,10 @@ def calculate_job_quality_scores(self, job_ids: List[int] = None):
         raise
 
 
-@celery_app.task(bind=True, name="app.tasks.processing_tasks.update_job_embeddings")
+@celery_app.task(
+    bind=True,
+    name="app.tasks.processing_tasks.update_job_embeddings",
+)
 def update_job_embeddings(self, job_ids: List[int] = None):
     """
     Update embeddings for job postings
@@ -209,12 +243,18 @@ def update_job_embeddings(self, job_ids: List[int] = None):
         logger.error(f"Embedding updates failed: {str(e)}")
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Embedding updates failed: {str(e)}", "progress": 0},
+            meta={
+                "status": f"Embedding updates failed: {str(e)}",
+                "progress": 0,
+            },
         )
         raise
 
 
-@celery_app.task(bind=True, name="app.tasks.processing_tasks.validate_job_data")
+@celery_app.task(
+    bind=True,
+    name="app.tasks.processing_tasks.validate_job_data",
+)
 def validate_job_data(self, job_ids: List[int] = None):
     """
     Validate job data quality and completeness
@@ -242,7 +282,10 @@ def validate_job_data(self, job_ids: List[int] = None):
         logger.error(f"Job data validation failed: {str(e)}")
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Job data validation failed: {str(e)}", "progress": 0},
+            meta={
+                "status": f"Job data validation failed: {str(e)}",
+                "progress": 0,
+            },
         )
         raise
 
@@ -356,7 +399,9 @@ async def _clean_duplicate_jobs_async() -> Dict[str, Any]:
             await db.close()
 
 
-async def _extract_job_skills_async(job_ids: List[int] = None) -> Dict[str, Any]:
+async def _extract_job_skills_async(
+    job_ids: List[int] = None,
+) -> Dict[str, Any]:
     """Extract job skills asynchronously"""
     async for db in get_db():
         try:
@@ -399,7 +444,9 @@ async def _extract_job_skills_async(job_ids: List[int] = None) -> Dict[str, Any]
 
                             # Create job-skill relationship
                             job_skill = JobSkill(
-                                job_id=job.id, skill_id=skill.id, confidence=confidence
+                                job_id=job.id,
+                                skill_id=skill.id,
+                                confidence=confidence,
                             )
                             db.add(job_skill)
                             skills_extracted += 1
@@ -426,7 +473,9 @@ async def _extract_job_skills_async(job_ids: List[int] = None) -> Dict[str, Any]
             await db.close()
 
 
-async def _normalize_job_titles_async(job_ids: List[int] = None) -> Dict[str, Any]:
+async def _normalize_job_titles_async(
+    job_ids: List[int] = None,
+) -> Dict[str, Any]:
     """Normalize job titles asynchronously"""
     async for db in get_db():
         try:
@@ -455,13 +504,17 @@ async def _normalize_job_titles_async(job_ids: List[int] = None) -> Dict[str, An
                     # Get or create title normalization
                     title_norm_result = await db.execute(
                         select(TitleNorm).where(
-                            TitleNorm.canonical == canonical, TitleNorm.family == family
+                            TitleNorm.canonical == canonical,
+                            TitleNorm.family == family,
                         )
                     )
                     title_norm = title_norm_result.scalar_one_or_none()
 
                     if not title_norm:
-                        title_norm = TitleNorm(canonical=canonical, family=family)
+                        title_norm = TitleNorm(
+                            canonical=canonical,
+                            family=family,
+                        )
                         db.add(title_norm)
                         await db.flush()
 
@@ -533,7 +586,9 @@ async def _calculate_job_quality_scores_async(
 
                 except Exception as e:
                     logger.error(
-                        f"Failed to calculate quality score for job {job.id}: {str(e)}"
+                        "Failed to calculate quality score for job %s: %s",
+                        job.id,
+                        str(e),
                     )
                     continue
 
@@ -549,7 +604,9 @@ async def _calculate_job_quality_scores_async(
             await db.close()
 
 
-async def _update_job_embeddings_async(job_ids: List[int] = None) -> Dict[str, Any]:
+async def _update_job_embeddings_async(
+    job_ids: List[int] = None,
+) -> Dict[str, Any]:
     """Update job embeddings asynchronously"""
     async for db in get_db():
         try:
@@ -578,7 +635,9 @@ async def _update_job_embeddings_async(job_ids: List[int] = None) -> Dict[str, A
 
                 except Exception as e:
                     logger.error(
-                        f"Failed to generate embedding for job {job.id}: {str(e)}"
+                        "Failed to generate embedding for job %s: %s",
+                        job.id,
+                        str(e),
                     )
                     continue
 
@@ -594,7 +653,9 @@ async def _update_job_embeddings_async(job_ids: List[int] = None) -> Dict[str, A
             await db.close()
 
 
-async def _validate_job_data_async(job_ids: List[int] = None) -> Dict[str, Any]:
+async def _validate_job_data_async(
+    job_ids: List[int] = None,
+) -> Dict[str, Any]:
     """Validate job data asynchronously"""
     async for db in get_db():
         try:
@@ -623,7 +684,7 @@ async def _validate_job_data_async(job_ids: List[int] = None) -> Dict[str, Any]:
                 if not job.title_raw or len(job.title_raw.strip()) < 3:
                     issues.append("Missing or too short title")
 
-                if not job.description_raw or len(job.description_raw.strip()) < 50:
+                if not job.description_raw or (len(job.description_raw.strip()) < 50):
                     issues.append("Missing or too short description")
 
                 if not job.url or not job.url.startswith(("http://", "https://")):
@@ -645,7 +706,10 @@ async def _validate_job_data_async(job_ids: List[int] = None) -> Dict[str, Any]:
                 else:
                     validation_results["valid_jobs"] += 1
 
-            return {"status": "completed", "validation_results": validation_results}
+            return {
+                "status": "completed",
+                "validation_results": validation_results,
+            }
 
         except Exception as e:
             logger.error(f"Job data validation failed: {str(e)}")
@@ -655,7 +719,10 @@ async def _validate_job_data_async(job_ids: List[int] = None) -> Dict[str, Any]:
 
 
 # Job Alert Processing Tasks
-@celery_app.task(bind=True, name="app.tasks.processing_tasks.process_job_alerts")
+@celery_app.task(
+    bind=True,
+    name="app.tasks.processing_tasks.process_job_alerts",
+)
 def process_job_alerts(self, frequency: str = "daily"):
     """
     Process job alerts and send notifications to users.
@@ -666,7 +733,10 @@ def process_job_alerts(self, frequency: str = "daily"):
     try:
         self.update_state(
             state="PROGRESS",
-            meta={"status": f"Processing {frequency} job alerts", "progress": 0},
+            meta={
+                "status": f"Processing {frequency} job alerts",
+                "progress": 0,
+            },
         )
 
         result = _process_job_alerts_sync(frequency)
@@ -674,7 +744,7 @@ def process_job_alerts(self, frequency: str = "daily"):
         self.update_state(
             state="SUCCESS",
             meta={
-                "status": f"{frequency.title()} job alerts processed successfully",
+                "status": (f"{frequency.title()} job alerts processed successfully"),
                 "progress": 100,
                 "result": result,
             },
@@ -686,7 +756,10 @@ def process_job_alerts(self, frequency: str = "daily"):
         logger.error(f"Job alert processing failed: {str(e)}")
         self.update_state(
             state="FAILURE",
-            meta={"status": f"Job alert processing failed: {str(e)}", "progress": 0},
+            meta={
+                "status": f"Job alert processing failed: {str(e)}",
+                "progress": 0,
+            },
         )
         raise
 
@@ -696,6 +769,7 @@ def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
     from sqlalchemy import select, and_
     from ..db.models import JobAlert, User, UserNotification
     from ..services.search import search_jobs
+    from ..webhooks.whatsapp import send_whatsapp_message
 
     db = SessionLocal()
     try:
@@ -720,20 +794,37 @@ def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
 
         for alert in alerts:
             try:
+                filters = alert.filters or {}
+
                 # Search for matching jobs
-                matching_jobs = search_jobs(
+                matching_jobs_resp = search_jobs(
                     db,
                     q=alert.query,
-                    location=alert.filters.get("location"),
-                    seniority=alert.filters.get("seniority"),
+                    location=filters.get("location"),
+                    seniority=filters.get("seniority"),
                 )
+
+                if isinstance(matching_jobs_resp, dict):
+                    matching_jobs = (
+                        matching_jobs_resp.get("jobs")
+                        or matching_jobs_resp.get("results")
+                        or []
+                    )
+                else:
+                    matching_jobs = matching_jobs_resp or []
 
                 # Filter for new jobs only
                 new_jobs = [
                     job
                     for job in matching_jobs
                     if job.get("first_seen")
-                    and datetime.fromisoformat(job["first_seen"].replace("Z", ""))
+                    and (
+                        job["first_seen"]
+                        if isinstance(job["first_seen"], datetime)
+                        else datetime.fromisoformat(
+                            str(job["first_seen"]).replace("Z", "")
+                        )
+                    )
                     > cutoff_time
                 ]
 
@@ -748,7 +839,7 @@ def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
                         notification = UserNotification(
                             user_id=user.id,
                             type="job_alert",
-                            title=f"🎯 {len(new_jobs)} new jobs match '{alert.name}'",
+                            title=(f"🎯 {len(new_jobs)} new jobs match '{alert.name}'"),
                             message=_format_job_alert_message(new_jobs[:5], alert.name),
                             data={
                                 "alert_id": alert.id,
@@ -756,6 +847,7 @@ def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
                                 "job_ids": [j.get("id") for j in new_jobs[:10]],
                             },
                             delivered_via=[],
+                            delivery_status={},
                         )
                         db.add(notification)
 
@@ -767,6 +859,25 @@ def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
                             if email_sent:
                                 notification.delivered_via.append("email")
                                 notifications_sent += 1
+                                notification.delivery_status["email"] = "sent"
+                            else:
+                                notification.delivery_status["email"] = "failed"
+
+                        if "whatsapp" in (alert.delivery_methods or []) and (
+                            user.whatsapp_number or user.phone
+                        ):
+                            whatsapp_sent = _send_job_alert_whatsapp(
+                                send_whatsapp_message,
+                                user.whatsapp_number or user.phone,
+                                alert.name,
+                                new_jobs[:5],
+                            )
+                            if whatsapp_sent:
+                                notification.delivered_via.append("whatsapp")
+                                notifications_sent += 1
+                                notification.delivery_status["whatsapp"] = "sent"
+                            else:
+                                notification.delivery_status["whatsapp"] = "failed"
 
                         # Update alert stats
                         alert.last_triggered = datetime.utcnow()
@@ -776,6 +887,7 @@ def _process_job_alerts_sync(frequency: str) -> Dict[str, Any]:
                         )
 
                         db.add(alert)
+                        db.add(notification)
 
                 alerts_processed += 1
 
@@ -825,7 +937,11 @@ def _format_job_alert_message(jobs: List[Dict], alert_name: str) -> str:
     return message
 
 
-def _send_job_alert_email(to_email: str, alert_name: str, jobs: List[Dict]) -> bool:
+def _send_job_alert_email(
+    to_email: str,
+    alert_name: str,
+    jobs: List[Dict],
+) -> bool:
     """Send job alert email digest"""
     if not jobs:
         return False
@@ -833,7 +949,10 @@ def _send_job_alert_email(to_email: str, alert_name: str, jobs: List[Dict]) -> b
     subject = f"🎯 {len(jobs)} new jobs match your '{alert_name}' alert"
 
     body = "Hi there,\n\n"
-    body += f"Great news! We found {len(jobs)} new job(s) matching your '{alert_name}' job alert.\n\n"
+    body += (
+        f"Great news! We found {len(jobs)} new job(s) matching "
+        f"your '{alert_name}' job alert.\n\n"
+    )
     body += "Here are the top matches:\n\n"
 
     for i, job in enumerate(jobs[:10], 1):
@@ -855,3 +974,34 @@ def _send_job_alert_email(to_email: str, alert_name: str, jobs: List[Dict]) -> b
     body += "To manage your alerts, visit your account settings.\n"
 
     return send_email(to_email, subject, body)
+
+
+def _run_async(coro):
+    try:
+        loop = asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    return loop.run_until_complete(coro)
+
+
+def _send_job_alert_whatsapp(
+    send_func,
+    to_number: str,
+    alert_name: str,
+    jobs: List[Dict],
+) -> bool:
+    if not jobs:
+        return False
+
+    message = f"🎯 {len(jobs)} new jobs for '{alert_name}':\n\n"
+    for idx, job in enumerate(jobs[:5], 1):
+        title = job.get("title", "Unknown Title")
+        company = job.get("organization", "Unknown Company")
+        location = job.get("location", "")
+        message += f"{idx}. {title}\n"
+        message += f"   {company}"
+        if location:
+            message += f" | {location}"
+        message += "\n"
+
+    return bool(_run_async(send_func(to_number, message)))

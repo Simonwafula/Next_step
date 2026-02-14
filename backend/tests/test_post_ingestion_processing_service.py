@@ -1,10 +1,14 @@
 from datetime import datetime
 
-from app.db.models import JobEntities, JobPost, JobSkill, Organization, TitleNorm
-from app.services.post_ingestion_processing_service import (
-    process_job_posts,
-    quality_snapshot,
+from app.db.models import (
+    JobEntities,
+    JobPost,
+    JobSkill,
+    Organization,
+    TitleNorm,
 )
+from app.services.post_ingestion_processing_service import process_job_posts
+from app.services.processing_quality import quality_snapshot
 
 
 def test_process_job_posts_generic_source(db_session_factory):
@@ -20,7 +24,7 @@ def test_process_job_posts_generic_source(db_session_factory):
         url_hash="hash-rss-1",
         title_raw="Junior Data Analyst",
         org_id=org.id,
-        description_raw="Minimum of 2 years experience. Must have SQL and Excel.",
+        description_raw=("Minimum of 2 years experience. Must have SQL and Excel."),
         first_seen=datetime.utcnow(),
         last_seen=datetime.utcnow(),
     )
@@ -89,4 +93,43 @@ def test_quality_snapshot_includes_source_breakdown(db_session_factory):
     assert "by_source" in snap
     rss = next(row for row in snap["by_source"] if row["source"] == "rss")
     assert rss["coverage"]["description_raw"] == 0
+    db.close()
+
+
+def test_quality_snapshot_flags_failing_gates(db_session_factory, monkeypatch):
+    monkeypatch.setenv("QUALITY_GATE_DESCRIPTION_PCT", "80")
+    monkeypatch.setenv("QUALITY_GATE_ENTITIES_PCT", "80")
+    monkeypatch.setenv("QUALITY_GATE_PROCESSED_PCT", "80")
+    monkeypatch.setenv("QUALITY_GATE_QUALITY_SCORE_PCT", "80")
+
+    db = db_session_factory()
+
+    job_ok = JobPost(
+        source="rss",
+        url="https://example.com/jobs/3",
+        url_hash="hash-rss-3",
+        title_raw="Data Analyst",
+        description_raw="We need SQL and Excel skills.",
+        quality_score=0.7,
+    )
+    job_ok.processed_at = datetime.utcnow()
+    db.add(job_ok)
+    db.flush()
+    db.add(JobEntities(job_id=job_ok.id, entities={}, skills=[], tools=[]))
+
+    db.add(
+        JobPost(
+            source="rss",
+            url="https://example.com/jobs/4",
+            url_hash="hash-rss-4",
+            title_raw="Job posting",
+            description_raw=None,
+        )
+    )
+    db.commit()
+
+    snap = quality_snapshot(db)
+    assert "gates" in snap
+    assert snap["gates"]["overall_status"] == "fail"
+    assert snap["gates"]["checks"]["description_raw"]["status"] == "fail"
     db.close()

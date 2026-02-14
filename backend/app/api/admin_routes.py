@@ -32,16 +32,15 @@ from ..services.analytics import (
     run_drift_checks,
 )
 from ..services.processing_log_service import log_monitoring_event
+from ..services.monitoring_service import monitoring_summary
 from ..services.signals import list_tenders, list_hiring_signals
 from ..services.gov_processing_service import (
     government_quality_snapshot,
     process_government_posts,
 )
 from ..services.gov_quarantine_service import quarantine_government_nonjobs
-from ..services.post_ingestion_processing_service import (
-    process_job_posts,
-    quality_snapshot,
-)
+from ..services.post_ingestion_processing_service import process_job_posts
+from ..services.processing_quality import quality_snapshot
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -190,7 +189,9 @@ def admin_users(
                 "is_active": user.is_active,
                 "is_verified": user.is_verified,
                 "created_at": user.created_at.isoformat(),
-                "last_login": user.last_login.isoformat() if user.last_login else None,
+                "last_login": (
+                    user.last_login.isoformat() if user.last_login else None
+                ),
             }
             for user in users
         ],
@@ -223,7 +224,7 @@ def admin_jobs(
                 "location": location.raw if location else None,
                 "source": job.source,
                 "url": job.url,
-                "first_seen": job.first_seen.isoformat() if job.first_seen else None,
+                "first_seen": (job.first_seen.isoformat() if job.first_seen else None),
             }
             for job, org, location in rows
         ],
@@ -328,7 +329,7 @@ def admin_government_quality(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    """Quick visibility into gov ingestion completeness and processing coverage."""
+    """Quick visibility into government ingestion and processing coverage."""
     return {
         "source": "gov_careers",
         "snapshot": government_quality_snapshot(db),
@@ -367,7 +368,7 @@ def admin_government_quarantine(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    """Quarantine obvious non-job gov pages so they don't pollute public search."""
+    """Quarantine non-job government pages to protect public search."""
     result = quarantine_government_nonjobs(
         db,
         limit=limit,
@@ -388,7 +389,7 @@ def admin_quality(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    """Global visibility into ingestion completeness and processing coverage."""
+    """Global visibility into ingestion completeness and coverage."""
     return quality_snapshot(db)
 
 
@@ -435,7 +436,11 @@ def admin_summaries(
 
     if dimension == "title":
         stmt = (
-            select(JobPost.title_raw, TitleNorm.canonical_title, func.count(JobPost.id))
+            select(
+                JobPost.title_raw,
+                TitleNorm.canonical_title,
+                func.count(JobPost.id),
+            )
             .outerjoin(TitleNorm, TitleNorm.id == JobPost.title_norm_id)
             .where(JobPost.title_raw.is_not(None))
             .group_by(JobPost.title_raw, TitleNorm.canonical_title)
@@ -533,7 +538,7 @@ def admin_summary_jobs(
                 "location": location.raw if location else None,
                 "source": job.source,
                 "url": job.url,
-                "first_seen": job.first_seen.isoformat() if job.first_seen else None,
+                "first_seen": (job.first_seen.isoformat() if job.first_seen else None),
             }
             for job, org, location in rows
         ],
@@ -662,6 +667,32 @@ def admin_drift_checks(
     return results
 
 
+@router.get("/monitoring/summary")
+def admin_monitoring_summary(
+    recent_days: int = Query(30, ge=7, le=180),
+    baseline_days: int = Query(180, ge=30, le=365),
+    top_n: int = Query(20, ge=5, le=100),
+    record: bool = Query(False),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    summary = monitoring_summary(
+        db,
+        recent_days=recent_days,
+        baseline_days=baseline_days,
+        top_n=top_n,
+    )
+    if record:
+        status = "success" if summary["overall_status"] == "pass" else "warning"
+        log_monitoring_event(
+            db,
+            status=status,
+            message="Monitoring summary generated",
+            details=summary,
+        )
+    return summary
+
+
 @router.get("/signals/tenders")
 def admin_tenders(
     limit: int = Query(20, ge=1, le=100),
@@ -679,3 +710,26 @@ def admin_hiring_signals(
     current_user: User = Depends(require_admin()),
 ):
     return list_hiring_signals(db, limit=limit)
+
+
+@router.get("/ranking/model-info")
+def admin_ranking_model_info(
+    current_user: User = Depends(require_admin()),
+):
+    """Get information about the current ranking model."""
+    from ..services.ranking_trainer import get_model_info
+
+    return get_model_info()
+
+
+@router.post("/ranking/train")
+def admin_train_ranking_model(
+    days_back: int = Query(30, ge=1, le=180),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    """Train the ranking model on recent user interaction data."""
+    from ..services.ranking_trainer import train_ranking_model
+
+    result = train_ranking_model(db, days_back=days_back)
+    return result
