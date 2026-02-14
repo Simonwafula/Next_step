@@ -35,6 +35,22 @@ Branch: `feat/T-630-fix-json-import-postgres`
 - `backend/venv3.11/bin/ruff format --check .` (pass)
 - `.venv/bin/pytest -q` (pass; 153 passed, 1 skipped)
 
+## 2026-02-14 (Scheduled Scraping + Processing Pipeline)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+### Summary
+- Added unified incremental pipeline orchestration for scheduled runs:
+  - CLI: `python -m cli pipeline` (scrape sites -> ingest-incremental -> post-process -> dedupe -> embed -> analytics)
+  - systemd template updated: `deploy/systemd/nextstep-pipeline.service`
+  - optional Celery beat schedule: `incremental-pipeline` (guarded by `ENABLE_CELERY_PIPELINE=true`, Redis lock)
+- Skill extraction: keep deterministic patterns enabled even when `SKILL_EXTRACTOR_MODE=skillner` to backstop SkillNER misses (fixes regression: Excel).
+
+### Tests Run
+- `backend/venv3.11/bin/ruff check .` (pass)
+- `backend/venv3.11/bin/ruff format --check .` (pass)
+- `backend/venv3.11/bin/pytest -q` (pass; 161 passed, 1 skipped)
+
 ## 2026-02-09 (Hardening & Test Coverage)
 
 Branch: `main`
