@@ -112,9 +112,6 @@ def test_monitoring_summary_fails_when_ingestion_is_stale(
         top_n=20,
     )
 
-    assert (
-        summary["operations"]["checks"]["ingestion_freshness"]["status"]
-        == "fail"
-    )
+    assert summary["operations"]["checks"]["ingestion_freshness"]["status"] == "fail"
     assert summary["overall_status"] == "fail"
     db.close()

@@ -273,9 +273,7 @@ def list_tenders(db: Session, limit: int = 50, offset: int = 0) -> dict:
                 "published_at": row.published_at.isoformat()
                 if row.published_at
                 else None,
-                "closing_at": (
-                    row.closing_at.isoformat() if row.closing_at else None
-                ),
+                "closing_at": (row.closing_at.isoformat() if row.closing_at else None),
                 "url": row.url,
             }
             for row in rows
@@ -344,11 +342,7 @@ def generate_hiring_signals(
 
 
 def list_hiring_signals(db: Session, limit: int = 50) -> dict:
-    stmt = (
-        select(HiringSignal)
-        .order_by(desc(HiringSignal.created_at))
-        .limit(limit)
-    )
+    stmt = select(HiringSignal).order_by(desc(HiringSignal.created_at)).limit(limit)
     rows = db.execute(stmt).scalars().all()
     return {
         "signals": [
@@ -361,9 +355,7 @@ def list_hiring_signals(db: Session, limit: int = 50) -> dict:
                 "window_start": row.window_start.isoformat()
                 if row.window_start
                 else None,
-                "window_end": (
-                    row.window_end.isoformat() if row.window_end else None
-                ),
+                "window_end": (row.window_end.isoformat() if row.window_end else None),
                 "evidence_ids": row.evidence_ids or [],
                 "metadata": row.meta_json or {},
             }
@@ -509,9 +501,7 @@ def generate_signal_aggregates(
     days: int = 30,
     limit: int = 50,
 ) -> dict:
-    latest_evidence_id = db.execute(
-        select(func.max(SignalEvidence.id))
-    ).scalar()
+    latest_evidence_id = db.execute(select(func.max(SignalEvidence.id))).scalar()
     baseline_evidence_id = int(latest_evidence_id or 0)
 
     since = datetime.utcnow() - timedelta(days=max(days, 1))

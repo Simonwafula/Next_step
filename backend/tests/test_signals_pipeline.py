@@ -28,11 +28,7 @@ def test_normalize_tender_metadata_updates_fields(db_session_factory):
     result = normalize_tender_metadata(db, limit=10)
     assert result["updated"] == 1
 
-    refreshed = (
-        db.query(TenderNotice)
-        .filter(TenderNotice.id == notice.id)
-        .one()
-    )
+    refreshed = db.query(TenderNotice).filter(TenderNotice.id == notice.id).one()
     assert refreshed.organization == "Nairobi County"
     assert refreshed.category == "it"
     assert refreshed.location == "Nairobi"

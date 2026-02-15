@@ -647,7 +647,9 @@ def admin_lmi_scorecard(
         ),
         "5_pct_jobs_with_company": _safe_pct(int(jobs_with_company), int(total_jobs)),
         "6_pct_jobs_with_role_family": _safe_pct(int(jobs_with_role), int(total_jobs)),
-        "7_pct_jobs_with_3plus_skills": _safe_pct(int(jobs_with_skills), int(total_jobs)),
+        "7_pct_jobs_with_3plus_skills": _safe_pct(
+            int(jobs_with_skills), int(total_jobs)
+        ),
         "8_error_rate_pct": _safe_pct(int(error_runs), int(all_runs)),
         "9_block_detections": 0,
         "10_trend_spikes": 0,
@@ -702,8 +704,7 @@ def admin_lmi_skills(
         .limit(30)
     ).all()
     top_30_skills = [
-        {"skill": skill_name, "count": int(count)}
-        for skill_name, count in top_30_rows
+        {"skill": skill_name, "count": int(count)} for skill_name, count in top_30_rows
     ]
 
     fragmentation_detected = len(top_30_skills) == 0 and total_unique_skills > 0
