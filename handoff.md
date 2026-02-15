@@ -1,5 +1,33 @@
 # Handoff
 
+## 2026-02-15 (MVIL Task 5: Match Mode API)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Completed Task 5 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+- Extended guided search service in `backend/app/services/guided_search.py`:
+  - added `match_roles()` for early-career role matching
+  - ranking uses skill overlap + education fit ladder
+  - returns `matching_skills`, `missing_skills`, and starter job previews
+  - includes profile-skills fallback handling (`UserProfile.skills` dict -> list)
+- Added route in `backend/app/api/routes.py`:
+  - `GET /api/guided/match`
+- Added tests in `backend/tests/test_guided_match.py`:
+  - ranking order + skill gaps + starter job previews
+  - authenticated profile skills conversion behavior
+- Updated plan progress tracker:
+  - Completed 5 / Remaining 3.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_guided_match.py` (2 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_guided_match.py backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- Next step in this plan is Task 6 (Advance mode API for transition cards).
+
 ## 2026-02-15 (MVIL Task 4: Explore Mode API)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

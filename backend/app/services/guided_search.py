@@ -1,9 +1,10 @@
 from collections import defaultdict
 
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from ..db.models import (
+    JobPost,
     RoleDemandSnapshot,
     RoleEducationBaseline,
     RoleExperienceBaseline,
@@ -11,6 +12,7 @@ from ..db.models import (
     TitleNorm,
 )
 from ..normalization.titles import normalize_title
+from .recommend import calculate_skill_overlap
 
 
 def _latest_demand_by_family(db: Session) -> dict[str, RoleDemandSnapshot]:
@@ -134,7 +136,7 @@ def explore_careers(
     families = list(demand_by_family.keys())
 
     if query:
-        family_hint, canonical_hint = normalize_title(query)
+        family_hint, _ = normalize_title(query)
         query_lower = query.lower()
         families = [
             family
@@ -145,7 +147,6 @@ def explore_careers(
                 query_lower in title.lower()
                 for title in titles_map.get(family, [])
             )
-            or query_lower in canonical_hint.lower()
         ]
 
     cards = []
@@ -190,3 +191,190 @@ def explore_careers(
     )[:limit]
 
     return {"guided_results": cards}
+
+
+def _normalize_skill_list(skills: list[str] | None) -> list[str]:
+    if not skills:
+        return []
+    normalized = []
+    seen = set()
+    for skill in skills:
+        value = " ".join(str(skill).strip().split())
+        lowered = value.casefold()
+        if value and lowered not in seen:
+            seen.add(lowered)
+            normalized.append(value)
+    return normalized
+
+
+def _education_rank(level: str | None) -> int:
+    if not level:
+        return 0
+
+    text = level.casefold()
+    if "phd" in text or "doctor" in text:
+        return 4
+    if "master" in text or "msc" in text or "m.s" in text:
+        return 3
+    if "bachelor" in text or "bsc" in text or "b.s" in text:
+        return 2
+    if "certificate" in text or "diploma" in text:
+        return 1
+    return 0
+
+
+def _education_fit_score(
+    user_education: str | None,
+    required_education: str,
+) -> float:
+    required_rank = _education_rank(required_education)
+    user_rank = _education_rank(user_education)
+    if user_rank >= required_rank:
+        return 1.0
+    if required_rank - user_rank == 1:
+        return 0.5
+    return 0.0
+
+
+def _starter_jobs_for_family(
+    db: Session,
+    family: str,
+    limit: int = 5,
+) -> list[dict]:
+    rows = db.execute(
+        select(JobPost, TitleNorm)
+        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id)
+        .where(
+            TitleNorm.family == family,
+            JobPost.is_active.is_(True),
+            or_(
+                JobPost.seniority.ilike("%entry%"),
+                JobPost.seniority.ilike("%junior%"),
+            ),
+        )
+        .order_by(JobPost.last_seen.desc())
+        .limit(limit)
+    ).all()
+
+    return [
+        {
+            "id": job_post.id,
+            "title": job_post.title_raw,
+            "url": job_post.url,
+            "seniority": job_post.seniority,
+            "role_family": title_norm.family if title_norm else None,
+        }
+        for job_post, title_norm in rows
+    ]
+
+
+def match_roles(
+    db: Session,
+    query: str | None,
+    user_skills: list[str],
+    education: str | None,
+    limit: int = 10,
+) -> dict:
+    demand_by_family = _latest_demand_by_family(db)
+    if not demand_by_family:
+        return {
+            "guided_results": [],
+            "message": (
+                "Insights not yet available — run baseline aggregation first"
+            ),
+        }
+
+    normalized_user_skills = _normalize_skill_list(user_skills)
+    skill_map = _skill_distribution(db)
+    education_map = _education_distribution(db)
+    titles_map = _canonical_titles_by_family(db)
+
+    families = list(demand_by_family.keys())
+    if query:
+        family_hint, _ = normalize_title(query)
+        query_lower = query.lower()
+        families = [
+            family
+            for family in families
+            if family == family_hint
+            or query_lower in family.replace("_", " ").lower()
+            or any(
+                query_lower in title.lower()
+                for title in titles_map.get(family, [])
+            )
+        ]
+
+    matches = []
+    for family in families:
+        top_skills = skill_map.get(family, [])
+        if not top_skills:
+            continue
+
+        target_skills = [
+            (entry["skill_name"], float(entry["frequency"] * 100))
+            for entry in top_skills
+        ]
+        _, missing_skills = calculate_skill_overlap(
+            normalized_user_skills,
+            target_skills,
+        )
+
+        target_skill_names = [skill_name for skill_name, _ in target_skills]
+        overlap_count = len(
+            {
+                skill.casefold() for skill in normalized_user_skills
+            }
+            & {
+                skill_name.casefold() for skill_name in target_skill_names
+            }
+        )
+        skill_overlap_score = (
+            overlap_count / len(target_skill_names)
+            if target_skill_names
+            else 0.0
+        )
+
+        matching_skills = [
+            skill_name
+            for skill_name, _ in target_skills
+            if skill_name.casefold()
+            in {skill.casefold() for skill in normalized_user_skills}
+        ]
+
+        education_distribution = education_map.get(family, [])
+        if education_distribution:
+            required_education = max(
+                education_distribution,
+                key=lambda row: row["share"],
+            )["education_level"]
+        else:
+            required_education = "Not specified"
+
+        education_fit = _education_fit_score(education, required_education)
+        match_score = (skill_overlap_score * 0.7) + (education_fit * 0.3)
+
+        demand = demand_by_family.get(family)
+        starter_jobs = _starter_jobs_for_family(db, family)
+        sample_job_ids = _combined_sample_ids(
+            demand.sample_job_ids if demand else [],
+            *[entry["sample_job_ids"] for entry in top_skills],
+        )
+
+        matches.append(
+            {
+                "role_family": family,
+                "match_score": round(match_score, 4),
+                "matching_skills": matching_skills,
+                "missing_skills": missing_skills[:5],
+                "required_education": required_education,
+                "education_fit": education_fit,
+                "starter_jobs": starter_jobs,
+                "sample_job_ids": sample_job_ids,
+                "low_confidence": (
+                    demand.count_total_jobs_used < 10 if demand else True
+                ),
+            }
+        )
+
+    matches = sorted(matches, key=lambda row: row["match_score"], reverse=True)
+    return {"guided_results": matches[:limit]}

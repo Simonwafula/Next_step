@@ -18,7 +18,7 @@ from ..services.lmi import (
     get_trending_skills,
     get_weekly_insights,
 )
-from ..services.guided_search import explore_careers
+from ..services.guided_search import explore_careers, match_roles
 from ..services.mvil_service import refresh_all_baselines
 from ..services.post_ingestion_processing_service import process_job_posts
 from ..services.processing_log_service import log_processing_event
@@ -136,6 +136,39 @@ def guided_explore(
 ):
     del location
     return explore_careers(db, query=q, limit=10)
+
+
+@api_router.get("/guided/match")
+def guided_match(
+    q: str | None = Query(None, description="Role query"),
+    skills: str | None = Query(None, description="Comma-separated skills"),
+    education: str | None = Query(None, description="Education level"),
+    location: str | None = Query(None, description="Location filter"),
+    db: Session = Depends(get_db),
+    current_user=Depends(get_current_user_optional),
+):
+    del location
+
+    provided_skills = []
+    if skills:
+        provided_skills = [
+            value.strip() for value in skills.split(",") if value.strip()
+        ]
+
+    profile_education = None
+    if current_user and getattr(current_user, "profile", None):
+        profile_skills_dict = current_user.profile.skills or {}
+        if not provided_skills and isinstance(profile_skills_dict, dict):
+            provided_skills = list(profile_skills_dict.keys())
+        profile_education = current_user.profile.education
+
+    return match_roles(
+        db,
+        query=q,
+        user_skills=provided_skills,
+        education=education or profile_education,
+        limit=10,
+    )
 
 
 @api_router.get("/recommend", response_model=list[dict])

@@ -97,12 +97,12 @@ Worktree: Yes
 - [x] Task 2: MVIL aggregation service
 - [x] Task 3: Admin aggregation endpoint + runner
 - [x] Task 4: Explore mode API (Student career cards)
-- [ ] Task 5: Match mode API (Early-career role matching)
+- [x] Task 5: Match mode API (Early-career role matching)
 - [ ] Task 6: Advance mode API (Professional transitions)
 - [ ] Task 7: Search API mode routing
 - [ ] Task 8: Frontend mode selector + guided results UI
 
-**Total Tasks:** 8 | **Completed:** 4 | **Remaining:** 4
+**Total Tasks:** 8 | **Completed:** 5 | **Remaining:** 3
 
 ## Implementation Tasks
 
@@ -293,13 +293,13 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] `GET /api/guided/match` endpoint returns ranked role matches with skill gap
-- [ ] Each match includes `missing_skills` and `starter_jobs` (3-5 previews)
-- [ ] Match score correctly reflects skill overlap and education fit
-- [ ] Match cards contain NO salary-related fields
-- [ ] Authenticated users can match against their profile skills (`UserProfile.skills` dict correctly converted to list)
-- [ ] Test verifies ranking order, skill gap calculation, and education scoring ladder
-- [ ] Test verifies `UserProfile.skills` dict `{"Python": 0.9}` is correctly converted to `["Python"]`
+- [x] `GET /api/guided/match` endpoint returns ranked role matches with skill gap
+- [x] Each match includes `missing_skills` and `starter_jobs` (3-5 previews)
+- [x] Match score correctly reflects skill overlap and education fit
+- [x] Match cards contain NO salary-related fields
+- [x] Authenticated users can match against their profile skills (`UserProfile.skills` dict correctly converted to list)
+- [x] Test verifies ranking order, skill gap calculation, and education scoring ladder
+- [x] Test verifies `UserProfile.skills` dict `{"Python": 0.9}` is correctly converted to `["Python"]`
 
 **Verify:**
 

@@ -105,6 +105,7 @@
   - [x] (T-442) MVIL aggregation service (`backend/app/services/mvil_service.py`, `backend/tests/test_mvil_service.py`)
   - [x] (T-443) MVIL admin refresh endpoint (`backend/app/api/routes.py`, `backend/tests/test_mvil_admin.py`)
   - [x] (T-444) Guided Explore API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_explore.py`)
+  - [x] (T-445) Guided Match API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_match.py`)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -153,6 +154,24 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (MVIL Task 5: Match Mode API)
+- Implemented guided Match mode in `backend/app/services/guided_search.py`:
+  - added `match_roles(db, query, user_skills, education)`
+  - computes match score using skill-overlap ratio + education fit ladder
+  - includes `matching_skills`, `missing_skills`, and 3-5 `starter_jobs`
+  - emits evidence `sample_job_ids` and low-confidence flag per role family
+  - supports query filtering by role family/canonical title
+- Added route in `backend/app/api/routes.py`:
+  - `GET /api/guided/match`
+  - accepts `skills` and `education` query params
+  - supports authenticated profile fallback (`UserProfile.skills` dict → list of keys)
+- Added tests in `backend/tests/test_guided_match.py`:
+  - ranking + gap + starter jobs behavior
+  - profile skills dict conversion behavior
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_guided_match.py` (2 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_guided_match.py backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (MVIL Task 4: Explore Mode API)
 - Implemented guided Explore mode service in `backend/app/services/guided_search.py`:
