@@ -1,5 +1,45 @@
 # Handoff
 
+## 2026-02-15 (T-741: Telegram + Opportunity Sources + Periodic Ingestion Timer)
+
+Branch: `feat/T-741-telegram-opportunity-ingest`
+
+Commits:
+- `945fd5d` `[T-741] Add telegram + opportunity sources ingestion`
+- `6e108e6` `[T-741] Add periodic sources ingestion runner`
+- `a0ddd68` `[T-741] Ruff format backend`
+- `cb03d93` `[T-741] Post-process sources.yaml by source`
+- `1219408` `[T-741] Fix sources ingestion script imports`
+
+### Summary
+- Added a one-shot ingestion runner for `backend/app/ingestion/sources.yaml` that also runs DB-only post-processing (`backend/scripts/run_sources_ingestion.py`).
+- Hardened `gov_careers` HTML connector with per-source HTTP tuning (`timeout`, `retries`, `retry_backoff_s`, `user_agent`) and updated Global South to use the dedicated listings page (`/jobs/`) (`backend/app/ingestion/connectors/gov_careers.py`, `backend/app/ingestion/sources.yaml`).
+- VPS: pulled latest branch to `/home/nextstep.co.ke/public_html`, restarted backend/celery services, and confirmed `GET /health/detailed` is healthy (Postgres).
+- VPS: added periodic ingestion via `systemd`:
+  - `/etc/systemd/system/nextstep-ingest-sources.service`
+  - `/etc/systemd/system/nextstep-ingest-sources.timer` (every 6 hours at `*:45`, with randomized delay)
+- Production status:
+  - `standardarena.co.ke`: ingest OK (87 total in DB)
+  - `globalsouthopportunities.co.ke`: ingest OK (59 total in DB)
+  - `telegram:job_vacancy_kenya`: connector deployed, but awaiting credentials in `/home/nextstep.co.ke/.env`
+
+### Telegram Setup (Prod)
+1. Generate a Telethon session string:
+   - `cd /home/nextstep.co.ke/public_html/backend`
+   - `source /home/nextstep.co.ke/.venv/bin/activate`
+   - `TELEGRAM_API_ID=... TELEGRAM_API_HASH=... python scripts/telegram_create_session.py`
+2. Add to `/home/nextstep.co.ke/.env`:
+   - `TELEGRAM_API_ID=...`
+   - `TELEGRAM_API_HASH=...`
+   - `TELEGRAM_SESSION="..."` (quote it)
+3. Run one-shot (or wait for the timer):
+   - `systemctl start nextstep-ingest-sources.service`
+
+### Tests Run
+- `backend/venv3.11/bin/ruff check` (pass)
+- `backend/venv3.11/bin/ruff format --check` (pass)
+- `backend/venv3.11/bin/pytest -q` (217 passed, 1 skipped)
+
 ## 2026-02-15 (MVIL Tasks 7-8: Search Mode Routing + Frontend Guided UI)
 
 Branch: `feat/T-740-scheduled-scrape-processing`
