@@ -103,6 +103,7 @@
 - [/] (T-440) Role baselines & guided search modes
   - [x] (T-441) MVIL database baseline models (`backend/app/db/models.py`, `backend/tests/test_mvil_models.py`)
   - [x] (T-442) MVIL aggregation service (`backend/app/services/mvil_service.py`, `backend/tests/test_mvil_service.py`)
+  - [x] (T-443) MVIL admin refresh endpoint (`backend/app/api/routes.py`, `backend/tests/test_mvil_admin.py`)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -151,6 +152,19 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (MVIL Task 3: Admin Refresh Endpoint)
+- Added secure MVIL admin refresh endpoint:
+  - `POST /api/admin/mvil/refresh` in `backend/app/api/routes.py`
+  - protected with `require_admin()`
+  - executes `refresh_all_baselines(db)` and returns summary payload
+  - writes success/error processing logs under `process_type="mvil_baselines_refresh"`
+- Added test coverage in `backend/tests/test_mvil_admin.py`:
+  - verifies unauthenticated requests are rejected
+  - verifies admin requests return expected refresh summary shape
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_admin.py` (2 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (MVIL Task 2: Aggregation Service)
 - Implemented MVIL aggregation engine in `backend/app/services/mvil_service.py`:

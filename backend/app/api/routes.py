@@ -18,6 +18,7 @@ from ..services.lmi import (
     get_trending_skills,
     get_weekly_insights,
 )
+from ..services.mvil_service import refresh_all_baselines
 from ..services.post_ingestion_processing_service import process_job_posts
 from ..services.processing_log_service import log_processing_event
 from ..services.recommend import (
@@ -462,6 +463,41 @@ def admin_ingest(
         log_processing_event(
             db,
             process_type="ingest_all",
+            status="error",
+            message=str(exc),
+            details={"triggered_by": current_user.email},
+        )
+        raise
+
+
+@api_router.post("/admin/mvil/refresh")
+def admin_refresh_mvil(
+    db: Session = Depends(get_db),
+    current_user=Depends(require_admin()),
+):
+    """Refresh MVIL role baselines on demand."""
+    started_at = datetime.utcnow()
+
+    try:
+        summary = refresh_all_baselines(db)
+        duration = (datetime.utcnow() - started_at).total_seconds()
+        payload = {
+            **summary,
+            "duration_s": round(duration, 3),
+            "triggered_by": current_user.email,
+        }
+        log_processing_event(
+            db,
+            process_type="mvil_baselines_refresh",
+            status="success",
+            message="MVIL baseline refresh completed",
+            details=payload,
+        )
+        return summary
+    except Exception as exc:
+        log_processing_event(
+            db,
+            process_type="mvil_baselines_refresh",
             status="error",
             message=str(exc),
             details={"triggered_by": current_user.email},

@@ -1,5 +1,31 @@
 # Handoff
 
+## 2026-02-15 (MVIL Task 3: Admin Refresh Endpoint)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Completed Task 3 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+- Added `POST /api/admin/mvil/refresh` in `backend/app/api/routes.py`:
+  - requires admin access via `require_admin()`
+  - executes `refresh_all_baselines(db)`
+  - returns the refresh summary payload
+  - logs success/error events to `ProcessingLog` as `mvil_baselines_refresh`
+- Added endpoint tests in `backend/tests/test_mvil_admin.py`:
+  - unauthorized access rejection
+  - successful admin execution response shape
+- Updated plan progress tracker:
+  - Completed 3 / Remaining 5.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_admin.py` (2 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- Next step in this plan is Task 4 (Explore mode API career cards).
+
 ## 2026-02-15 (MVIL Task 2: Aggregation Service)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

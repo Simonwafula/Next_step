@@ -95,14 +95,14 @@ Worktree: Yes
 
 - [x] Task 1: MVIL database models
 - [x] Task 2: MVIL aggregation service
-- [ ] Task 3: Admin aggregation endpoint + runner
+- [x] Task 3: Admin aggregation endpoint + runner
 - [ ] Task 4: Explore mode API (Student career cards)
 - [ ] Task 5: Match mode API (Early-career role matching)
 - [ ] Task 6: Advance mode API (Professional transitions)
 - [ ] Task 7: Search API mode routing
 - [ ] Task 8: Frontend mode selector + guided results UI
 
-**Total Tasks:** 8 | **Completed:** 2 | **Remaining:** 6
+**Total Tasks:** 8 | **Completed:** 3 | **Remaining:** 5
 
 ## Implementation Tasks
 
@@ -207,9 +207,9 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] `POST /api/admin/mvil/refresh` endpoint exists and requires admin auth
-- [ ] Endpoint calls `refresh_all_baselines()` and returns summary
-- [ ] Test verifies endpoint requires auth and returns expected shape
+- [x] `POST /api/admin/mvil/refresh` endpoint exists and requires admin auth
+- [x] Endpoint calls `refresh_all_baselines()` and returns summary
+- [x] Test verifies endpoint requires auth and returns expected shape
 
 **Verify:**
 
