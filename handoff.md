@@ -1,5 +1,34 @@
 # Handoff
 
+## 2026-02-15 (T-602 monitoring hardening + signals/admin compatibility)
+
+Branch: `feat/T-741-telegram-opportunity-ingest`
+
+Commit: `pending`
+
+### Summary
+- Completed hardening task `T-602` by extending monitoring gates in `backend/app/services/monitoring_service.py`:
+  - added operations thresholds for ingestion error rate and ingestion staleness (`MONITORING_ERROR_RATE_MAX`, `MONITORING_INGESTION_STALENESS_HOURS`)
+  - added `operations` section to monitoring summary with checks/metrics/thresholds and integrated status into overall pass/warn/fail outcome
+- Hardened signals flow in `backend/app/services/signals.py`:
+  - idempotent aggregate signal regeneration for active windows
+  - processing-log emission for `signals_aggregate` with `evidence_ids` and `evidence_links_count`
+- Restored admin endpoint compatibility in `backend/app/api/admin_routes.py` for:
+  - `/api/admin/lmi-scorecard`, `/api/admin/lmi-health`, `/api/admin/lmi-integrity`, `/api/admin/lmi-skills`, `/api/admin/lmi-seniority`
+- Added/updated tests:
+  - `backend/tests/test_monitoring_service.py` (new)
+  - `backend/tests/test_signals_pipeline.py`
+  - `backend/tests/test_admin_processing_endpoints.py`
+- Added implementation docs:
+  - `backend/docs/LMI_MONITORING_IMPLEMENTATION.md`
+  - `backend/docs/LMI_QA_MONITORING_CHECKLIST.md`
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_monitoring_service.py backend/tests/test_signals_pipeline.py backend/tests/test_admin_processing_endpoints.py -k "monitoring or drift or signals or lmi"` (11 passed)
+
+### Notes
+- `changemap.md` updated to mark `T-602`/`T-602a` complete and log this implementation cycle.
+
 ## 2026-02-15 (T-741: Telegram + Opportunity Sources + Periodic Ingestion Timer)
 
 Branch: `feat/T-741-telegram-opportunity-ingest`

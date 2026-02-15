@@ -16,6 +16,7 @@ from ..db.models import (
     HiringSignal,
 )
 from ..normalization.extractors import extract_task_statements
+from .processing_log_service import log_processing_event
 
 
 TASK_ROLE_KEYWORDS = {
@@ -272,7 +273,9 @@ def list_tenders(db: Session, limit: int = 50, offset: int = 0) -> dict:
                 "published_at": row.published_at.isoformat()
                 if row.published_at
                 else None,
-                "closing_at": (row.closing_at.isoformat() if row.closing_at else None),
+                "closing_at": (
+                    row.closing_at.isoformat() if row.closing_at else None
+                ),
                 "url": row.url,
             }
             for row in rows
@@ -341,7 +344,11 @@ def generate_hiring_signals(
 
 
 def list_hiring_signals(db: Session, limit: int = 50) -> dict:
-    stmt = select(HiringSignal).order_by(desc(HiringSignal.created_at)).limit(limit)
+    stmt = (
+        select(HiringSignal)
+        .order_by(desc(HiringSignal.created_at))
+        .limit(limit)
+    )
     rows = db.execute(stmt).scalars().all()
     return {
         "signals": [
@@ -354,7 +361,9 @@ def list_hiring_signals(db: Session, limit: int = 50) -> dict:
                 "window_start": row.window_start.isoformat()
                 if row.window_start
                 else None,
-                "window_end": (row.window_end.isoformat() if row.window_end else None),
+                "window_end": (
+                    row.window_end.isoformat() if row.window_end else None
+                ),
                 "evidence_ids": row.evidence_ids or [],
                 "metadata": row.meta_json or {},
             }
@@ -484,13 +493,30 @@ def _generate_org_activity_signals(
     return created
 
 
+def _clear_existing_aggregate_signals(db: Session, since: datetime) -> None:
+    signal_types = ("posting_velocity", "repost_intensity", "org_activity")
+    db.query(HiringSignal).filter(
+        HiringSignal.signal_type.in_(signal_types),
+        HiringSignal.window_end.is_not(None),
+        HiringSignal.window_end >= since,
+    ).delete(synchronize_session=False)
+    db.flush()
+
+
 def generate_signal_aggregates(
     db: Session,
     *,
     days: int = 30,
     limit: int = 50,
 ) -> dict:
+    latest_evidence_id = db.execute(
+        select(func.max(SignalEvidence.id))
+    ).scalar()
+    baseline_evidence_id = int(latest_evidence_id or 0)
+
     since = datetime.utcnow() - timedelta(days=max(days, 1))
+    _clear_existing_aggregate_signals(db, since)
+
     created_by_type = {
         "posting_velocity": 0,
         "repost_intensity": 0,
@@ -514,8 +540,35 @@ def generate_signal_aggregates(
     )
 
     db.commit()
-    return {
+
+    evidence_ids = [
+        evidence_id
+        for (evidence_id,) in db.execute(
+            select(SignalEvidence.id)
+            .where(SignalEvidence.id > baseline_evidence_id)
+            .order_by(SignalEvidence.id.asc())
+        ).all()
+    ]
+
+    response = {
         "status": "success",
         "created_by_type": created_by_type,
         "created_total": sum(created_by_type.values()),
     }
+
+    log_processing_event(
+        db,
+        process_type="signals_aggregate",
+        status="success",
+        message="Generated hiring signals with evidence links",
+        details={
+            "days": days,
+            "limit": limit,
+            "created_by_type": created_by_type,
+            "created_total": response["created_total"],
+            "evidence_ids": evidence_ids,
+            "evidence_links_count": len(evidence_ids),
+        },
+    )
+
+    return response

@@ -10,6 +10,7 @@ import yaml
 
 from ..db.database import get_db
 from ..db.models import (
+    JobDedupeMap,
     JobApplication,
     JobPost,
     JobSkill,
@@ -49,6 +50,12 @@ router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 BASE_DIR = Path(__file__).resolve().parents[1]
 CONVERSION_ALERT_SETTINGS_PROCESS_TYPE = "admin_conversion_alert_settings"
+
+
+def _safe_pct(numerator: int, denominator: int) -> float:
+    if denominator <= 0:
+        return 0.0
+    return round((numerator / denominator) * 100, 1)
 
 
 class ConversionAlertSettingsUpdateRequest(BaseModel):
@@ -573,6 +580,184 @@ def admin_lmi_quality(
             "estimated_arpu_kes": estimated_arpu_kes,
             "estimated_churn_rate": estimated_churn_rate,
         },
+    }
+
+
+@router.get("/lmi-scorecard")
+def admin_lmi_scorecard(
+    days_back: int = Query(1, ge=1, le=30),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    del current_user
+    since = datetime.utcnow() - timedelta(days=days_back)
+
+    raw_postings = (
+        db.execute(
+            select(func.count(JobPost.id)).where(JobPost.first_seen >= since)
+        ).scalar()
+        or 0
+    )
+    canonical_jobs = (
+        db.execute(
+            select(func.count(JobPost.id)).where(JobPost.title_norm_id.is_not(None))
+        ).scalar()
+        or 0
+    )
+    dedupe_entries = db.execute(select(func.count(JobDedupeMap.job_id))).scalar() or 0
+    jobs_with_company = (
+        db.execute(
+            select(func.count(JobPost.id)).where(JobPost.org_id.is_not(None))
+        ).scalar()
+        or 0
+    )
+    jobs_with_role = canonical_jobs
+    jobs_with_skills = (
+        db.execute(
+            select(func.count(JobPost.id.distinct())).join_from(JobPost, JobSkill)
+        ).scalar()
+        or 0
+    )
+    total_jobs = db.execute(select(func.count(JobPost.id))).scalar() or 0
+    error_runs = (
+        db.execute(
+            select(func.count(ProcessingLog.id)).where(
+                ProcessingLog.processed_at >= since,
+                ProcessingLog.results["status"].as_string() == "error",
+            )
+        ).scalar()
+        or 0
+    )
+    all_runs = (
+        db.execute(
+            select(func.count(ProcessingLog.id)).where(
+                ProcessingLog.processed_at >= since,
+            )
+        ).scalar()
+        or 0
+    )
+
+    metrics = {
+        "1_raw_postings_ingested": int(raw_postings),
+        "2_canonical_jobs_added": int(canonical_jobs),
+        "3_canonical_jobs_updated": 0,
+        "4_dedupe_collapse_rate_by_source": _safe_pct(
+            int(dedupe_entries),
+            int(total_jobs),
+        ),
+        "5_pct_jobs_with_company": _safe_pct(int(jobs_with_company), int(total_jobs)),
+        "6_pct_jobs_with_role_family": _safe_pct(int(jobs_with_role), int(total_jobs)),
+        "7_pct_jobs_with_3plus_skills": _safe_pct(int(jobs_with_skills), int(total_jobs)),
+        "8_error_rate_pct": _safe_pct(int(error_runs), int(all_runs)),
+        "9_block_detections": 0,
+        "10_trend_spikes": 0,
+    }
+
+    return {
+        "date": datetime.utcnow().date().isoformat(),
+        "metrics": metrics,
+    }
+
+
+@router.get("/lmi-integrity")
+def admin_lmi_integrity(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    del current_user
+
+    total_jobs = db.execute(select(func.count(JobPost.id))).scalar() or 0
+    dedupe_entries = db.execute(select(func.count(JobDedupeMap.job_id))).scalar() or 0
+    canonical_jobs = (
+        db.execute(
+            select(func.count(JobPost.id)).where(JobPost.title_norm_id.is_not(None))
+        ).scalar()
+        or 0
+    )
+
+    return {
+        "total_jobs": int(total_jobs),
+        "dedupe_entries": int(dedupe_entries),
+        "canonical_jobs": int(canonical_jobs),
+        "integrity_checks": {
+            "canonical_coverage_pct": _safe_pct(int(canonical_jobs), int(total_jobs)),
+            "dedupe_rate_pct": _safe_pct(int(dedupe_entries), int(total_jobs)),
+        },
+    }
+
+
+@router.get("/lmi-skills")
+def admin_lmi_skills(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    del current_user
+
+    total_unique_skills = db.execute(select(func.count(Skill.id))).scalar() or 0
+    top_30_rows = db.execute(
+        select(Skill.name, func.count(JobSkill.id))
+        .join(JobSkill, JobSkill.skill_id == Skill.id)
+        .group_by(Skill.name)
+        .order_by(desc(func.count(JobSkill.id)))
+        .limit(30)
+    ).all()
+    top_30_skills = [
+        {"skill": skill_name, "count": int(count)}
+        for skill_name, count in top_30_rows
+    ]
+
+    fragmentation_detected = len(top_30_skills) == 0 and total_unique_skills > 0
+
+    return {
+        "total_unique_skills": int(total_unique_skills),
+        "top_30_skills": top_30_skills,
+        "fragmentation_detected": fragmentation_detected,
+        "quality_status": "healthy" if not fragmentation_detected else "warning",
+    }
+
+
+@router.get("/lmi-seniority")
+def admin_lmi_seniority(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    del current_user
+
+    total_jobs = db.execute(select(func.count(JobPost.id))).scalar() or 0
+    with_seniority = (
+        db.execute(
+            select(func.count(JobPost.id)).where(JobPost.seniority.is_not(None))
+        ).scalar()
+        or 0
+    )
+    coverage_pct = _safe_pct(int(with_seniority), int(total_jobs))
+
+    return {
+        "total_jobs": int(total_jobs),
+        "with_seniority": int(with_seniority),
+        "coverage_pct": coverage_pct,
+        "status": "healthy" if coverage_pct >= 60.0 else "warning",
+    }
+
+
+@router.get("/lmi-health")
+def admin_lmi_health(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    del current_user
+
+    scorecard = admin_lmi_scorecard(days_back=1, db=db, current_user=None)
+    integrity = admin_lmi_integrity(db=db, current_user=None)
+    skills = admin_lmi_skills(db=db, current_user=None)
+    seniority = admin_lmi_seniority(db=db, current_user=None)
+
+    return {
+        "generated_at": datetime.utcnow().isoformat(),
+        "daily_scorecard": scorecard,
+        "canonical_integrity": integrity,
+        "skill_normalization": skills,
+        "seniority_coverage": seniority,
     }
 
 

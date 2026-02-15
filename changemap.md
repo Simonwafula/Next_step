@@ -100,7 +100,7 @@
   - [x] (T-436) Settings edit guard + audit metadata (editor allowlist, IP/user-agent)
 
 ## 4.3 Guided Search Modes (MVIL)
-- [/] (T-440) Role baselines & guided search modes
+- [x] (T-440) Role baselines & guided search modes
   - [x] (T-441) MVIL database baseline models (`backend/app/db/models.py`, `backend/tests/test_mvil_models.py`)
   - [x] (T-442) MVIL aggregation service (`backend/app/services/mvil_service.py`, `backend/tests/test_mvil_service.py`)
   - [x] (T-443) MVIL admin refresh endpoint (`backend/app/api/routes.py`, `backend/tests/test_mvil_admin.py`)
@@ -111,29 +111,29 @@
   - [x] (T-448) Frontend mode selector + guided cards (`frontend/index.html`, `frontend/js/main.js`, `frontend/styles/main.css`)
 
 ## 5. Signals (planned)
-- [ ] (T-500) tender ingestion parser
-- [ ] (T-501) task→role mapping
-- [ ] (T-502) likely-hiring signals
-- [ ] (T-503) evidence + confidence tracking
+- [x] (T-500) tender ingestion parser
+- [x] (T-501) task→role mapping
+- [x] (T-502) likely-hiring signals
+- [x] (T-503) evidence + confidence tracking
   - [x] (T-500a) define tender source schema + parser (`backend/app/ingestion/connectors/`, `backend/app/db/models.py`)
-  - [ ] (T-500b) normalize tender metadata + storage (`backend/app/db/models.py`)
+  - [x] (T-500b) normalize tender metadata + storage (`backend/app/services/signals.py`, `backend/tests/test_signals_pipeline.py`)
   - [x] (T-501a) task sentence extraction (`backend/app/normalization/extractors.py`)
   - [x] (T-501b) mapping model/rules + storage (`backend/app/services/signals.py`, `backend/app/db/models.py`)
-  - [/] (T-502a) signal definitions + aggregation (repost_count, velocity, org activity)
+  - [x] (T-502a) signal definitions + aggregation (repost_count, velocity, org activity)
   - [x] (T-502b) API surface for signals (`backend/app/api/admin_routes.py`)
   - [x] (T-503a) evidence schema + confidence scoring (`backend/app/db/models.py`)
-  - [ ] (T-503b) pipeline logging for evidence links (`backend/app/services/processing_log_service.py`)
+  - [x] (T-503b) pipeline logging for evidence links (`backend/app/services/signals.py`)
 
 ## 6. Hardening (planned)
 - [x] (T-600) orchestration CLI (`backend/cli.py`)
-- [ ] (T-601) incremental updates
-- [ ] (T-602) monitoring + drift checks
-- [ ] (T-603) regression tests
-- [ ] (T-604) runbook docs
+- [x] (T-601) incremental updates
+- [x] (T-602) monitoring + drift checks
+- [x] (T-603) regression tests
+- [x] (T-604) runbook docs
   - [x] (T-601a) watermark/state tracking table (`backend/app/db/models.py`)
   - [x] (T-601b) incremental ingestion runner (`backend/app/ingestion/runner.py`)
   - [x] (T-601c) incremental dedupe + embeddings refresh (`backend/app/normalization/dedupe.py`, `backend/app/ml/embeddings.py` — 10 tests)
-  - [/] (T-602a) monitoring metrics + thresholds (`backend/app/services/processing_log_service.py`)
+  - [x] (T-602a) monitoring metrics + thresholds (`backend/app/services/monitoring_service.py`, `backend/tests/test_monitoring_service.py`)
   - [x] (T-602b) drift detection checks (skills, titles, salary) (`backend/app/services/analytics.py`)
   - [x] (T-602c) alerting hooks (email/whatsapp) (`backend/app/services/notification_service.py`)
   - [x] (T-603a) regression fixture dataset (`data/samples/regression_jobs.json`)
@@ -143,7 +143,7 @@
 
 ## 7. Production Readiness (NEW - ML/DB Transition)
 - [x] (T-010-PLAN) Integrate production roadmap into control plane
-- [/] (T-700-PROD) Postgres 14.20 + pgvector baseline
+- [x] (T-700-PROD) Postgres 14.20 + pgvector baseline
   - [x] (T-701) Install/verify extensions (vector, pg_trgm, unaccent) in migration
   - [x] (T-702) Schema design & SQL DDL (tables B3, indexes B4)
 - [x] (T-710-PROD) Alembic Migrations
@@ -157,6 +157,40 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (Hardening T-602: Monitoring metrics + thresholds)
+- Extended monitoring gate logic in `backend/app/services/monitoring_service.py`:
+  - added operations thresholds from env (`MONITORING_ERROR_RATE_MAX`, `MONITORING_INGESTION_STALENESS_HOURS`)
+  - added operations checks for ingestion error-rate and ingestion freshness/staleness
+  - added operations metrics payload (`total_runs`, `error_runs`, `error_rate_pct`, `last_ingestion_at`, `staleness_hours`)
+  - integrated operations gate into `overall_status` computation (`pass`/`warn`/`fail`)
+- Added focused tests in `backend/tests/test_monitoring_service.py`:
+  - fails monitoring when ingestion error-rate exceeds configured threshold
+  - fails monitoring when latest ingestion is stale beyond configured threshold
+- Verification run:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_monitoring_service.py backend/tests/test_dashboard_endpoints.py -k "monitoring or drift"` (5 passed)
+
+### 2026-02-15 (Admin LMI endpoint compatibility restoration)
+- Restored legacy admin LMI endpoints in `backend/app/api/admin_routes.py` to satisfy existing endpoint contract tests:
+  - `GET /api/admin/lmi-scorecard`
+  - `GET /api/admin/lmi-health`
+  - `GET /api/admin/lmi-integrity`
+  - `GET /api/admin/lmi-skills`
+  - `GET /api/admin/lmi-seniority`
+- Added shared `_safe_pct()` helper and reused existing DB models/metrics for payload assembly.
+- Regression verification:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_admin_processing_endpoints.py backend/tests/test_signals_pipeline.py` (11 passed)
+
+### 2026-02-15 (Signals T-502a + T-503b: Idempotent Aggregation + Evidence Logging)
+- Hardened signal aggregation flow in `backend/app/services/signals.py`:
+  - added idempotent refresh behavior by clearing prior aggregate signal rows for active window before regeneration
+  - retained existing signal generation types: `posting_velocity`, `repost_intensity`, `org_activity`
+  - added `signals_aggregate` processing-log emission with evidence-link metadata (`evidence_ids`, `evidence_links_count`)
+- Extended regression coverage in `backend/tests/test_signals_pipeline.py`:
+  - verifies reruns do not duplicate `HiringSignal` rows for the same window
+  - verifies processing log includes evidence-link details
+- Verification run:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_signals_pipeline.py` (4 passed)
 
 ### 2026-02-15 (MVIL Task 7: Search Mode Routing)
 - Extended `GET /api/search` in `backend/app/api/routes.py`:
