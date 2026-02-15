@@ -1,5 +1,37 @@
 # Handoff
 
+## 2026-02-15 (Embeddings Backfill Timer + Search Guard)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `be19852` (`[OPS-EMBED] Schedule embeddings backfill and harden search scoring`)
+
+### Summary
+- Added a production systemd `oneshot` + `timer` pair for embeddings backfill:
+  - Templates: `deploy/systemd/nextstep-embeddings.service`, `deploy/systemd/nextstep-embeddings.timer`
+  - Runs `python -m cli embed` (incremental; only jobs missing an embedding for the configured model)
+- Hardened `/api/search` behavior when transformers are disabled:
+  - When `NEXTSTEP_DISABLE_TRANSFORMERS=1`, semantic scoring is disabled to avoid hash-vector "similarity" randomizing ranking.
+  - Scoped embedding lookup by `EMBEDDING_MODEL_NAME` (default `e5-small-v2`) to prevent multi-row issues per job.
+
+### Ops / Deployment Notes (VPS)
+- Installed on VPS as:
+  - `/etc/systemd/system/nextstep-embeddings.service`
+  - `/etc/systemd/system/nextstep-embeddings.timer` (every 30 minutes)
+- Enabled + started:
+  - `systemctl daemon-reload`
+  - `systemctl enable --now nextstep-embeddings.timer`
+  - `systemctl start nextstep-embeddings.service`
+- Progress checks:
+  - `sudo -u postgres psql -d career_lmi -tAc "select count(*) from job_embeddings;"`
+  - `journalctl -u nextstep-embeddings.service -n 50 --no-pager`
+- Note: API service has `NEXTSTEP_DISABLE_TRANSFORMERS=1` set via `nextstep-backend.service.d/override.conf` to keep memory stable with multiple workers. With the search guard in place, this does not degrade ranking while embeddings are being backfilled.
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format --check backend` (pass)
+- `backend/venv3.11/bin/ruff check backend` (pass)
+- `backend/venv3.11/bin/pytest -q` (pass; 164 passed, 1 skipped)
+
 ## 2026-02-14 (VPS JSON Upload + Postgres Import)
 
 Branch: `feat/T-630-fix-json-import-postgres`
