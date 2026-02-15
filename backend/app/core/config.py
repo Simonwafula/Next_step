@@ -126,6 +126,9 @@ class Settings(BaseModel):
     MPESA_SHORTCODE: Optional[str] = os.getenv("MPESA_SHORTCODE")
     MPESA_PASSKEY: Optional[str] = os.getenv("MPESA_PASSKEY")
     MPESA_CALLBACK_URL: Optional[str] = os.getenv("MPESA_CALLBACK_URL")
+    MPESA_WEBHOOK_SECRET: Optional[str] = os.getenv(
+        "MPESA_WEBHOOK_SECRET", os.getenv("MPESA_PASSKEY", "")
+    )
 
     STRIPE_SECRET_KEY: Optional[str] = os.getenv("STRIPE_SECRET_KEY")
     STRIPE_PUBLISHABLE_KEY: Optional[str] = os.getenv("STRIPE_PUBLISHABLE_KEY")

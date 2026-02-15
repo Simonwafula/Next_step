@@ -17,6 +17,16 @@ const { escapeHtml } = window.NEXTSTEP_SANITIZE || {
     escapeHtml: (value) => String(value ?? ''),
 };
 
+const getAuth = () => {
+    const raw = localStorage.getItem('nextstep_auth');
+    if (!raw) return null;
+    try {
+        return JSON.parse(raw);
+    } catch (error) {
+        return null;
+    }
+};
+
 const requestJson = async (url, options = {}) => {
     const response = await fetch(url, options);
     const payload = await response.json().catch(() => ({}));
@@ -26,6 +36,37 @@ const requestJson = async (url, options = {}) => {
         throw error;
     }
     return payload;
+};
+
+const startUpgradeCheckout = async (authToken, planCode = 'professional_monthly', provider = 'stripe') => {
+    const checkout = await requestJson(`${apiBase}/users/subscription/checkout`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ plan_code: planCode, provider }),
+    });
+    window.location.href = checkout.checkout_url;
+};
+
+const showUpgradePrompt = (authToken) => {
+    pathwayMessage.classList.add('auth-error');
+    pathwayMessage.innerHTML = 'Career pathways are a Professional feature. <button id="pathwayUpgradeBtn" type="button" class="solid-btn">Upgrade Now</button>';
+    const button = document.getElementById('pathwayUpgradeBtn');
+    if (!button) {
+        return;
+    }
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+            await startUpgradeCheckout(authToken);
+        } catch (error) {
+            pathwayMessage.textContent = error.message;
+            pathwayMessage.classList.add('auth-error');
+            button.disabled = false;
+        }
+    });
 };
 
 const renderChipList = (container, items) => {
@@ -57,9 +98,21 @@ const renderRows = (container, items) => {
 form.addEventListener('submit', async (event) => {
     event.preventDefault();
     pathwayMessage.textContent = '';
+    const auth = getAuth();
+
+    if (!auth?.access_token) {
+        pathwayResults.hidden = true;
+        pathwayMessage.classList.add('auth-error');
+        pathwayMessage.textContent = 'Please sign in to access career pathways.';
+        return;
+    }
 
     try {
-        const payload = await requestJson(`${apiBase}/career-pathways/${roleSlug.value}`);
+        const payload = await requestJson(`${apiBase}/career-pathways/${roleSlug.value}`, {
+            headers: {
+                Authorization: `Bearer ${auth.access_token}`,
+            },
+        });
 
         pathwayTitle.textContent = payload.title || '--';
         renderChipList(pathwaySkills, payload.required_skills || []);
@@ -79,6 +132,10 @@ form.addEventListener('submit', async (event) => {
         pathwayMessage.textContent = 'Roadmap loaded.';
     } catch (error) {
         pathwayResults.hidden = true;
+        if (error.status === 403) {
+            showUpgradePrompt(auth.access_token);
+            return;
+        }
         pathwayMessage.classList.add('auth-error');
         pathwayMessage.textContent = error.message;
     }

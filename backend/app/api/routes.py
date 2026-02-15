@@ -6,7 +6,11 @@ from sqlalchemy.orm import Session
 from ..db.database import get_db
 from ..ingestion.runner import run_all_sources, run_government_sources
 from ..normalization.titles import get_careers_for_degree, normalize_title
-from ..services.auth_service import get_current_user_optional, require_admin
+from ..services.auth_service import (
+    get_current_user_optional,
+    require_admin,
+    require_subscription,
+)
 from ..services.lmi import (
     get_attachment_companies,
     get_market_trends,
@@ -29,12 +33,14 @@ from ..services.career_pathways_service import (
 )
 from .analytics_routes import router as analytics_router
 from .auth_routes import router as auth_router
+from .payment_routes import router as payment_router
 from .user_routes import router as user_router
 
 api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 api_router.include_router(user_router, prefix="/users", tags=["user-management"])
+api_router.include_router(payment_router, prefix="/payments", tags=["payments"])
 api_router.include_router(analytics_router, tags=["analytics"])
 
 
@@ -135,7 +141,10 @@ def recommend(
 
 
 @api_router.get("/career-pathways/{role_slug}")
-def get_career_pathway(role_slug: str):
+def get_career_pathway(
+    role_slug: str,
+    _current_user=Depends(require_subscription("professional")),
+):
     """Get a career roadmap for a supported role slug."""
     try:
         return career_pathways_service.get_pathway(role_slug)

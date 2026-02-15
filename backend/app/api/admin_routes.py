@@ -251,6 +251,21 @@ def admin_lmi_quality(
         ).scalar()
         or 0
     )
+    users_new_30d = (
+        db.execute(
+            select(func.count(User.id)).where(User.created_at >= thirty_days)
+        ).scalar()
+        or 0
+    )
+    upgraded_users_30d = (
+        db.execute(
+            select(func.count(UserNotification.user_id.distinct())).where(
+                UserNotification.type == "subscription_upgrade",
+                UserNotification.created_at >= thirty_days,
+            )
+        ).scalar()
+        or 0
+    )
     churned_paid_users = (
         db.execute(
             select(func.count(User.id)).where(
@@ -263,10 +278,95 @@ def admin_lmi_quality(
     )
 
     estimated_mrr_kes = paid_users * 250
-    estimated_arpu_kes = round(estimated_mrr_kes / paid_users, 1) if paid_users else 0.0
+    estimated_arpu_kes = (
+        round(estimated_mrr_kes / paid_users, 1) if paid_users else 0.0
+    )
     estimated_churn_rate = (
         round((churned_paid_users / paid_users) * 100, 1) if paid_users else 0.0
     )
+    conversion_rate_30d = (
+        round((upgraded_users_30d / users_new_30d) * 100, 1)
+        if users_new_30d
+        else 0.0
+    )
+    paid_conversion_overall = (
+        round((paid_users / total_users) * 100, 1) if total_users else 0.0
+    )
+
+    trend_days = 14
+    trend_start = now - timedelta(days=trend_days - 1)
+
+    upgrades_by_date_rows = db.execute(
+        select(
+            func.date(UserNotification.created_at),
+            func.count(UserNotification.id),
+        )
+        .where(
+            UserNotification.type == "subscription_upgrade",
+            UserNotification.created_at >= trend_start,
+        )
+        .group_by(func.date(UserNotification.created_at))
+    ).all()
+    upgrades_by_date = {
+        str(date_key): int(count)
+        for date_key, count in upgrades_by_date_rows
+        if date_key is not None
+    }
+
+    new_users_by_date_rows = db.execute(
+        select(
+            func.date(User.created_at),
+            func.count(User.id),
+        )
+        .where(User.created_at >= trend_start)
+        .group_by(func.date(User.created_at))
+    ).all()
+    new_users_by_date = {
+        str(date_key): int(count)
+        for date_key, count in new_users_by_date_rows
+        if date_key is not None
+    }
+
+    conversion_trend_14d = []
+    for offset in range(trend_days):
+        day = (trend_start + timedelta(days=offset)).date()
+        day_key = day.isoformat()
+        upgrades = upgrades_by_date.get(day_key, 0)
+        new_users = new_users_by_date.get(day_key, 0)
+        day_conversion = (
+            round((upgrades / new_users) * 100, 1) if new_users else 0.0
+        )
+        conversion_trend_14d.append(
+            {
+                "date": day_key,
+                "upgrades": upgrades,
+                "new_users": new_users,
+                "conversion_rate": day_conversion,
+            }
+        )
+
+    recent_7d = conversion_trend_14d[-7:]
+    avg_conversion_7d = (
+        round(
+            sum(row["conversion_rate"] for row in recent_7d) / len(recent_7d),
+            1,
+        )
+        if recent_7d
+        else 0.0
+    )
+    conversion_threshold = 5.0
+    conversion_alert = {
+        "status": "warning"
+        if avg_conversion_7d < conversion_threshold
+        else "healthy",
+        "avg_conversion_7d": avg_conversion_7d,
+        "threshold": conversion_threshold,
+        "message": (
+            "Conversion is below target"
+            if avg_conversion_7d < conversion_threshold
+            else "Conversion is on target"
+        ),
+    }
 
     return {
         "scraping_health": {
@@ -290,6 +390,12 @@ def admin_lmi_quality(
         },
         "revenue": {
             "paid_users": paid_users,
+            "upgraded_users_30d": upgraded_users_30d,
+            "new_users_30d": users_new_30d,
+            "conversion_rate_30d": conversion_rate_30d,
+            "paid_conversion_overall": paid_conversion_overall,
+            "conversion_trend_14d": conversion_trend_14d,
+            "conversion_alert": conversion_alert,
             "estimated_mrr_kes": estimated_mrr_kes,
             "estimated_arpu_kes": estimated_arpu_kes,
             "estimated_churn_rate": estimated_churn_rate,

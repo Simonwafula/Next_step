@@ -88,6 +88,11 @@
   - [x] (T-424) Skills Gap Scan premium flow (`backend/app/services/skills_gap_service.py`, `/api/users/skills-gap-scan`, `frontend/skills-gap-scan.html`)
   - [x] (T-425) Career Pathway products API + UI (`backend/app/services/career_pathways_service.py`, `/api/career-pathways/{role_slug}`, `frontend/career-pathways.html`)
   - [x] (T-426) Enhanced admin LMI quality metrics (`/api/admin/lmi-quality`, `frontend/admin.html`, `frontend/js/admin.js`)
+  - [x] (T-427) Premium paywall + subscription checkout flow (`/api/users/subscription/plans`, `/api/users/subscription/checkout`, `/api/users/subscription/activate`) and gated career pathways access
+  - [x] (T-428) Payment webhook/callback verification for subscription activation (`/api/payments/webhooks/stripe`, `/api/payments/webhooks/mpesa`)
+  - [x] (T-429) Conversion tracking (free → paid) metrics for admin visibility (`/api/admin/lmi-quality` + admin panel)
+  - [x] (T-430) Conversion trend timeseries (14-day upgrades/new users/conversion rates) for admin monitoring
+  - [x] (T-431) Conversion drop-off alerting (7-day average threshold check + admin surface)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -136,6 +141,76 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (Premium Paywall + Checkout Flow)
+- Implemented paywall/upgrade flow for Phase 1 premium features:
+  - Added subscription service and authenticated endpoints:
+    - `GET /api/users/subscription/plans`
+    - `POST /api/users/subscription/checkout`
+    - `POST /api/users/subscription/activate`
+  - Enforced professional subscription on `GET /api/career-pathways/{role_slug}`
+  - Updated premium frontend flows to trigger checkout redirect on 403 paywall response:
+    - `frontend/js/skills-gap-scan.js`
+    - `frontend/js/career-pathways.js`
+- Added/updated tests:
+  - `backend/tests/test_subscription_paywall.py` (new)
+  - `backend/tests/test_career_pathways_endpoint.py` (auth + subscription gating)
+- Verification run:
+  - `backend/venv3.11/bin/pytest backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_skills_gap_scan_endpoint.py` (11 passed)
+
+### 2026-02-15 (Payment Webhook Verification)
+- Implemented verified payment callbacks before subscription activation:
+  - Added payment webhook router: `backend/app/api/payment_routes.py`
+  - Added signed webhook endpoints:
+    - `POST /api/payments/webhooks/stripe`
+    - `POST /api/payments/webhooks/mpesa`
+  - Added HMAC signature verification for webhook payloads (rejects missing/invalid signatures)
+  - Extended subscription service to activate by user id for provider callbacks
+  - Added `MPESA_WEBHOOK_SECRET` config (fallback to `MPESA_PASSKEY`)
+- Added tests:
+  - `backend/tests/test_payment_webhooks.py` (new)
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_payment_webhooks.py` (3 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_payment_webhooks.py backend/tests/test_subscription_paywall.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_skills_gap_scan_endpoint.py` (14 passed)
+
+### 2026-02-15 (Conversion Tracking: Free → Paid)
+- Implemented admin-facing conversion metrics to track free-to-paid movement:
+  - Added conversion/revenue fields to `GET /api/admin/lmi-quality`:
+    - `upgraded_users_30d`
+    - `new_users_30d`
+    - `conversion_rate_30d`
+    - `paid_conversion_overall`
+  - Logged upgrade events from subscription activation via `UserNotification` (`type="subscription_upgrade"`) for measurable conversion events.
+  - Updated admin UI quality panel to render conversion metrics (`frontend/js/admin.js`).
+- Added/updated tests:
+  - `backend/tests/test_dashboard_endpoints.py` (new conversion metric assertions)
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview"` (5 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (7 passed)
+
+### 2026-02-15 (Conversion Trend Timeseries)
+- Added 14-day conversion trend series in admin LMI quality endpoint:
+  - `revenue.conversion_trend_14d[]` with per-day `date`, `upgrades`, `new_users`, and `conversion_rate`.
+- Updated admin panel summary in `frontend/js/admin.js`:
+  - displays total upgrades across trend window and average conversion across 14 days.
+- Added test coverage in `backend/tests/test_dashboard_endpoints.py` to validate trend payload shape and non-zero upgrade points.
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (4 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (6 passed)
+
+### 2026-02-15 (Conversion Drop-off Alerting)
+- Added alerting signal in `GET /api/admin/lmi-quality`:
+  - `revenue.conversion_alert` with fields:
+    - `status` (`healthy` or `warning`)
+    - `avg_conversion_7d`
+    - `threshold`
+    - `message`
+  - alert is triggered when 7-day average conversion falls below threshold (5.0%).
+- Updated admin UI summary (`frontend/js/admin.js`) to display conversion alert state and 7-day average conversion.
+- Added tests in `backend/tests/test_dashboard_endpoints.py` for alert presence and warning behavior on low conversion.
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (5 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (7 passed)
 
 ### 2026-02-15 (LMI Monetization Build-out)
 - Delivered core LMI monetization milestones from `docs/LMI_IMPLEMENTATION_PLAN.md`:

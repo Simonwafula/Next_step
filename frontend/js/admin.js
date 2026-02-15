@@ -325,6 +325,22 @@ const renderLmiQuality = (payload) => {
     const skills = payload.skills_extraction || {};
     const engagement = payload.engagement || {};
     const revenue = payload.revenue || {};
+    const conversionAlert = revenue.conversion_alert || {};
+    const trend = Array.isArray(revenue.conversion_trend_14d)
+        ? revenue.conversion_trend_14d
+        : [];
+    const upgrades14d = trend.reduce(
+        (total, row) => total + Number(row.upgrades || 0),
+        0,
+    );
+    const avgConversion14d = trend.length
+        ? (
+            trend.reduce(
+                (total, row) => total + Number(row.conversion_rate || 0),
+                0,
+            ) / trend.length
+        ).toFixed(1)
+        : '0.0';
 
     adminLmiQuality.innerHTML = `
         <div class="metric-row">
@@ -342,6 +358,30 @@ const renderLmiQuality = (payload) => {
         <div class="metric-row">
             <span>Estimated MRR</span>
             <strong>KES ${escapeHtml(revenue.estimated_mrr_kes ?? 0)}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Free → paid conversion (30d)</span>
+            <strong>${escapeHtml(revenue.conversion_rate_30d ?? 0)}%</strong>
+        </div>
+        <div class="metric-row">
+            <span>New paid users (30d)</span>
+            <strong>${escapeHtml(revenue.upgraded_users_30d ?? 0)}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Upgrades (14d trend)</span>
+            <strong>${escapeHtml(upgrades14d)}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Avg conversion (14d)</span>
+            <strong>${escapeHtml(avgConversion14d)}%</strong>
+        </div>
+        <div class="metric-row">
+            <span>Conversion alert</span>
+            <strong>${escapeHtml(conversionAlert.status || 'unknown')}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Avg conversion (7d)</span>
+            <strong>${escapeHtml(conversionAlert.avg_conversion_7d ?? 0)}%</strong>
         </div>
         <div class="metric-row">
             <span>Estimated ARPU</span>

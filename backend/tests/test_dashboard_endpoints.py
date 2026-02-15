@@ -24,6 +24,7 @@ from app.db.models import (
     TitleAdjacency,
     TitleNorm,
     User,
+    UserNotification,
 )
 from app.services.auth_service import get_current_user
 
@@ -344,6 +345,135 @@ class TestAdminLmiQuality:
         assert "estimated_mrr_kes" in revenue
         assert "estimated_arpu_kes" in revenue
         assert "estimated_churn_rate" in revenue
+        assert "upgraded_users_30d" in revenue
+        assert "conversion_rate_30d" in revenue
+        assert "conversion_trend_14d" in revenue
+        assert "conversion_alert" in revenue
+
+    def test_lmi_quality_includes_conversion_metrics(
+        self,
+        client,
+        db_session_factory,
+    ):
+        db = db_session_factory()
+        now = datetime.utcnow()
+
+        user = User(
+            uuid="conversion-user-uuid",
+            email="conversion@test.local",
+            hashed_password="not-used",
+            full_name="Conversion User",
+            is_active=True,
+            is_verified=True,
+            subscription_tier="professional",
+            created_at=now - timedelta(days=3),
+        )
+        db.add(user)
+        db.flush()
+
+        db.add(
+            UserNotification(
+                user_id=user.id,
+                type="subscription_upgrade",
+                title="Subscription upgraded",
+                message="Upgrade completed",
+                data={"plan_code": "professional_monthly"},
+                created_at=now - timedelta(days=2),
+            )
+        )
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+
+        revenue = resp.json()["revenue"]
+        assert revenue["upgraded_users_30d"] >= 1
+        assert revenue["new_users_30d"] >= 1
+        assert revenue["conversion_rate_30d"] >= 0
+
+    def test_lmi_quality_includes_conversion_trend_series(
+        self,
+        client,
+        db_session_factory,
+    ):
+        db = db_session_factory()
+        now = datetime.utcnow()
+
+        user_recent = User(
+            uuid="trend-user-1",
+            email="trend1@test.local",
+            hashed_password="not-used",
+            full_name="Trend One",
+            is_active=True,
+            is_verified=True,
+            subscription_tier="professional",
+            created_at=now - timedelta(days=1),
+        )
+        user_old = User(
+            uuid="trend-user-2",
+            email="trend2@test.local",
+            hashed_password="not-used",
+            full_name="Trend Two",
+            is_active=True,
+            is_verified=True,
+            subscription_tier="basic",
+            created_at=now - timedelta(days=10),
+        )
+        db.add_all([user_recent, user_old])
+        db.flush()
+
+        db.add(
+            UserNotification(
+                user_id=user_recent.id,
+                type="subscription_upgrade",
+                title="Subscription upgraded",
+                message="Upgrade completed",
+                data={"plan_code": "professional_monthly"},
+                created_at=now - timedelta(days=1),
+            )
+        )
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+
+        trend = resp.json()["revenue"]["conversion_trend_14d"]
+        assert len(trend) == 14
+        assert all("date" in row for row in trend)
+        assert all("upgrades" in row for row in trend)
+        assert any(row["upgrades"] > 0 for row in trend)
+
+    def test_lmi_quality_flags_low_conversion_alert(
+        self,
+        client,
+        db_session_factory,
+    ):
+        db = db_session_factory()
+        now = datetime.utcnow()
+
+        user = User(
+            uuid="low-conversion-user",
+            email="low-conversion@test.local",
+            hashed_password="not-used",
+            full_name="Low Conversion User",
+            is_active=True,
+            is_verified=True,
+            subscription_tier="basic",
+            created_at=now - timedelta(days=1),
+        )
+        db.add(user)
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+
+        alert = resp.json()["revenue"]["conversion_alert"]
+        assert alert["status"] == "warning"
+        assert alert["avg_conversion_7d"] >= 0
+        assert "threshold" in alert
 
 
 # ---------------------------------------------------------------------------

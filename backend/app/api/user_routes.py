@@ -13,6 +13,7 @@ from ..services.matching_service import (
     matching_service,
 )
 from ..services.skills_gap_service import skills_gap_service
+from ..services.subscription_service import subscription_service
 from ..db.models import (
     User,
     SavedJob,
@@ -65,6 +66,53 @@ class CareerAdviceRequest(BaseModel):
 
 class SkillsGapScanRequest(BaseModel):
     target_role: str
+
+
+class SubscriptionCheckoutRequest(BaseModel):
+    plan_code: str = "professional_monthly"
+    provider: str = "stripe"
+
+
+class SubscriptionActivationRequest(BaseModel):
+    plan_code: str = "professional_monthly"
+
+
+@router.get("/subscription/plans")
+async def get_subscription_plans(
+    current_user: User = Depends(get_current_user),
+):
+    """List available subscription plans for authenticated users."""
+    return {
+        "plans": subscription_service.list_plans(),
+        "current_tier": current_user.subscription_tier,
+    }
+
+
+@router.post("/subscription/checkout")
+async def create_subscription_checkout(
+    request: SubscriptionCheckoutRequest,
+    current_user: User = Depends(get_current_user),
+):
+    """Create a checkout session for subscription upgrade."""
+    return subscription_service.create_checkout(
+        user=current_user,
+        plan_code=request.plan_code,
+        provider=request.provider,
+    )
+
+
+@router.post("/subscription/activate")
+async def activate_subscription(
+    request: SubscriptionActivationRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Activate a subscription plan after payment confirmation."""
+    return subscription_service.activate_plan(
+        db=db,
+        user=current_user,
+        plan_code=request.plan_code,
+    )
 
 
 @router.post("/skills-gap-scan")

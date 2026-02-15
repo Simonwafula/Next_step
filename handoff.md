@@ -1,5 +1,130 @@
 # Handoff
 
+## 2026-02-15 (Conversion Drop-off Alerting)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added conversion drop-off alerting in admin monetization metrics:
+  - `backend/app/api/admin_routes.py` now returns `revenue.conversion_alert` in `GET /api/admin/lmi-quality`.
+  - Alert evaluates 7-day average conversion rate against a threshold (5.0%).
+  - Returns `status`, `avg_conversion_7d`, `threshold`, and `message`.
+- Updated admin summary panel:
+  - `frontend/js/admin.js` now displays conversion alert state and 7-day average conversion.
+- Added test coverage:
+  - `backend/tests/test_dashboard_endpoints.py` validates alert presence and low-conversion warning behavior.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (5 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (7 passed)
+
+### Notes
+- This is backend-side alert signaling only; no external notification dispatch yet. Next step can wire these warnings into notification channels (email/WhatsApp/in-app) for proactive monitoring.
+
+## 2026-02-15 (Conversion Trend Timeseries)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added time-series conversion tracking to admin monetization analytics:
+  - `backend/app/api/admin_routes.py` now returns `revenue.conversion_trend_14d` in `GET /api/admin/lmi-quality`.
+  - Each point includes: `date`, `upgrades`, `new_users`, `conversion_rate`.
+- Updated admin UI summary:
+  - `frontend/js/admin.js` now renders 14-day upgrades total and 14-day average conversion percentage.
+- Expanded test coverage:
+  - `backend/tests/test_dashboard_endpoints.py` includes trend-shape and non-zero upgrade assertions.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (4 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (6 passed)
+
+### Notes
+- Trend series uses persisted `subscription_upgrade` events and user creation dates, improving daily funnel visibility beyond static monthly snapshots.
+
+## 2026-02-15 (Conversion Tracking Metrics: Free → Paid)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Implemented conversion tracking metrics for premium monetization visibility:
+  - Extended `GET /api/admin/lmi-quality` in `backend/app/api/admin_routes.py` to include:
+    - `upgraded_users_30d`
+    - `new_users_30d`
+    - `conversion_rate_30d`
+    - `paid_conversion_overall`
+- Added event logging for upgrade actions:
+  - `backend/app/services/subscription_service.py` now records `UserNotification(type="subscription_upgrade")` when a subscription is activated.
+- Updated admin dashboard rendering:
+  - `frontend/js/admin.js` now shows free→paid conversion and new paid users metrics.
+- Added test coverage:
+  - `backend/tests/test_dashboard_endpoints.py` includes conversion metric assertions.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview"` (5 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (7 passed)
+
+### Notes
+- Conversion metrics use explicit upgrade events (`subscription_upgrade`) rather than only current subscription tier snapshots, improving reliability of funnel tracking.
+
+## 2026-02-15 (Payment Webhook Verification for Subscription Activation)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added provider callback/webhook verification for production-safe subscription upgrades:
+  - New router: `backend/app/api/payment_routes.py`
+  - New endpoints:
+    - `POST /api/payments/webhooks/stripe`
+    - `POST /api/payments/webhooks/mpesa`
+  - Webhook payloads are verified via HMAC signatures before activating plans.
+- Extended subscription activation service:
+  - `backend/app/services/subscription_service.py`
+  - Added `activate_plan_by_user_id(...)` for verified webhook events.
+- Added M-Pesa webhook secret config:
+  - `backend/app/core/config.py` with `MPESA_WEBHOOK_SECRET` (fallback to `MPESA_PASSKEY`).
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_payment_webhooks.py` (3 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_payment_webhooks.py backend/tests/test_subscription_paywall.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_skills_gap_scan_endpoint.py` (14 passed)
+
+### Notes
+- Activation now occurs only on verified payment events; unverified/missing signatures are rejected with `403`.
+- Next step is replacing placeholder checkout URLs with provider SDK/session creation and including stable reference metadata in provider payment objects.
+
+## 2026-02-15 (Phase 1 Paywall + Subscription Checkout)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Implemented the previously skipped Phase 1 paywall/payment step for premium features:
+  - New subscription service: `backend/app/services/subscription_service.py`
+  - New authenticated subscription endpoints in `backend/app/api/user_routes.py`:
+    - `GET /api/users/subscription/plans`
+    - `POST /api/users/subscription/checkout`
+    - `POST /api/users/subscription/activate`
+- Enforced premium access for career pathways:
+  - `GET /api/career-pathways/{role_slug}` now requires `professional` subscription.
+- Updated premium feature UIs to handle paywall responses and start checkout:
+  - `frontend/js/skills-gap-scan.js`
+  - `frontend/js/career-pathways.js`
+
+### Tests Run
+- `backend/venv3.11/bin/pytest backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_skills_gap_scan_endpoint.py` (11 passed)
+
+### Notes
+- Checkout endpoint currently provides provider-specific redirect URLs (Stripe/M-Pesa placeholder URLs) and an activation endpoint for post-payment state transition.
+- Next step is wiring provider webhooks/callback verification before production billing launch.
+
 ## 2026-02-15 (LMI Monetization Milestones + Admin LMI Quality)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

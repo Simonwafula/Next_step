@@ -28,6 +28,37 @@ const getAuth = () => {
     }
 };
 
+const startUpgradeCheckout = async (authToken, planCode = 'professional_monthly', provider = 'stripe') => {
+    const checkout = await requestJson(`${apiBase}/users/subscription/checkout`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${authToken}`,
+        },
+        body: JSON.stringify({ plan_code: planCode, provider }),
+    });
+    window.location.href = checkout.checkout_url;
+};
+
+const showUpgradePrompt = (authToken) => {
+    scanMessage.classList.add('auth-error');
+    scanMessage.innerHTML = 'This feature requires Professional subscription. <button id="upgradeNowBtn" type="button" class="solid-btn">Upgrade Now</button>';
+    const button = document.getElementById('upgradeNowBtn');
+    if (!button) {
+        return;
+    }
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+            await startUpgradeCheckout(authToken);
+        } catch (error) {
+            scanMessage.textContent = error.message;
+            scanMessage.classList.add('auth-error');
+            button.disabled = false;
+        }
+    });
+};
+
 const requestJson = async (url, options = {}) => {
     const response = await fetch(url, options);
     const payload = await response.json().catch(() => ({}));
@@ -109,6 +140,10 @@ form.addEventListener('submit', async (event) => {
         scanMessage.classList.remove('auth-error');
     } catch (error) {
         scanResults.hidden = true;
+        if (error.status === 403 && auth?.access_token) {
+            showUpgradePrompt(auth.access_token);
+            return;
+        }
         scanMessage.classList.add('auth-error');
         scanMessage.textContent = error.message;
     }
