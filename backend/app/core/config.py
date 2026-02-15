@@ -72,6 +72,24 @@ class Settings(BaseModel):
     ADMIN_API_KEY: Optional[str] = os.getenv(
         "ADMIN_API_KEY"
     )  # For server-to-server admin access
+    ADMIN_CONVERSION_ALERT_THRESHOLD: float = float(
+        os.getenv("ADMIN_CONVERSION_ALERT_THRESHOLD", "5.0")
+    )
+    ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS: int = int(
+        os.getenv("ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS", "6")
+    )
+    ADMIN_CONVERSION_ALERT_IN_APP_ENABLED: bool = (
+        os.getenv("ADMIN_CONVERSION_ALERT_IN_APP_ENABLED", "true").lower()
+        == "true"
+    )
+    ADMIN_CONVERSION_ALERT_EMAIL_ENABLED: bool = (
+        os.getenv("ADMIN_CONVERSION_ALERT_EMAIL_ENABLED", "true").lower()
+        == "true"
+    )
+    ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED: bool = (
+        os.getenv("ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED", "true").lower()
+        == "true"
+    )
 
     # AI & ML Configuration
     OPENAI_API_KEY: Optional[str] = os.getenv("OPENAI_API_KEY")

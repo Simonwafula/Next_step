@@ -596,6 +596,93 @@ class TestAdminLmiQuality:
 
         assert len(email_calls) == 1
 
+    def test_lmi_quality_uses_configured_conversion_threshold(
+        self,
+        client,
+        db_session_factory,
+        monkeypatch,
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(
+            settings,
+            "ADMIN_CONVERSION_ALERT_THRESHOLD",
+            0.0,
+        )
+
+        db = db_session_factory()
+        db.add(
+            User(
+                uuid="threshold-low-conversion-user",
+                email="threshold-low-conversion@test.local",
+                hashed_password="not-used",
+                full_name="Threshold Low Conversion User",
+                is_active=True,
+                is_verified=True,
+                subscription_tier="basic",
+                created_at=datetime.utcnow() - timedelta(days=1),
+            )
+        )
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+        alert = resp.json()["revenue"]["conversion_alert"]
+        assert alert["threshold"] == 0.0
+        assert alert["status"] == "healthy"
+
+    def test_lmi_quality_warning_dispatch_honors_channel_toggles(
+        self,
+        client,
+        db_session_factory,
+        monkeypatch,
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(
+            settings,
+            "ADMIN_CONVERSION_ALERT_EMAIL_ENABLED",
+            False,
+        )
+        monkeypatch.setattr(
+            settings,
+            "ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED",
+            False,
+        )
+
+        db = db_session_factory()
+        db.add(
+            User(
+                uuid="toggle-low-conversion-user",
+                email="toggle-low-conversion@test.local",
+                hashed_password="not-used",
+                full_name="Toggle Low Conversion User",
+                is_active=True,
+                is_verified=True,
+                subscription_tier="basic",
+                created_at=datetime.utcnow() - timedelta(days=1),
+            )
+        )
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+
+        db = db_session_factory()
+        notification = (
+            db.query(UserNotification)
+            .filter(UserNotification.type == "admin_conversion_dropoff_alert")
+            .one()
+        )
+        assert "in_app" in (notification.delivered_via or [])
+        assert "email" not in (notification.delivered_via or [])
+        assert "whatsapp" not in (notification.delivered_via or [])
+        assert notification.delivery_status.get("email") == "disabled"
+        assert notification.delivery_status.get("whatsapp") == "disabled"
+        db.close()
+
 
 # ---------------------------------------------------------------------------
 # Admin users

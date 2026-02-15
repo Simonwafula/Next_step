@@ -1,5 +1,29 @@
 # Handoff
 
+## 2026-02-15 (Configurable Conversion Alert Controls)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added configurable conversion alert controls in `backend/app/core/config.py`:
+  - threshold (`ADMIN_CONVERSION_ALERT_THRESHOLD`)
+  - cooldown (`ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS`)
+  - per-channel toggles (`IN_APP`, `EMAIL`, `WHATSAPP`)
+- Updated `backend/app/api/admin_routes.py` to compute warning status using configured threshold.
+- Updated `backend/app/services/admin_alert_service.py` to respect cooldown/toggles when dispatching.
+- Expanded `backend/tests/test_dashboard_endpoints.py` with:
+  - configured threshold behavior test
+  - channel toggle behavior test
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (9 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- Defaults preserve existing behavior (warning threshold 5.0%, all channels enabled, cooldown 6h).
+
 ## 2026-02-15 (Conversion Warning Notification Routing)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

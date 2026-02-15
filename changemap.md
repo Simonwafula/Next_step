@@ -94,6 +94,7 @@
   - [x] (T-430) Conversion trend timeseries (14-day upgrades/new users/conversion rates) for admin monitoring
   - [x] (T-431) Conversion drop-off alerting (7-day average threshold check + admin surface)
   - [x] (T-432) Conversion warning notification routing (email + WhatsApp + in-app with cooldown dedupe)
+  - [x] (T-433) Configurable conversion alert threshold + channel toggles (env-driven)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -228,6 +229,22 @@
 - Verification runs:
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (7 passed)
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (9 passed)
+
+### 2026-02-15 (Configurable Conversion Alert Controls)
+- Added environment-driven controls for conversion warning alerting in `backend/app/core/config.py`:
+  - `ADMIN_CONVERSION_ALERT_THRESHOLD`
+  - `ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS`
+  - `ADMIN_CONVERSION_ALERT_IN_APP_ENABLED`
+  - `ADMIN_CONVERSION_ALERT_EMAIL_ENABLED`
+  - `ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED`
+- Updated `backend/app/api/admin_routes.py` to use configurable threshold instead of hardcoded value.
+- Updated `backend/app/services/admin_alert_service.py` to honor cooldown + per-channel toggles.
+- Added tests in `backend/tests/test_dashboard_endpoints.py` for:
+  - custom threshold behavior
+  - channel toggle behavior (email/WhatsApp disabled)
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (9 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (LMI Monetization Build-out)
 - Delivered core LMI monetization milestones from `docs/LMI_IMPLEMENTATION_PLAN.md`:

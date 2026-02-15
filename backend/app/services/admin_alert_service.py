@@ -20,8 +20,12 @@ def _run_async(coro):
 
 
 class AdminAlertService:
-    def __init__(self, cooldown_hours: int = 6) -> None:
-        self.cooldown_hours = cooldown_hours
+    def __init__(self) -> None:
+        pass
+
+    def _cooldown_hours(self) -> int:
+        configured = settings.ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS
+        return configured if configured > 0 else 6
 
     def _admin_emails(self) -> list[str]:
         return [
@@ -71,7 +75,7 @@ class AdminAlertService:
                 "notifications_created": 0,
             }
 
-        cutoff = datetime.utcnow() - timedelta(hours=self.cooldown_hours)
+        cutoff = datetime.utcnow() - timedelta(hours=self._cooldown_hours())
         admin_users = (
             db.execute(
                 select(User).where(
@@ -116,23 +120,32 @@ class AdminAlertService:
             if already_notified_recently:
                 continue
 
-            delivered_via = ["in_app"]
-            delivery_status = {"in_app": "sent"}
+            delivered_via = []
+            delivery_status = {}
 
-            email_ok = False
-            try:
-                email_ok = send_email(admin.email, subject, message)
-            except Exception:
-                email_ok = False
-            if email_ok:
-                delivered_via.append("email")
-                delivery_status["email"] = "sent"
-                emailed += 1
+            if settings.ADMIN_CONVERSION_ALERT_IN_APP_ENABLED:
+                delivered_via.append("in_app")
+                delivery_status["in_app"] = "sent"
             else:
-                delivery_status["email"] = "failed"
+                delivery_status["in_app"] = "disabled"
+
+            if settings.ADMIN_CONVERSION_ALERT_EMAIL_ENABLED:
+                email_ok = False
+                try:
+                    email_ok = send_email(admin.email, subject, message)
+                except Exception:
+                    email_ok = False
+                if email_ok:
+                    delivered_via.append("email")
+                    delivery_status["email"] = "sent"
+                    emailed += 1
+                else:
+                    delivery_status["email"] = "failed"
+            else:
+                delivery_status["email"] = "disabled"
 
             recipient_number = admin.whatsapp_number or admin.phone
-            if recipient_number:
+            if settings.ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED and recipient_number:
                 try:
                     whatsapp_ok = bool(
                         _run_async(
@@ -147,6 +160,8 @@ class AdminAlertService:
                     whatsapp_sent += 1
                 else:
                     delivery_status["whatsapp"] = "failed"
+            elif not settings.ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED:
+                delivery_status["whatsapp"] = "disabled"
             else:
                 delivery_status["whatsapp"] = "skipped_no_number"
 

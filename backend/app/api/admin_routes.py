@@ -42,6 +42,7 @@ from ..services.gov_processing_service import (
 from ..services.gov_quarantine_service import quarantine_government_nonjobs
 from ..services.post_ingestion_processing_service import process_job_posts
 from ..services.processing_quality import quality_snapshot
+from ..core.config import settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
@@ -355,7 +356,7 @@ def admin_lmi_quality(
         if recent_7d
         else 0.0
     )
-    conversion_threshold = 5.0
+    conversion_threshold = settings.ADMIN_CONVERSION_ALERT_THRESHOLD
     conversion_alert = {
         "status": "warning"
         if avg_conversion_7d < conversion_threshold
