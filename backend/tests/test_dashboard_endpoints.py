@@ -75,9 +75,7 @@ def app(db_session_factory, admin_user, monkeypatch):
         return admin_user
 
     application.dependency_overrides[get_db] = override_get_db
-    application.dependency_overrides[get_current_user] = (
-        override_get_current_user
-    )
+    application.dependency_overrides[get_current_user] = override_get_current_user
     return application
 
 

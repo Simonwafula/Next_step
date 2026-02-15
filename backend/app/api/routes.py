@@ -34,28 +34,20 @@ from .user_routes import router as user_router
 api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
-api_router.include_router(
-    user_router, prefix="/users", tags=["user-management"]
-)
+api_router.include_router(user_router, prefix="/users", tags=["user-management"])
 api_router.include_router(analytics_router, tags=["analytics"])
 
 
 @api_router.get("/search")
 def search(
-    q: str = Query(
-        "", description="Search query, job title, or 'I studied [degree]'"
-    ),
+    q: str = Query("", description="Search query, job title, or 'I studied [degree]'"),
     location: str | None = Query(None, description="Location filter"),
     seniority: str | None = Query(None, description="Seniority level"),
-    title: str | None = Query(
-        None, description="Selected title cluster filter"
-    ),
+    title: str | None = Query(None, description="Selected title cluster filter"),
     company: str | None = Query(None, description="Selected company filter"),
     limit: int = Query(20, ge=1, le=50, description="Jobs page size"),
     offset: int = Query(0, ge=0, description="Jobs page offset"),
-    personalized: bool = Query(
-        False, description="Enable personalized results"
-    ),
+    personalized: bool = Query(False, description="Enable personalized results"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_optional),
 ):
@@ -86,9 +78,7 @@ def search(
             "personalized": True,
             "user_profile_used": bool(current_user.profile),
             "total": (
-                payload.get("total")
-                if isinstance(payload, dict)
-                else len(payload)
+                payload.get("total") if isinstance(payload, dict) else len(payload)
             ),
         }
 
@@ -219,9 +209,7 @@ def salary_insights(
     - Salary by role family
     - Data coverage transparency
     """
-    insights = get_salary_insights(
-        db, role_family=role_family, location=location
-    )
+    insights = get_salary_insights(db, role_family=role_family, location=location)
     return insights
 
 
@@ -245,17 +233,13 @@ def coverage_stats(db: Session = Depends(get_db)):
     total_posts = db.execute(select(func.count(JobPost.id))).scalar() or 0
     posts_with_salary = (
         db.execute(
-            select(func.count(JobPost.id)).where(
-                JobPost.salary_min.is_not(None)
-            )
+            select(func.count(JobPost.id)).where(JobPost.salary_min.is_not(None))
         ).scalar()
         or 0
     )
     posts_with_skills = (
         db.execute(
-            select(func.count(JobPost.id.distinct())).join_from(
-                JobPost, JobSkill
-            )
+            select(func.count(JobPost.id.distinct())).join_from(JobPost, JobSkill)
         ).scalar()
         or 0
     )

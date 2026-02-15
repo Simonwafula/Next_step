@@ -94,9 +94,7 @@ def admin_overview(
     jobs_total = db.execute(select(func.count(JobPost.id))).scalar() or 0
     jobs_new = (
         db.execute(
-            select(func.count(JobPost.id)).where(
-                JobPost.first_seen >= seven_days
-            )
+            select(func.count(JobPost.id)).where(JobPost.first_seen >= seven_days)
         ).scalar()
         or 0
     )
@@ -104,15 +102,9 @@ def admin_overview(
 
     orgs_total = db.execute(select(func.count(Organization.id))).scalar() or 0
     locations_total = db.execute(select(func.count(Location.id))).scalar() or 0
-    saved_jobs_total = (
-        db.execute(select(func.count(SavedJob.id))).scalar() or 0
-    )
-    applications_total = (
-        db.execute(select(func.count(JobApplication.id))).scalar() or 0
-    )
-    searches_total = (
-        db.execute(select(func.count(SearchHistory.id))).scalar() or 0
-    )
+    saved_jobs_total = db.execute(select(func.count(SavedJob.id))).scalar() or 0
+    applications_total = db.execute(select(func.count(JobApplication.id))).scalar() or 0
+    searches_total = db.execute(select(func.count(SearchHistory.id))).scalar() or 0
     alerts_total = db.execute(select(func.count(JobAlert.id))).scalar() or 0
     notifications_total = (
         db.execute(select(func.count(UserNotification.id))).scalar() or 0
@@ -120,25 +112,19 @@ def admin_overview(
 
     posts_with_salary = (
         db.execute(
-            select(func.count(JobPost.id)).where(
-                JobPost.salary_min.is_not(None)
-            )
+            select(func.count(JobPost.id)).where(JobPost.salary_min.is_not(None))
         ).scalar()
         or 0
     )
     posts_with_skills = (
         db.execute(
-            select(func.count(JobPost.id.distinct())).join_from(
-                JobPost, JobSkill
-            )
+            select(func.count(JobPost.id.distinct())).join_from(JobPost, JobSkill)
         ).scalar()
         or 0
     )
 
     core_sources = _load_sources(BASE_DIR / "ingestion" / "sources.yaml")
-    gov_sources = _load_sources(
-        BASE_DIR / "ingestion" / "government_sources.yaml"
-    )
+    gov_sources = _load_sources(BASE_DIR / "ingestion" / "government_sources.yaml")
     core_summary = _source_summary(core_sources)
     gov_summary = _source_summary(gov_sources)
 
@@ -222,23 +208,17 @@ def admin_lmi_quality(
         if ((log.results or {}).get("status") or "").lower() == "error"
     )
     success_rate_7d = (
-        round((success_runs_7d / total_runs_7d) * 100, 1)
-        if total_runs_7d
-        else 0.0
+        round((success_runs_7d / total_runs_7d) * 100, 1) if total_runs_7d else 0.0
     )
 
     total_jobs = db.execute(select(func.count(JobPost.id))).scalar() or 0
     jobs_with_skills = (
         db.execute(
-            select(func.count(JobPost.id.distinct())).join_from(
-                JobPost, JobSkill
-            )
+            select(func.count(JobPost.id.distinct())).join_from(JobPost, JobSkill)
         ).scalar()
         or 0
     )
-    avg_skill_confidence = db.execute(
-        select(func.avg(JobSkill.confidence))
-    ).scalar()
+    avg_skill_confidence = db.execute(select(func.avg(JobSkill.confidence))).scalar()
     avg_skill_confidence = float(avg_skill_confidence or 0.0)
     skills_coverage = (
         round((jobs_with_skills / total_jobs) * 100, 1) if total_jobs else 0.0
@@ -262,16 +242,12 @@ def admin_lmi_quality(
         or 0
     )
     lmi_engagement_rate = (
-        round((active_search_users_30d / total_users) * 100, 1)
-        if total_users
-        else 0.0
+        round((active_search_users_30d / total_users) * 100, 1) if total_users else 0.0
     )
 
     paid_users = (
         db.execute(
-            select(func.count(User.id)).where(
-                User.subscription_tier != "basic"
-            )
+            select(func.count(User.id)).where(User.subscription_tier != "basic")
         ).scalar()
         or 0
     )
@@ -287,13 +263,9 @@ def admin_lmi_quality(
     )
 
     estimated_mrr_kes = paid_users * 250
-    estimated_arpu_kes = (
-        round(estimated_mrr_kes / paid_users, 1) if paid_users else 0.0
-    )
+    estimated_arpu_kes = round(estimated_mrr_kes / paid_users, 1) if paid_users else 0.0
     estimated_churn_rate = (
-        round((churned_paid_users / paid_users) * 100, 1)
-        if paid_users
-        else 0.0
+        round((churned_paid_users / paid_users) * 100, 1) if paid_users else 0.0
     )
 
     return {
@@ -332,12 +304,7 @@ def admin_users(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    stmt = (
-        select(User)
-        .order_by(desc(User.created_at))
-        .offset(offset)
-        .limit(limit)
-    )
+    stmt = select(User).order_by(desc(User.created_at)).offset(offset).limit(limit)
     users = db.execute(stmt).scalars().all()
     return {
         "users": [
@@ -385,9 +352,7 @@ def admin_jobs(
                 "location": location.raw if location else None,
                 "source": job.source,
                 "url": job.url,
-                "first_seen": (
-                    job.first_seen.isoformat() if job.first_seen else None
-                ),
+                "first_seen": (job.first_seen.isoformat() if job.first_seen else None),
             }
             for job, org, location in rows
         ],
@@ -407,9 +372,7 @@ def admin_sources(
             detail="source_type must be one of: all, core, government",
         )
     core_sources = _load_sources(BASE_DIR / "ingestion" / "sources.yaml")
-    gov_sources = _load_sources(
-        BASE_DIR / "ingestion" / "government_sources.yaml"
-    )
+    gov_sources = _load_sources(BASE_DIR / "ingestion" / "government_sources.yaml")
 
     sources = []
     if source_type in {"all", "core"}:
@@ -451,11 +414,7 @@ def admin_operations(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    stmt = (
-        select(ProcessingLog)
-        .order_by(desc(ProcessingLog.processed_at))
-        .limit(limit)
-    )
+    stmt = select(ProcessingLog).order_by(desc(ProcessingLog.processed_at)).limit(limit)
     logs = db.execute(stmt).scalars().all()
 
     latest_by_type = {}
@@ -638,9 +597,7 @@ def admin_summaries(
                 EducationNormalization.raw_value == JobPost.education,
             )
             .where(JobPost.education.is_not(None))
-            .group_by(
-                JobPost.education, EducationNormalization.normalized_value
-            )
+            .group_by(JobPost.education, EducationNormalization.normalized_value)
             .order_by(desc(func.count(JobPost.id)))
             .limit(limit)
         )
@@ -709,9 +666,7 @@ def admin_summary_jobs(
                 "location": location.raw if location else None,
                 "source": job.source,
                 "url": job.url,
-                "first_seen": (
-                    job.first_seen.isoformat() if job.first_seen else None
-                ),
+                "first_seen": (job.first_seen.isoformat() if job.first_seen else None),
             }
             for job, org, location in rows
         ],
@@ -794,9 +749,7 @@ def admin_skill_trends(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    return get_skill_trends(
-        db, role_family=role_family, months=months, limit=limit
-    )
+    return get_skill_trends(db, role_family=role_family, months=months, limit=limit)
 
 
 @router.get("/analytics/role-evolution")
@@ -807,9 +760,7 @@ def admin_role_evolution(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
-    return get_role_evolution(
-        db, role_family=role_family, months=months, limit=limit
-    )
+    return get_role_evolution(db, role_family=role_family, months=months, limit=limit)
 
 
 @router.get("/analytics/title-adjacency")
@@ -860,9 +811,7 @@ def admin_monitoring_summary(
         top_n=top_n,
     )
     if record:
-        status = (
-            "success" if summary["overall_status"] == "pass" else "warning"
-        )
+        status = "success" if summary["overall_status"] == "pass" else "warning"
         log_monitoring_event(
             db,
             status=status,

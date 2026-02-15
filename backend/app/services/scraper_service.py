@@ -2,12 +2,16 @@
 Scraper service to integrate scrapers with the main application
 """
 
+from __future__ import annotations
+
+import os
 import logging
 import asyncio
 import sys
 from pathlib import Path
 from typing import List, Dict, Any
 from datetime import datetime
+from urllib.parse import urlparse
 
 # Ensure package root (app/) is on sys.path so `import scrapers.*` works
 sys.path.append(str(Path(__file__).parent.parent))
@@ -15,8 +19,11 @@ sys.path.append(str(Path(__file__).parent.parent))
 from scrapers.config import SITES, USE_POSTGRES
 from scrapers.postgres_db import PostgresJobDatabase
 from scrapers.migrate_to_postgres import JobDataMigrator
+from scrapers.main import scrape_site
 
 from ..processors.job_processor import JobProcessorService
+from ..db.database import SessionLocal
+from ..services.post_ingestion_processing_service import process_job_posts
 
 logging.basicConfig(level=logging.INFO)
 
@@ -26,6 +33,19 @@ class ScraperService:
         self.logger = logging.getLogger(__name__)
         self.job_processor = JobProcessorService()
 
+    def _source_domain_for_site(self, site_name: str) -> str | None:
+        """Return the `job_post.source` domain used by the site spider for this site.
+
+        The spiders store `JobPost.source` as the URL domain (without a `www.` prefix),
+        so we derive it from the configured `base_url`.
+        """
+        cfg = SITES.get(site_name) or {}
+        base_url = str(cfg.get("base_url") or "")
+        host = (urlparse(base_url).hostname or "").lower()
+        if host.startswith("www."):
+            host = host[4:]
+        return host or None
+
     async def run_scraper_for_site(
         self,
         site_name: str,
@@ -33,7 +53,13 @@ class ScraperService:
         include_recent_jobs: bool = False,
         recent_jobs_limit: int = 10,
     ) -> Dict[str, Any]:
-        """Run scraper for a specific site and optionally process job details"""
+        """Run config.yaml spider for a specific site and optionally post-process new rows.
+
+        Notes:
+        - The spider writes directly to Postgres when `USE_POSTGRES=true`.
+        - `process_jobs=True` runs the deterministic DB-only post-processor
+          (skills/entities/quality/title_norm) on newly inserted rows.
+        """
         if site_name not in SITES:
             return {
                 "success": False,
@@ -43,52 +69,61 @@ class ScraperService:
         try:
             self.logger.info(f"Starting scraper for {site_name}")
 
-            # Run scraper in a separate thread to avoid blocking
+            # Run scraper in a separate thread to avoid blocking the event loop.
             loop = asyncio.get_running_loop()
-            scraped_data = await loop.run_in_executor(
-                None, self._scrape_site_with_data, site_name
+            scrape_result = await loop.run_in_executor(
+                None,
+                lambda: scrape_site(
+                    site_name,
+                    use_postgres=bool(USE_POSTGRES),
+                    max_pages=int(os.getenv("SCRAPER_MAX_PAGES", "5")),
+                ),
             )
 
-            if scraped_data:
-                result = {
-                    "success": True,
-                    "site": site_name,
-                    "scraped_jobs": len(scraped_data),
-                    "timestamp": datetime.utcnow().isoformat(),
-                }
+            inserted = int(scrape_result.get("inserted") or 0)
+            ok = scrape_result.get("status") == "success"
+            result: Dict[str, Any] = {
+                "success": bool(ok),
+                "site": site_name,
+                "timestamp": datetime.utcnow().isoformat(),
+                # Back-compat for older callers:
+                "jobs_scraped": inserted,
+                "scraped_jobs": inserted,
+                "inserted": inserted,
+                "scrape_result": scrape_result,
+            }
+            if not ok:
+                result["error"] = scrape_result.get("error") or "scrape_failed"
 
-                # Process job details if requested
-                if process_jobs and scraped_data:
-                    self.logger.info(
-                        f"Processing {len(scraped_data)} jobs from {site_name}"
-                    )
-                    processing_stats = (
-                        await self.job_processor.process_from_scraper_output(
-                            site_name, scraped_data
+            # Deterministic post-ingestion processing of rows that still have processed_at IS NULL.
+            if ok and process_jobs:
+                source_domain = self._source_domain_for_site(site_name)
+
+                def _run_post_process() -> Dict[str, Any]:
+                    db = SessionLocal()
+                    try:
+                        return process_job_posts(
+                            db,
+                            source=source_domain,
+                            limit=int(os.getenv("POST_PROCESS_LIMIT", "2000")),
+                            only_unprocessed=True,
+                            dry_run=False,
                         )
-                    )
-                    result.update(
-                        {
-                            "processing_stats": processing_stats,
-                            "processed_jobs": processing_stats.get("successful", 0),
-                            "failed_jobs": processing_stats.get("failed", 0),
-                        }
-                    )
+                    finally:
+                        db.close()
 
-                # Get final job count
-                job_count = await self.get_job_count()
-                result["total_jobs_in_db"] = job_count
-                if include_recent_jobs:
-                    recent = await self.get_recent_jobs(recent_jobs_limit)
-                    result["recent_jobs"] = recent
+                post_process = await loop.run_in_executor(None, _run_post_process)
+                result["post_process"] = post_process
+                result["processed_jobs"] = int(post_process.get("processed") or 0)
 
-                return result
-            else:
-                return {
-                    "success": False,
-                    "site": site_name,
-                    "error": "Scraping failed - no data returned",
-                }
+            # Get final job count
+            job_count = await self.get_job_count()
+            result["total_jobs_in_db"] = job_count
+            if include_recent_jobs:
+                recent = await self.get_recent_jobs(recent_jobs_limit)
+                result["recent_jobs"] = recent
+
+            return result
 
         except Exception as e:
             self.logger.error(f"Error running scraper for {site_name}: {e}")
@@ -185,6 +220,16 @@ class ScraperService:
     async def migrate_sqlite_to_postgres(self) -> Dict[str, Any]:
         """Migrate data from SQLite to PostgreSQL"""
         try:
+            # In production we scrape directly into Postgres; this migration is only
+            # useful if legacy scraper data was written to a local sqlite file.
+            if USE_POSTGRES:
+                return {
+                    "success": True,
+                    "skipped": True,
+                    "reason": "USE_POSTGRES=true (scrapers write directly to Postgres)",
+                    "timestamp": datetime.utcnow().isoformat(),
+                }
+
             self.logger.info("Starting migration from SQLite to PostgreSQL")
 
             migrator = JobDataMigrator()

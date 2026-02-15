@@ -161,12 +161,16 @@
 - Prevented search ranking regressions when transformers are disabled:
   - When `NEXTSTEP_DISABLE_TRANSFORMERS=1`, disable semantic scoring (avoid hash-vector "similarity")
   - Scope DB lookup to `job_embeddings.model_name` via `EMBEDDING_MODEL_NAME` (default `e5-small-v2`)
+- Fixed scraper execution mismatch (config-driven spiders vs scraper endpoints/tasks):
+  - `backend/app/services/scraper_service.py` now runs the same `config.yaml` SiteSpider used by the production pipeline
+  - Returns `jobs_scraped` (back-compat) and triggers deterministic `process_job_posts()` instead of the legacy URL re-fetch processor
+  - Skips the SQLite->Postgres migration step when `USE_POSTGRES=true`
 - Docs:
   - Updated `backend/DEPLOYMENT.md` with embeddings backfill command + systemd unit references
 - Tests run:
   - `backend/venv3.11/bin/ruff format --check backend` (pass)
   - `backend/venv3.11/bin/ruff check backend` (pass)
-  - `backend/venv3.11/bin/pytest -q` (164 passed, 1 skipped)
+  - `backend/venv3.11/bin/pytest -q` (174 passed, 1 skipped)
 
 ### 2026-02-14 (Career Insight Feature)
 - (T-410) Implemented Career Insight Service for students/job seekers to understand what careers entail

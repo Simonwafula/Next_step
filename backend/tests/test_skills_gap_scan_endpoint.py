@@ -152,7 +152,9 @@ def test_skills_gap_scan_requires_professional_subscription(
         )
 
     assert response.status_code == 403
-    assert response.json()["detail"] == "This feature requires professional subscription"
+    assert (
+        response.json()["detail"] == "This feature requires professional subscription"
+    )
 
 
 def test_skills_gap_scan_requires_completed_profile(
