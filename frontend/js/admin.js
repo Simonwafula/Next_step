@@ -63,7 +63,18 @@ const auditActionFilter = document.getElementById('auditActionFilter');
 const auditLogTableBody = document.getElementById('auditLogTableBody');
 const systemEventsList = document.getElementById('systemEventsList');
 
-const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
+const getApiBaseUrl = () => {
+    if (document.body && document.body.dataset.apiBase) {
+        return document.body.dataset.apiBase;
+    }
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+        return 'http://localhost:8000/api';
+    }
+    return `${window.location.origin}/api`;
+};
+
+const apiBase = getApiBaseUrl();
 const authStorageKey = 'nextstep_auth';
 
 const { escapeHtml, safeUrl } = window.NEXTSTEP_SANITIZE || {

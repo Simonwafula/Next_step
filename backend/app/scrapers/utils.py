@@ -1,16 +1,15 @@
-# utils.py
 import logging
-import time
-import requests
 import re
+import time
 
+import requests
+from bs4 import BeautifulSoup
 from ratelimit import limits, sleep_and_retry
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
-from scrapers.config import REQUESTS_PER_MINUTE
-from bs4 import BeautifulSoup
 
-# Constants
+from .config import REQUESTS_PER_MINUTE
+
 ONE_MINUTE = 60
 
 
@@ -40,7 +39,6 @@ def rate_limited_get(
     logging.info(f"GET {url}")
     response = session.get(url, **kwargs)
     response.raise_for_status()
-    # small delay to spread out traffic
     time.sleep(0.05)
     return response
 

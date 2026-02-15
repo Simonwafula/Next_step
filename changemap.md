@@ -817,6 +817,15 @@
   - `backend/venv3.11/bin/ruff format ...` (pass)
   - `backend/venv3.11/bin/pytest -q` (217 passed, 1 skipped)
 
+### 2026-02-15 (OPS-DEPLOY: Scraper Imports, Frontend API Base, Smoke Checks)
+- Scrapers: switched `backend/app/scrapers/*` to relative imports so the scrapers package runs consistently whether invoked as a module or via the app (fixes `from scrapers...` import brittleness).
+- Frontend: made `frontend/js/{main,dashboard-ui,admin}.js` derive `apiBase` from `window.location.origin` when not on localhost (prevents production pages accidentally targeting `http://localhost:8000/api`).
+- Ops tool: refactored `scripts/repo_smoke_test.py` into side-effect-free operational smoke checks (argparse + env overrides) and removed `test_*` symbols so pytest doesn't treat it as a unit-test module.
+- Verification:
+  - `backend/venv3.11/bin/ruff check .` (pass)
+  - `backend/venv3.11/bin/ruff format ...` (pass)
+  - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
+
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
 - (local sqlite path) Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.

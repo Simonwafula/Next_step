@@ -4,16 +4,15 @@ Migration script to transfer scraped job data from SQLite to PostgreSQL
 and integrate with the main application's data model.
 """
 
-import sqlite3
 import logging
-import sys
 import os
+import sqlite3
+import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict, Any, Optional
+from typing import Any, Dict, Optional
 from urllib.parse import urlparse
 
-# Add the parent directory to the path to import from the main app
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sqlalchemy.orm import Session
@@ -21,9 +20,9 @@ from sqlalchemy.orm import Session
 try:
     from db.database import SessionLocal, engine
     from db.models import Base, JobPost, Organization
-    from scrapers.config import DB_PATH, TABLE_NAME
+
+    from .config import DB_PATH, TABLE_NAME
 except ImportError:
-    # Try absolute imports if relative imports fail
     from app.db.database import SessionLocal, engine
     from app.db.models import Base, JobPost, Organization
     from app.scrapers.config import DB_PATH, TABLE_NAME
@@ -42,7 +41,6 @@ class JobDataMigrator:
     def connect_postgres(self):
         """Connect to PostgreSQL database"""
         try:
-            # Ensure tables exist
             Base.metadata.create_all(bind=engine)
             self.pg_session = SessionLocal()
             logging.info("Connected to PostgreSQL database")
@@ -55,7 +53,6 @@ class JobDataMigrator:
         try:
             parsed = urlparse(url)
             domain = parsed.netloc.lower()
-            # Remove www. prefix if present
             if domain.startswith("www."):
                 domain = domain[4:]
             return domain
@@ -69,7 +66,6 @@ class JobDataMigrator:
 
         org_name = org_name.strip()
 
-        # Check if organization exists
         org = (
             self.pg_session.query(Organization)
             .filter(Organization.name == org_name)
@@ -79,13 +75,12 @@ class JobDataMigrator:
         if not org:
             org = Organization(name=org_name, verified=False)
             self.pg_session.add(org)
-            self.pg_session.flush()  # Get the ID without committing
+            self.pg_session.flush()
 
         return org.id
 
     def parse_job_content(self, content: str) -> Dict[str, Any]:
         """Parse job content to extract structured information"""
-        # This is a basic parser - you can enhance it based on your content structure
         parsed = {
             "description_raw": content,
             "requirements_raw": None,
@@ -94,13 +89,10 @@ class JobDataMigrator:
             "salary_info": None,
         }
 
-        # Try to extract organization name from content
-        # This is a simple heuristic - adjust based on your data
         lines = content.split("\n")
-        for line in lines[:5]:  # Check first 5 lines
+        for line in lines[:5]:
             line = line.strip()
             if line and len(line) < 100 and not line.startswith("http"):
-                # Potential company name
                 if any(
                     keyword in line.lower()
                     for keyword in ["company", "ltd", "inc", "corp", "limited"]
@@ -117,17 +109,15 @@ class JobDataMigrator:
             return 0
 
         sqlite_conn = sqlite3.connect(self.sqlite_path)
-        sqlite_conn.row_factory = sqlite3.Row  # Enable column access by name
+        sqlite_conn.row_factory = sqlite3.Row
 
         try:
             cursor = sqlite_conn.cursor()
 
-            # Get total count
             cursor.execute(f"SELECT COUNT(*) FROM {self.table_name}")
             total_count = cursor.fetchone()[0]
             logging.info(f"Found {total_count} jobs to migrate")
 
-            # Process in batches
             migrated_count = 0
             skipped_count = 0
 
@@ -146,7 +136,6 @@ class JobDataMigrator:
 
                 for row in batch:
                     try:
-                        # Check if job already exists
                         existing = (
                             self.pg_session.query(JobPost)
                             .filter(JobPost.url == row["full_link"])
@@ -157,20 +146,16 @@ class JobDataMigrator:
                             skipped_count += 1
                             continue
 
-                        # Parse job content
                         parsed_content = self.parse_job_content(row["content"] or "")
 
-                        # Get or create organization
                         org_id = None
                         if parsed_content["organization_name"]:
                             org_id = self.get_or_create_organization(
                                 parsed_content["organization_name"]
                             )
 
-                        # Extract source from URL
                         source = self.extract_domain_from_url(row["full_link"])
 
-                        # Create job post
                         url = row["full_link"] or ""
                         job_post = JobPost(
                             source=source,
@@ -192,7 +177,6 @@ class JobDataMigrator:
                         logging.error(f"Error migrating job {row['id']}: {e}")
                         continue
 
-                # Commit batch
                 try:
                     self.pg_session.commit()
                     logging.info(f"Committed batch {offset // batch_size + 1}")

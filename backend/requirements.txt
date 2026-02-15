@@ -69,6 +69,7 @@ Pillow==10.4.0
 # Additional utilities
 python-slugify==8.0.4
 phonenumbers==8.13.40
+typer==0.12.3
 
 # Visualization (for career insights)
 matplotlib==3.9.1

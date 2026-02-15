@@ -1,26 +1,24 @@
-# scrapers/scraper.py
 # ruff: noqa: E402
 import warnings
+
 from urllib3.exceptions import NotOpenSSLWarning
 
-# Suppress the LibreSSL/OpenSSL compatibility warning before urllib3 loads.
 warnings.filterwarnings("ignore", category=NotOpenSSLWarning, module="urllib3")
 
 import argparse
 import logging
-import urllib3
-from bs4 import BeautifulSoup
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib.parse import urljoin
 
-# Absolute imports assuming `scrapers/` is on PYTHONPATH
-from scrapers.config import SITES, get_site_cfg, USE_POSTGRES
-from scrapers.db import Database
-from scrapers.postgres_db import PostgresJobDatabase
-from scrapers.utils import get_session, rate_limited_get
+import urllib3
+from bs4 import BeautifulSoup
 
-# Suppress generic InsecureRequestWarning
+from .config import SITES, USE_POSTGRES, get_site_cfg
+from .db import Database
+from .postgres_db import PostgresJobDatabase
+from .utils import get_session, rate_limited_get
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 
@@ -57,14 +55,12 @@ class SiteSpider:
         self.title_attr = cfg["title_attribute"]
         self.content_sel = cfg["content_selector"]
 
-        # Default behavior is config-driven; pipeline/orchestrators can override.
         if use_postgres is None:
             use_postgres = USE_POSTGRES
         self.use_postgres = bool(use_postgres)
         self.max_pages = max_pages
 
         self.session = get_session()
-        # Use PostgreSQL or SQLite based on configuration
         if self.use_postgres:
             self.db = PostgresJobDatabase()
         else:

@@ -1,8 +1,8 @@
-# scrapers/db.py
-import sqlite3
 import logging
+import sqlite3
 from pathlib import Path
-from scrapers.config import DB_PATH, TABLE_NAME
+
+from .config import DB_PATH, TABLE_NAME
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,12 +14,10 @@ class Database:
         self.conn = None
 
     def connect(self):
-        # Ensure directory exists
         db_file = Path(self.db_path)
         if db_file.parent:
             db_file.parent.mkdir(parents=True, exist_ok=True)
 
-        # Open connection and enable foreign keys
         self.conn = sqlite3.connect(self.db_path)
         self.conn.execute("PRAGMA foreign_keys = ON")
         self._ensure_table()

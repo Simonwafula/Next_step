@@ -24,7 +24,18 @@ const upgradeBtn = document.getElementById('upgradeBtn');
 const dashboardGateMessage = document.getElementById('dashboardGateMessage');
 const dashboardSignOut = document.getElementById('dashboardSignOut');
 
-const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
+const getApiBaseUrl = () => {
+    if (document.body && document.body.dataset.apiBase) {
+        return document.body.dataset.apiBase;
+    }
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+        return 'http://localhost:8000/api';
+    }
+    return `${window.location.origin}/api`;
+};
+
+const apiBase = getApiBaseUrl();
 const authStorageKey = 'nextstep_auth';
 
 const { escapeHtml, safeUrl } = window.NEXTSTEP_SANITIZE || {

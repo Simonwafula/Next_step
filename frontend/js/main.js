@@ -62,14 +62,18 @@ const { escapeHtml, safeUrl } = window.NEXTSTEP_SANITIZE || {
     safeUrl: (value) => (value ? String(value) : '#'),
 };
 
-const apiBase = (() => {
-    const fromAttr = document.body.dataset.apiBase;
-    if (fromAttr) return fromAttr;
-    if (window.location.origin && window.location.origin !== 'null') {
-        return `${window.location.origin}/api`;
+const getApiBaseUrl = () => {
+    if (document.body && document.body.dataset.apiBase) {
+        return document.body.dataset.apiBase;
     }
-    return 'http://localhost:8000/api';
-})();
+    const host = window.location.hostname;
+    if (host === 'localhost' || host === '127.0.0.1') {
+        return 'http://localhost:8000/api';
+    }
+    return `${window.location.origin}/api`;
+};
+
+const apiBase = getApiBaseUrl();
 
 const authStorageKey = 'nextstep_auth';
 const pendingProfileKey = 'nextstep_pending_profile';
@@ -602,7 +606,6 @@ const renderAggregates = (payload) => {
         () => { selectedSector = null; fetchResults(); }
     );
 
-    // Quality / confidence toggle
     if (qualityClustersEl) {
         qualityClustersEl.innerHTML = '';
         qualityClustersEl.appendChild(makeChip({
