@@ -1,5 +1,33 @@
 # Handoff
 
+## 2026-02-15 (MVIL Task 6: Advance Mode API)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Completed Task 6 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+- Extended guided search service in `backend/app/services/guided_search.py`:
+  - added `advance_transitions()` for professional transition cards
+  - computes `skill_gap`, `shared_skills`, `difficulty_proxy`, and `demand_trend`
+  - includes `target_jobs` and evidence `sample_job_ids`
+  - sorts transitions by feasibility (smaller skill gap first)
+- Added route in `backend/app/api/routes.py`:
+  - `GET /api/guided/advance`
+- Added tests in `backend/tests/test_guided_advance.py`:
+  - transition card shape and no-salary contract
+  - difficulty classification and feasibility ordering
+- Updated plan progress tracker:
+  - Completed 6 / Remaining 2.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_guided_advance.py` (2 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- Next step in this plan is Task 7 (search API mode routing).
+
 ## 2026-02-15 (MVIL Task 5: Match Mode API)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

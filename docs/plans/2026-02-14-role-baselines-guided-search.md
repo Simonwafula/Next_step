@@ -98,11 +98,11 @@ Worktree: Yes
 - [x] Task 3: Admin aggregation endpoint + runner
 - [x] Task 4: Explore mode API (Student career cards)
 - [x] Task 5: Match mode API (Early-career role matching)
-- [ ] Task 6: Advance mode API (Professional transitions)
+- [x] Task 6: Advance mode API (Professional transitions)
 - [ ] Task 7: Search API mode routing
 - [ ] Task 8: Frontend mode selector + guided results UI
 
-**Total Tasks:** 8 | **Completed:** 5 | **Remaining:** 3
+**Total Tasks:** 8 | **Completed:** 6 | **Remaining:** 2
 
 ## Implementation Tasks
 
@@ -337,12 +337,12 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] `GET /api/guided/advance` endpoint returns transition cards with skill gaps
-- [ ] Each card includes `difficulty_proxy`, `skill_gap`, `shared_skills`, `target_jobs`
-- [ ] `difficulty_proxy` uses defined thresholds (0-3 Low, 4-7 Medium, 8+ High) with weighted formula
-- [ ] Transition cards contain NO salary-related fields
-- [ ] Cards sorted by feasibility (fewer missing skills = easier transition)
-- [ ] Test verifies card structure, skill gap correctness, and difficulty classification
+- [x] `GET /api/guided/advance` endpoint returns transition cards with skill gaps
+- [x] Each card includes `difficulty_proxy`, `skill_gap`, `shared_skills`, `target_jobs`
+- [x] `difficulty_proxy` uses defined thresholds (0-3 Low, 4-7 Medium, 8+ High) with weighted formula
+- [x] Transition cards contain NO salary-related fields
+- [x] Cards sorted by feasibility (fewer missing skills = easier transition)
+- [x] Test verifies card structure, skill gap correctness, and difficulty classification
 
 **Verify:**
 

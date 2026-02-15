@@ -106,6 +106,7 @@
   - [x] (T-443) MVIL admin refresh endpoint (`backend/app/api/routes.py`, `backend/tests/test_mvil_admin.py`)
   - [x] (T-444) Guided Explore API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_explore.py`)
   - [x] (T-445) Guided Match API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_match.py`)
+  - [x] (T-446) Guided Advance API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_advance.py`)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -154,6 +155,22 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (MVIL Task 6: Advance Mode API)
+- Implemented guided Advance mode in `backend/app/services/guided_search.py`:
+  - added `advance_transitions(db, current_role, user_skills)`
+  - computes transition cards with `skill_gap`, `shared_skills`, `difficulty_proxy`
+  - includes `demand_trend`, `target_jobs`, and baseline evidence `sample_job_ids`
+  - sorts cards by feasibility (fewest missing skills first)
+  - applies difficulty thresholds: 0-3 Low, 4-7 Medium, 8+ High
+- Added route in `backend/app/api/routes.py`:
+  - `GET /api/guided/advance`
+- Added tests in `backend/tests/test_guided_advance.py`:
+  - transition card structure + non-salary response contract
+  - feasibility ordering + difficulty classification behavior
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_guided_advance.py` (2 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (MVIL Task 5: Match Mode API)
 - Implemented guided Match mode in `backend/app/services/guided_search.py`:

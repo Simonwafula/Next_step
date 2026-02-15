@@ -18,7 +18,11 @@ from ..services.lmi import (
     get_trending_skills,
     get_weekly_insights,
 )
-from ..services.guided_search import explore_careers, match_roles
+from ..services.guided_search import (
+    advance_transitions,
+    explore_careers,
+    match_roles,
+)
 from ..services.mvil_service import refresh_all_baselines
 from ..services.post_ingestion_processing_service import process_job_posts
 from ..services.processing_log_service import log_processing_event
@@ -167,6 +171,28 @@ def guided_match(
         query=q,
         user_skills=provided_skills,
         education=education or profile_education,
+        limit=10,
+    )
+
+
+@api_router.get("/guided/advance")
+def guided_advance(
+    current_role: str = Query(..., description="Current role"),
+    skills: str | None = Query(None, description="Comma-separated skills"),
+    location: str | None = Query(None, description="Location filter"),
+    db: Session = Depends(get_db),
+):
+    del location
+    parsed_skills = []
+    if skills:
+        parsed_skills = [
+            value.strip() for value in skills.split(",") if value.strip()
+        ]
+
+    return advance_transitions(
+        db,
+        current_role=current_role,
+        user_skills=parsed_skills,
         limit=10,
     )
 

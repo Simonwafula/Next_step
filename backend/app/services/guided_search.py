@@ -378,3 +378,110 @@ def match_roles(
 
     matches = sorted(matches, key=lambda row: row["match_score"], reverse=True)
     return {"guided_results": matches[:limit]}
+
+
+def _difficulty_from_gap_count(gap_count: int) -> str:
+    if gap_count <= 3:
+        return "Low"
+    if gap_count <= 7:
+        return "Medium"
+    return "High"
+
+
+def _target_jobs_for_family(
+    db: Session,
+    family: str,
+    limit: int = 5,
+) -> list[dict]:
+    rows = db.execute(
+        select(JobPost, TitleNorm)
+        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id)
+        .where(TitleNorm.family == family, JobPost.is_active.is_(True))
+        .order_by(JobPost.last_seen.desc())
+        .limit(limit)
+    ).all()
+
+    return [
+        {
+            "id": job_post.id,
+            "title": job_post.title_raw,
+            "url": job_post.url,
+            "seniority": job_post.seniority,
+            "role_family": title_norm.family if title_norm else None,
+        }
+        for job_post, title_norm in rows
+    ]
+
+
+def advance_transitions(
+    db: Session,
+    current_role: str,
+    user_skills: list[str],
+    limit: int = 10,
+) -> dict:
+    demand_by_family = _latest_demand_by_family(db)
+    if not demand_by_family:
+        return {
+            "guided_results": [],
+            "message": (
+                "Insights not yet available — run baseline aggregation first"
+            ),
+        }
+
+    current_family, _ = normalize_title(current_role)
+    normalized_user_skills = _normalize_skill_list(user_skills)
+    skill_map = _skill_distribution(db)
+
+    cards = []
+    for family, demand in demand_by_family.items():
+        if family == current_family:
+            continue
+
+        top_skills = skill_map.get(family, [])
+        if not top_skills:
+            continue
+
+        target_skill_names = [entry["skill_name"] for entry in top_skills]
+        user_skill_set = {skill.casefold() for skill in normalized_user_skills}
+
+        shared_skills = [
+            skill_name
+            for skill_name in target_skill_names
+            if skill_name.casefold() in user_skill_set
+        ]
+        skill_gap = [
+            skill_name
+            for skill_name in target_skill_names
+            if skill_name.casefold() not in user_skill_set
+        ]
+
+        cards.append(
+            {
+                "target_role": family,
+                "current_role": current_family,
+                "difficulty_proxy": _difficulty_from_gap_count(len(skill_gap)),
+                "skill_gap": skill_gap,
+                "shared_skills": shared_skills,
+                "demand_trend": {
+                    "count_ads": demand.demand_count,
+                    "signal": "growing"
+                    if demand.demand_count >= 10
+                    else "steady",
+                },
+                "target_jobs": _target_jobs_for_family(db, family, limit=5),
+                "sample_job_ids": _combined_sample_ids(
+                    demand.sample_job_ids,
+                    *[entry["sample_job_ids"] for entry in top_skills],
+                ),
+                "low_confidence": demand.count_total_jobs_used < 10,
+            }
+        )
+
+    cards = sorted(
+        cards,
+        key=lambda card: (
+            len(card["skill_gap"]),
+            -card["demand_trend"]["count_ads"],
+        ),
+    )
+    return {"guided_results": cards[:limit]}
