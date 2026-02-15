@@ -97,6 +97,7 @@
   - [x] (T-433) Configurable conversion alert threshold + channel toggles (env-driven)
   - [x] (T-434) Admin settings API/UI for conversion alert controls (runtime overrides)
   - [x] (T-435) Settings change audit history view (API + admin panel)
+  - [x] (T-436) Settings edit guard + audit metadata (editor allowlist, IP/user-agent)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -273,6 +274,20 @@
 - Added regression test in `backend/tests/test_dashboard_endpoints.py` for history endpoint behavior.
 - Verification runs:
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or lmi_alert_settings"` (12 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### 2026-02-15 (Settings Edit Guard + Audit Metadata)
+- Added optional editor allowlist for alert settings updates:
+  - `ADMIN_SETTINGS_EDITORS` in `backend/app/core/config.py`
+  - `PUT /api/admin/lmi-alert-settings` now rejects non-allowlisted admins when allowlist is set.
+- Added request metadata capture on settings updates:
+  - stores `ip` and `user_agent` under `request_metadata` in `ProcessingLog.results`.
+- Extended history payload (`GET /api/admin/lmi-alert-settings/history`) to include `request_metadata`.
+- Added regression tests in `backend/tests/test_dashboard_endpoints.py` for:
+  - allowlist enforcement (403)
+  - metadata presence in history.
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_alert_settings or lmi_quality"` (13 passed)
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (LMI Monetization Build-out)

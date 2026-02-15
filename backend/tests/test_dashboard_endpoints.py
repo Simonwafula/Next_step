@@ -759,7 +759,32 @@ class TestAdminLmiQuality:
         latest = payload["history"][0]
         assert "processed_at" in latest
         assert "updated_by" in latest
+        assert "request_metadata" in latest
+        assert "ip" in latest["request_metadata"]
         assert latest["settings"]["threshold"] in {8.0, 6.0}
+
+    def test_update_lmi_alert_settings_enforces_editor_allowlist(
+        self,
+        client,
+        monkeypatch,
+    ):
+        from app.core.config import settings
+
+        monkeypatch.setattr(
+            settings,
+            "ADMIN_SETTINGS_EDITORS",
+            "other-admin@test.local",
+        )
+
+        resp = client.put(
+            "/api/admin/lmi-alert-settings",
+            json={"threshold": 9.0},
+        )
+        assert resp.status_code == 403
+        assert (
+            resp.json()["detail"]
+            == "Not authorized to update LMI alert settings"
+        )
 
 
 # ---------------------------------------------------------------------------

@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Dict, List
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
@@ -154,9 +154,24 @@ def get_lmi_alert_settings(
 @router.put("/lmi-alert-settings")
 def update_lmi_alert_settings(
     payload: ConversionAlertSettingsUpdateRequest,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_admin()),
 ):
+    allowed_editors = {
+        email.strip().lower()
+        for email in settings.ADMIN_SETTINGS_EDITORS.split(",")
+        if email.strip()
+    }
+    if (
+        allowed_editors
+        and current_user.email.lower() not in allowed_editors
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not authorized to update LMI alert settings",
+        )
+
     current_settings, _ = _load_conversion_alert_settings(db)
 
     updates = payload.model_dump(exclude_none=True)
@@ -164,6 +179,9 @@ def update_lmi_alert_settings(
         **current_settings,
         **updates,
     }
+
+    client_ip = request.client.host if request.client else None
+    user_agent = request.headers.get("user-agent")
 
     db.add(
         ProcessingLog(
@@ -173,6 +191,10 @@ def update_lmi_alert_settings(
                 "settings": new_settings,
                 "updated_by": current_user.email,
                 "updated_at": datetime.utcnow().isoformat(),
+                "request_metadata": {
+                    "ip": client_ip,
+                    "user_agent": user_agent,
+                },
             },
             processed_at=datetime.utcnow(),
         )
@@ -214,6 +236,7 @@ def get_lmi_alert_settings_history(
                 "processed_at": row.processed_at.isoformat(),
                 "updated_by": results.get("updated_by"),
                 "settings": results.get("settings") or {},
+                "request_metadata": results.get("request_metadata") or {},
             }
         )
 

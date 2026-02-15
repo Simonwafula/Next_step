@@ -1,5 +1,27 @@
 # Handoff
 
+## 2026-02-15 (Settings Edit Guard + Audit Metadata)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added optional editor allowlist for settings edits in `backend/app/core/config.py`:
+  - `ADMIN_SETTINGS_EDITORS`
+- Enforced allowlist in `PUT /api/admin/lmi-alert-settings`:
+  - rejects non-allowlisted admins with 403 when allowlist is configured.
+- Added audit metadata capture on each settings update:
+  - request IP and user-agent stored in `ProcessingLog.results.request_metadata`.
+- Extended `GET /api/admin/lmi-alert-settings/history` to return `request_metadata` for each history entry.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_alert_settings or lmi_quality"` (13 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- If `ADMIN_SETTINGS_EDITORS` is empty, existing behavior remains (any admin from `ADMIN_EMAILS` can edit).
+
 ## 2026-02-15 (Alert Settings Audit History View)
 
 Branch: `feat/T-740-scheduled-scrape-processing`
