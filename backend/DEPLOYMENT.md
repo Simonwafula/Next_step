@@ -198,6 +198,23 @@ db.close()
 "
 ```
 
+## Embeddings
+
+The API can optionally compute semantic similarity scores using embeddings stored in `job_embeddings`.
+
+### Backfill / Incremental Updates
+
+Run the incremental embedding backfill (idempotent; it only processes rows missing an embedding):
+
+```bash
+python -m cli embed --batch-size 64
+```
+
+In production we recommend a `systemd` timer so new jobs get embedded automatically. See:
+
+- `deploy/systemd/nextstep-embeddings.service`
+- `deploy/systemd/nextstep-embeddings.timer`
+
 ## API Endpoints
 
 ### Health Checks

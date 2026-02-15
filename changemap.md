@@ -128,6 +128,20 @@
 
 ## Logs
 
+### 2026-02-15
+- Wired production embeddings backfill as a systemd `oneshot` + `timer` pair:
+  - Added `deploy/systemd/nextstep-embeddings.service` and `deploy/systemd/nextstep-embeddings.timer`
+  - Deployed to VPS as `/etc/systemd/system/nextstep-embeddings.{service,timer}` and enabled timer
+- Prevented search ranking regressions when transformers are disabled:
+  - When `NEXTSTEP_DISABLE_TRANSFORMERS=1`, disable semantic scoring (avoid hash-vector "similarity")
+  - Scope DB lookup to `job_embeddings.model_name` via `EMBEDDING_MODEL_NAME` (default `e5-small-v2`)
+- Docs:
+  - Updated `backend/DEPLOYMENT.md` with embeddings backfill command + systemd unit references
+- Tests run:
+  - `backend/venv3.11/bin/ruff format --check backend` (pass)
+  - `backend/venv3.11/bin/ruff check backend` (pass)
+  - `backend/venv3.11/bin/pytest -q` (164 passed, 1 skipped)
+
 ### 2026-02-14 (Career Insight Feature)
 - (T-410) Implemented Career Insight Service for students/job seekers to understand what careers entail
 - Created 3-phase pipeline:

@@ -1,3 +1,5 @@
+import os
+
 from sqlalchemy.orm import Session
 from sqlalchemy import select, or_, func, union
 from ..db.models import JobPost, Organization, Location, TitleNorm
@@ -285,7 +287,14 @@ def search_jobs(
 
     # Process results with explanations
     results = []
-    query_embedding = embed_text(f"query: {q}") if q else None
+    # If transformers are disabled (common in multi-worker API deployments),
+    # `embed_text()` falls back to hash vectors which are not semantically meaningful.
+    # In that mode, disable semantic scoring to avoid randomizing ranking.
+    transformers_enabled = os.getenv("NEXTSTEP_DISABLE_TRANSFORMERS") != "1"
+    query_embedding = (
+        embed_text(f"query: {q}") if (q and transformers_enabled) else None
+    )
+    embedding_model = os.getenv("EMBEDDING_MODEL_NAME", "e5-small-v2")
 
     for jp, org, loc, title_norm in rows:
         # Calculate semantic similarity
@@ -294,9 +303,15 @@ def search_jobs(
         # Get embedding from the specialized job_embeddings table
         from ..db.models import JobEmbedding, JobEntities
 
-        emb_record = db.execute(
-            select(JobEmbedding).where(JobEmbedding.job_id == jp.id)
-        ).scalar_one_or_none()
+        emb_record = None
+        if query_embedding is not None:
+            emb_record = db.execute(
+                select(JobEmbedding)
+                .where(JobEmbedding.job_id == jp.id)
+                .where(JobEmbedding.model_name == embedding_model)
+                .order_by(JobEmbedding.id.desc())
+                .limit(1)
+            ).scalar_one_or_none()
 
         if query_embedding and emb_record and emb_record.vector_json:
             try:

@@ -1,0 +1,28 @@
+[Unit]
+Description=NextStep Embeddings Backfill (one-shot)
+After=network.target postgresql.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+User=nexts7595
+Group=nexts7595
+WorkingDirectory=/home/nextstep.co.ke/public_html/backend
+EnvironmentFile=/home/nextstep.co.ke/.env
+Environment=PYTHONUNBUFFERED=1
+Environment=TOKENIZERS_PARALLELISM=false
+Environment=OMP_NUM_THREADS=1
+Environment=MKL_NUM_THREADS=1
+# Transformers are disabled in the API service to keep memory stable with multiple workers.
+# This oneshot job enables them to build semantic vectors offline.
+Environment=NEXTSTEP_DISABLE_TRANSFORMERS=0
+ExecStart=/bin/bash -lc 'flock -n /tmp/nextstep-embeddings.lock /home/nextstep.co.ke/.venv/bin/python -m cli embed --batch-size 64 || exit 0'
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nextstep-embeddings
+Nice=10
+TimeoutStartSec=21600
+
+[Install]
+WantedBy=multi-user.target
+
