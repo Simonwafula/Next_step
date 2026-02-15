@@ -1,5 +1,30 @@
 # Handoff
 
+## 2026-02-15 (Conversion Warning Notification Routing)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added admin channel dispatch for conversion warning alerts:
+  - New service `backend/app/services/admin_alert_service.py` sends warning notifications through:
+    - in-app (`UserNotification`)
+    - email (`send_email`)
+    - WhatsApp (`send_whatsapp_message`)
+- Added cooldown dedupe (6 hours) to avoid duplicate alerts from repeated dashboard requests.
+- Integrated warning dispatch in `backend/app/api/admin_routes.py` inside `GET /api/admin/lmi-quality`.
+- Expanded dashboard endpoint tests for:
+  - channel delivery assertions (in-app/email/whatsapp)
+  - cooldown dedupe behavior
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (7 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (9 passed)
+
+### Notes
+- Dispatch currently targets configured admin users from `ADMIN_EMAILS`; if no admin recipients are configured, notifications are skipped safely.
+
 ## 2026-02-15 (Conversion Drop-off Alerting)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

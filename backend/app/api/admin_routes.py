@@ -34,6 +34,7 @@ from ..services.analytics import (
 from ..services.processing_log_service import log_monitoring_event
 from ..services.monitoring_service import monitoring_summary
 from ..services.signals import list_tenders, list_hiring_signals
+from ..services.admin_alert_service import admin_alert_service
 from ..services.gov_processing_service import (
     government_quality_snapshot,
     process_government_posts,
@@ -367,6 +368,14 @@ def admin_lmi_quality(
             else "Conversion is on target"
         ),
     }
+
+    if conversion_alert["status"] == "warning":
+        admin_alert_service.dispatch_conversion_dropoff_alert(
+            db,
+            avg_conversion_7d=avg_conversion_7d,
+            threshold=conversion_threshold,
+            conversion_rate_30d=conversion_rate_30d,
+        )
 
     return {
         "scraping_health": {

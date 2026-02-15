@@ -43,6 +43,7 @@ def admin_user(db_session_factory):
         email="admin@test.local",
         hashed_password="not-used",
         full_name="Test Admin",
+        whatsapp_number="+254700111222",
         is_active=True,
         is_verified=True,
         subscription_tier="enterprise",
@@ -76,7 +77,9 @@ def app(db_session_factory, admin_user, monkeypatch):
         return admin_user
 
     application.dependency_overrides[get_db] = override_get_db
-    application.dependency_overrides[get_current_user] = override_get_current_user
+    application.dependency_overrides[
+        get_current_user
+    ] = override_get_current_user
     return application
 
 
@@ -474,6 +477,124 @@ class TestAdminLmiQuality:
         assert alert["status"] == "warning"
         assert alert["avg_conversion_7d"] >= 0
         assert "threshold" in alert
+
+    def test_lmi_quality_warning_dispatches_admin_notifications(
+        self,
+        client,
+        db_session_factory,
+        monkeypatch,
+    ):
+        email_calls = []
+        whatsapp_calls = []
+
+        monkeypatch.setattr(
+            "app.services.admin_alert_service.send_email",
+            lambda to_address, subject, body: (
+                email_calls.append((to_address, subject, body)) or True
+            ),
+        )
+
+        async def fake_whatsapp_send(to_number, message):
+            whatsapp_calls.append((to_number, message))
+            return True
+
+        monkeypatch.setattr(
+            "app.services.admin_alert_service.send_whatsapp_message",
+            fake_whatsapp_send,
+        )
+
+        db = db_session_factory()
+        db.add(
+            User(
+                uuid="dispatch-low-conversion-user",
+                email="dispatch-low-conversion@test.local",
+                hashed_password="not-used",
+                full_name="Dispatch Low Conversion User",
+                is_active=True,
+                is_verified=True,
+                subscription_tier="basic",
+                created_at=datetime.utcnow() - timedelta(days=1),
+            )
+        )
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+
+        db = db_session_factory()
+        admin_notifications = (
+            db.query(UserNotification)
+            .filter(UserNotification.type == "admin_conversion_dropoff_alert")
+            .all()
+        )
+        assert len(admin_notifications) == 1
+        notification = admin_notifications[0]
+        assert "in_app" in (notification.delivered_via or [])
+        assert "email" in (notification.delivered_via or [])
+        assert "whatsapp" in (notification.delivered_via or [])
+        assert notification.delivery_status.get("in_app") == "sent"
+        assert notification.delivery_status.get("email") == "sent"
+        assert notification.delivery_status.get("whatsapp") == "sent"
+        db.close()
+
+        assert len(email_calls) == 1
+        assert len(whatsapp_calls) == 1
+
+    def test_lmi_quality_warning_dispatch_respects_cooldown(
+        self,
+        client,
+        db_session_factory,
+        monkeypatch,
+    ):
+        email_calls = []
+
+        monkeypatch.setattr(
+            "app.services.admin_alert_service.send_email",
+            lambda to_address, subject, body: (
+                email_calls.append((to_address, subject, body)) or True
+            ),
+        )
+
+        async def fake_whatsapp_send(_to_number, _message):
+            return True
+
+        monkeypatch.setattr(
+            "app.services.admin_alert_service.send_whatsapp_message",
+            fake_whatsapp_send,
+        )
+
+        db = db_session_factory()
+        db.add(
+            User(
+                uuid="cooldown-low-conversion-user",
+                email="cooldown-low-conversion@test.local",
+                hashed_password="not-used",
+                full_name="Cooldown Low Conversion User",
+                is_active=True,
+                is_verified=True,
+                subscription_tier="basic",
+                created_at=datetime.utcnow() - timedelta(days=1),
+            )
+        )
+        db.commit()
+        db.close()
+
+        first = client.get("/api/admin/lmi-quality")
+        second = client.get("/api/admin/lmi-quality")
+        assert first.status_code == 200
+        assert second.status_code == 200
+
+        db = db_session_factory()
+        admin_notifications = (
+            db.query(UserNotification)
+            .filter(UserNotification.type == "admin_conversion_dropoff_alert")
+            .all()
+        )
+        assert len(admin_notifications) == 1
+        db.close()
+
+        assert len(email_calls) == 1
 
 
 # ---------------------------------------------------------------------------

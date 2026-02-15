@@ -93,6 +93,7 @@
   - [x] (T-429) Conversion tracking (free → paid) metrics for admin visibility (`/api/admin/lmi-quality` + admin panel)
   - [x] (T-430) Conversion trend timeseries (14-day upgrades/new users/conversion rates) for admin monitoring
   - [x] (T-431) Conversion drop-off alerting (7-day average threshold check + admin surface)
+  - [x] (T-432) Conversion warning notification routing (email + WhatsApp + in-app with cooldown dedupe)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -211,6 +212,22 @@
 - Verification runs:
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (5 passed)
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (7 passed)
+
+### 2026-02-15 (Conversion Warning Notification Routing)
+- Routed warning-state conversion alerts to admin channels:
+  - Added `backend/app/services/admin_alert_service.py`.
+  - On warning, dispatches:
+    - in-app `UserNotification` (`type="admin_conversion_dropoff_alert"`)
+    - email via `send_email`
+    - WhatsApp via `send_whatsapp_message`
+- Added 6-hour cooldown dedupe to prevent repeated alerts on dashboard refresh.
+- Integrated dispatch trigger into `GET /api/admin/lmi-quality` when `conversion_alert.status == "warning"`.
+- Added tests in `backend/tests/test_dashboard_endpoints.py`:
+  - warning dispatch includes in-app/email/whatsapp delivery status
+  - repeated calls within cooldown do not duplicate alerts
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (7 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (9 passed)
 
 ### 2026-02-15 (LMI Monetization Build-out)
 - Delivered core LMI monetization milestones from `docs/LMI_IMPLEMENTATION_PLAN.md`:
