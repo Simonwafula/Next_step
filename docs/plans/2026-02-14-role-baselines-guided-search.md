@@ -94,7 +94,7 @@ Worktree: Yes
 **MANDATORY: Update this checklist as tasks complete. Change `[ ]` to `[x]`.**
 
 - [x] Task 1: MVIL database models
-- [ ] Task 2: MVIL aggregation service
+- [x] Task 2: MVIL aggregation service
 - [ ] Task 3: Admin aggregation endpoint + runner
 - [ ] Task 4: Explore mode API (Student career cards)
 - [ ] Task 5: Match mode API (Early-career role matching)
@@ -102,7 +102,7 @@ Worktree: Yes
 - [ ] Task 7: Search API mode routing
 - [ ] Task 8: Frontend mode selector + guided results UI
 
-**Total Tasks:** 8 | **Completed:** 1 | **Remaining:** 7
+**Total Tasks:** 8 | **Completed:** 2 | **Remaining:** 6
 
 ## Implementation Tasks
 
@@ -168,17 +168,17 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] `mvil_service.py` has all four compute functions + `refresh_all_baselines()`
-- [ ] Each function stores `sample_job_ids` and `count_total_jobs_used` in every row
-- [ ] Aggregation handles both `list[dict]` and `list[str]` formats in `JobEntities.skills` without crashing
-- [ ] Role families with `family='other'` are excluded from aggregation
-- [ ] Role families with < 3 jobs are excluded; families with 3-9 jobs get `low_confidence=True`
-- [ ] `refresh_all_baselines()` is transactional — failure mid-run preserves old data (tables never left empty)
-- [ ] Sample job IDs are sorted by recency and filtered to `is_active=True`
-- [ ] Tests verify correct aggregation with fixture data (at least 3 jobs per role family)
-- [ ] Tests include fixture jobs with BOTH `list[dict]` and `list[str]` skill formats
-- [ ] Tests verify `sample_job_ids` are valid, active job IDs from the input set
-- [ ] All aggregation runs on SQLite (no PostgreSQL-specific SQL like `percentile_cont`)
+- [x] `mvil_service.py` has all four compute functions + `refresh_all_baselines()`
+- [x] Each function stores `sample_job_ids` and `count_total_jobs_used` in every row
+- [x] Aggregation handles both `list[dict]` and `list[str]` formats in `JobEntities.skills` without crashing
+- [x] Role families with `family='other'` are excluded from aggregation
+- [x] Role families with < 3 jobs are excluded; families with 3-9 jobs get `low_confidence=True`
+- [x] `refresh_all_baselines()` is transactional — failure mid-run preserves old data (tables never left empty)
+- [x] Sample job IDs are sorted by recency and filtered to `is_active=True`
+- [x] Tests verify correct aggregation with fixture data (at least 3 jobs per role family)
+- [x] Tests include fixture jobs with BOTH `list[dict]` and `list[str]` skill formats
+- [x] Tests verify `sample_job_ids` are valid, active job IDs from the input set
+- [x] All aggregation runs on SQLite (no PostgreSQL-specific SQL like `percentile_cont`)
 
 **Verify:**
 

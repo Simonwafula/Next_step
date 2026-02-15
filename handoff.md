@@ -1,5 +1,40 @@
 # Handoff
 
+## 2026-02-15 (MVIL Task 2: Aggregation Service)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Completed Task 2 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+- Added MVIL aggregation service in `backend/app/services/mvil_service.py`:
+  - `compute_role_skill_baselines`
+  - `compute_role_education_baselines`
+  - `compute_role_experience_baselines`
+  - `compute_role_demand_snapshots`
+  - `refresh_all_baselines` (transactional insert-then-delete with rollback safety)
+- Service behavior includes:
+  - mixed skill-shape normalization (`list[dict]`, `list[str]`, `dict`)
+  - education normalization bins and experience banding via Python logic (SQLite-safe)
+  - role family filtering (`family != "other"`, minimum 3 jobs)
+  - low-confidence flagging for families with 3-9 jobs
+  - deterministic active-only recency-ordered evidence job IDs
+- Added tests in `backend/tests/test_mvil_service.py` covering:
+  - aggregation correctness and family filters
+  - mixed skill formats
+  - active recency sample IDs
+  - transactional rollback preserving prior rows on flush failure
+- Updated plan progress tracker:
+  - Completed 2 / Remaining 6.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_service.py` (2 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py backend/tests/test_mvil_models.py backend/tests/test_mvil_service.py` (11 passed)
+
+### Notes
+- Next step in this plan is Task 3 (admin MVIL refresh endpoint + runner hook).
+
 ## 2026-02-15 (MVIL Task 1: Database Models)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

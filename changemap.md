@@ -102,6 +102,7 @@
 ## 4.3 Guided Search Modes (MVIL)
 - [/] (T-440) Role baselines & guided search modes
   - [x] (T-441) MVIL database baseline models (`backend/app/db/models.py`, `backend/tests/test_mvil_models.py`)
+  - [x] (T-442) MVIL aggregation service (`backend/app/services/mvil_service.py`, `backend/tests/test_mvil_service.py`)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -150,6 +151,32 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (MVIL Task 2: Aggregation Service)
+- Implemented MVIL aggregation engine in `backend/app/services/mvil_service.py`:
+  - Added compute functions:
+    - `compute_role_skill_baselines`
+    - `compute_role_education_baselines`
+    - `compute_role_experience_baselines`
+    - `compute_role_demand_snapshots`
+  - Added `refresh_all_baselines` with transactional safety (insert+flush before deleting prior rows, rollback on failure).
+  - Added normalization and binning logic for mixed source shapes:
+    - skills in `list[dict]`, `list[str]`, and `dict`
+    - education canonical bins
+    - experience year extraction and banding
+  - Enforced MVIL family quality gates:
+    - exclude `family='other'`
+    - exclude role families with fewer than 3 jobs
+    - set `low_confidence=True` for families with 3-9 jobs
+  - Sample job evidence IDs are deterministic: active jobs only, sorted by `last_seen` descending.
+- Added tests in `backend/tests/test_mvil_service.py`:
+  - verifies family filtering + low confidence behavior
+  - verifies mixed skill payload support (`list[dict]` and `list[str]`)
+  - verifies demand snapshot evidence IDs are active-only and recency-ordered
+  - verifies `refresh_all_baselines` rollback preserves existing rows on failure
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_service.py` (2 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py backend/tests/test_mvil_models.py backend/tests/test_mvil_service.py` (11 passed)
 
 ### 2026-02-15 (Premium Paywall + Checkout Flow)
 - Implemented paywall/upgrade flow for Phase 1 premium features:
