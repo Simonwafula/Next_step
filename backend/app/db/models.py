@@ -123,6 +123,13 @@ class JobDedupeMap(Base):
     job_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), primary_key=True)
     canonical_job_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), index=True)
     similarity_score: Mapped[float] = mapped_column(Float)
+    status: Mapped[str] = mapped_column(
+        String(20), default="pending", server_default="pending", index=True
+    )
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    reviewed_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
 
 
 class JobEntities(Base):
@@ -541,7 +548,14 @@ class CompanyReview(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     is_approved: Mapped[bool] = mapped_column(Boolean, default=False)
+    moderation_status: Mapped[str] = mapped_column(
+        String(20), default="pending", server_default="pending", index=True
+    )
     moderation_notes: Mapped[str | None] = mapped_column(Text, nullable=True)
+    moderated_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    moderated_by: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True
+    )
 
 
 class SkillAssessment(Base):

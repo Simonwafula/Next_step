@@ -41,6 +41,28 @@ const lmiAlertWhatsappEnabled = document.getElementById('lmiAlertWhatsappEnabled
 const lmiAlertSettingsSource = document.getElementById('lmiAlertSettingsSource');
 const lmiAlertSettingsHistory = document.getElementById('lmiAlertSettingsHistory');
 
+/* New section element refs */
+const dedupCandidatesList = document.getElementById('dedupCandidatesList');
+const dedupMergeBtn = document.getElementById('dedupMergeBtn');
+const dedupDismissBtn = document.getElementById('dedupDismissBtn');
+const dedupTotal = document.getElementById('dedupTotal');
+const dedupMerged = document.getElementById('dedupMerged');
+const dedupDismissed = document.getElementById('dedupDismissed');
+const dedupPending = document.getElementById('dedupPending');
+const moderationFilter = document.getElementById('moderationFilter');
+const moderationQueue = document.getElementById('moderationQueue');
+const modPending = document.getElementById('modPending');
+const modApproved = document.getElementById('modApproved');
+const modRejected = document.getElementById('modRejected');
+const modAvgTime = document.getElementById('modAvgTime');
+const govQualityCheckBtn = document.getElementById('govQualityCheckBtn');
+const govProcessBtn = document.getElementById('govProcessBtn');
+const govQuarantineBtn = document.getElementById('govQuarantineBtn');
+const govActionStatus = document.getElementById('govActionStatus');
+const auditActionFilter = document.getElementById('auditActionFilter');
+const auditLogTableBody = document.getElementById('auditLogTableBody');
+const systemEventsList = document.getElementById('systemEventsList');
+
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
 
@@ -892,6 +914,192 @@ const wireActions = (token) => {
     });
 };
 
+/* ── Government Source Controls ── */
+const wireGovControls = (token) => {
+    const runGovAction = async (endpoint, label, method = 'POST') => {
+        if (govActionStatus) govActionStatus.textContent = `Running ${label}…`;
+        try {
+            const res = await requestJson(`${apiBase}/admin/government/${endpoint}`, {
+                method,
+                headers: { Authorization: `Bearer ${token}` },
+            });
+            const msg = res.message || res.status || `${label} complete`;
+            if (govActionStatus) govActionStatus.textContent = escapeHtml(msg);
+        } catch (err) {
+            if (govActionStatus) govActionStatus.textContent = `Error: ${escapeHtml(err.message)}`;
+        }
+    };
+    if (govQualityCheckBtn) {
+        govQualityCheckBtn.addEventListener('click', () => runGovAction('quality', 'Quality check', 'GET'));
+    }
+    if (govProcessBtn) {
+        govProcessBtn.addEventListener('click', () => runGovAction('process', 'Source processing'));
+    }
+    if (govQuarantineBtn) {
+        govQuarantineBtn.addEventListener('click', () => runGovAction('quarantine', 'Quarantine review'));
+    }
+};
+
+/* ── Moderation Queue (placeholder rendering) ── */
+const renderModerationQueue = (items) => {
+    if (!moderationQueue) return;
+    if (!items || items.length === 0) {
+        moderationQueue.innerHTML = '<p class="panel-placeholder">No flagged listings.</p>';
+        return;
+    }
+    moderationQueue.innerHTML = items
+        .map((item) => {
+            const titleSafe = escapeHtml(item.title || 'Untitled');
+            const reasonSafe = escapeHtml(item.reason || 'Flagged');
+            const statusSafe = escapeHtml(item.status || 'pending');
+            return `<div class="data-row">
+                <div><strong>${titleSafe}</strong><span>${reasonSafe}</span></div>
+                <span class="badge">${statusSafe}</span>
+            </div>`;
+        })
+        .join('');
+};
+
+const updateModerationStats = (stats) => {
+    if (modPending) modPending.textContent = stats.pending ?? '--';
+    if (modApproved) modApproved.textContent = stats.approved ?? '--';
+    if (modRejected) modRejected.textContent = stats.rejected ?? '--';
+    if (modAvgTime) modAvgTime.textContent = stats.avg_time ?? '--';
+};
+
+/* ── Dedup Review (placeholder rendering) ── */
+const renderDedupCandidates = (candidates) => {
+    if (!dedupCandidatesList) return;
+    if (!candidates || candidates.length === 0) {
+        dedupCandidatesList.innerHTML = '<p class="panel-placeholder">No duplicate candidates found.</p>';
+        return;
+    }
+    dedupCandidatesList.innerHTML = candidates
+        .map((c) => {
+            const aSafe = escapeHtml(c.title_a || 'Job A');
+            const bSafe = escapeHtml(c.title_b || 'Job B');
+            const scoreSafe = escapeHtml(
+                typeof c.similarity === 'number' ? `${(c.similarity * 100).toFixed(0)}%` : '--'
+            );
+            return `<div class="data-row" data-dedup-id="${escapeHtml(c.id || '')}">
+                <div><strong>${aSafe}</strong> ↔ <strong>${bSafe}</strong></div>
+                <span class="badge">${scoreSafe} match</span>
+            </div>`;
+        })
+        .join('');
+};
+
+const updateDedupStats = (stats) => {
+    if (dedupTotal) dedupTotal.textContent = stats.total ?? '--';
+    if (dedupMerged) dedupMerged.textContent = stats.merged ?? '--';
+    if (dedupDismissed) dedupDismissed.textContent = stats.dismissed ?? '--';
+    if (dedupPending) dedupPending.textContent = stats.pending ?? '--';
+};
+
+/* ── Audit Log (placeholder rendering) ── */
+const renderAuditLog = (entries) => {
+    if (!auditLogTableBody) return;
+    if (!entries || entries.length === 0) {
+        auditLogTableBody.innerHTML =
+            '<tr><td colspan="5" class="panel-placeholder">No audit entries yet.</td></tr>';
+        return;
+    }
+    auditLogTableBody.innerHTML = entries
+        .map((e) => {
+            const ts = escapeHtml(e.timestamp ? new Date(e.timestamp).toLocaleString() : '--');
+            return `<tr>
+                <td>${ts}</td>
+                <td>${escapeHtml(e.admin || '--')}</td>
+                <td>${escapeHtml(e.action || '--')}</td>
+                <td>${escapeHtml(e.target || '--')}</td>
+                <td>${escapeHtml(e.details || '--')}</td>
+            </tr>`;
+        })
+        .join('');
+};
+
+const renderSystemEvents = (events) => {
+    if (!systemEventsList) return;
+    if (!events || events.length === 0) {
+        systemEventsList.innerHTML = '<p class="panel-placeholder">No recent system events.</p>';
+        return;
+    }
+    systemEventsList.innerHTML = events
+        .map((ev) => {
+            const ts = escapeHtml(ev.timestamp ? new Date(ev.timestamp).toLocaleString() : '--');
+            return `<div class="data-row">
+                <div><strong>${escapeHtml(ev.event || 'Event')}</strong><span>${ts}</span></div>
+                <span class="badge">${escapeHtml(ev.level || 'info')}</span>
+            </div>`;
+        })
+        .join('');
+};
+
+/* ── Live data loaders for new admin sections ── */
+
+const loadAdminSections = async (token) => {
+    const headers = { Authorization: `Bearer ${token}` };
+
+    const [dedupData, dedupStatsData, modQueue, modStatsData, auditData, eventsData] =
+        await Promise.all([
+            requestJson(`${apiBase}/admin/dedup/candidates?limit=50`, { headers }).catch(() => null),
+            requestJson(`${apiBase}/admin/dedup/stats`, { headers }).catch(() => null),
+            requestJson(`${apiBase}/admin/moderation/queue?limit=50`, { headers }).catch(() => null),
+            requestJson(`${apiBase}/admin/moderation/stats`, { headers }).catch(() => null),
+            requestJson(`${apiBase}/admin/audit-log?limit=50`, { headers }).catch(() => null),
+            requestJson(`${apiBase}/admin/system-events?limit=30`, { headers }).catch(() => null),
+        ]);
+
+    renderDedupCandidates(dedupData?.candidates || []);
+    updateDedupStats(dedupStatsData || { total: 0, merged: 0, dismissed: 0, pending: 0 });
+
+    renderModerationQueue(modQueue?.items || []);
+    updateModerationStats(modStatsData || { pending: 0, approved: 0, rejected: 0, avg_time: '—' });
+
+    renderAuditLog(auditData?.entries || []);
+    renderSystemEvents(eventsData?.events || []);
+
+    /* Wire dedup action buttons */
+    if (dedupMergeBtn) {
+        dedupMergeBtn.addEventListener('click', async () => {
+            const selected = document.querySelector('[data-dedup-id].selected');
+            if (!selected) { setStatus('Select a duplicate pair first.', true); return; }
+            const jobId = selected.dataset.dedupId;
+            try {
+                await requestJson(`${apiBase}/admin/dedup/merge?job_id=${jobId}`, {
+                    method: 'POST', headers,
+                });
+                setStatus('Pair merged successfully.');
+                await loadAdminSections(token);
+            } catch (err) { setStatus(err.message || 'Merge failed', true); }
+        });
+    }
+    if (dedupDismissBtn) {
+        dedupDismissBtn.addEventListener('click', async () => {
+            const selected = document.querySelector('[data-dedup-id].selected');
+            if (!selected) { setStatus('Select a duplicate pair first.', true); return; }
+            const jobId = selected.dataset.dedupId;
+            try {
+                await requestJson(`${apiBase}/admin/dedup/dismiss?job_id=${jobId}`, {
+                    method: 'POST', headers,
+                });
+                setStatus('Pair dismissed.');
+                await loadAdminSections(token);
+            } catch (err) { setStatus(err.message || 'Dismiss failed', true); }
+        });
+    }
+
+    /* Make dedup rows selectable */
+    if (dedupCandidatesList) {
+        dedupCandidatesList.addEventListener('click', (e) => {
+            const row = e.target.closest('[data-dedup-id]');
+            if (!row) return;
+            dedupCandidatesList.querySelectorAll('.selected').forEach((el) => el.classList.remove('selected'));
+            row.classList.add('selected');
+        });
+    }
+};
+
 const boot = async () => {
     const auth = getAuth();
     if (!auth || !auth.access_token) {
@@ -1000,6 +1208,12 @@ const boot = async () => {
                 window.location.href = 'index.html';
             });
         }
+
+        /* Wire new admin sections */
+        wireGovControls(auth.access_token);
+
+        /* Load live data for dedup, moderation, audit, system events */
+        await loadAdminSections(auth.access_token);
     } catch (error) {
         if (error.status === 401 || error.status === 403) {
             showGate('Session expired. Sign in again with an admin account.');
@@ -1011,3 +1225,38 @@ const boot = async () => {
 };
 
 boot();
+
+/* ── Section nav active-state scroll-spy ── */
+(() => {
+    const navLinks = document.querySelectorAll('.admin-section-nav a[href^="#"]');
+    if (!navLinks.length) return;
+
+    const setActive = (hash) => {
+        navLinks.forEach((link) => {
+            link.classList.toggle('active', link.getAttribute('href') === hash);
+        });
+    };
+
+    const sectionIds = [...navLinks].map((l) => l.getAttribute('href').slice(1));
+
+    const observer = new IntersectionObserver(
+        (entries) => {
+            for (const entry of entries) {
+                if (entry.isIntersecting) {
+                    setActive('#' + entry.target.id);
+                    break;
+                }
+            }
+        },
+        { rootMargin: '-20% 0px -60% 0px', threshold: 0 }
+    );
+
+    sectionIds.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) observer.observe(el);
+    });
+
+    navLinks.forEach((link) => {
+        link.addEventListener('click', () => setActive(link.getAttribute('href')));
+    });
+})();

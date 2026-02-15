@@ -19,7 +19,7 @@
     <header class="site-header">
         <div class="container header-inner">
             <div class="brand">
-                <span class="brand-mark">N</span>
+                <img class="brand-logo" src="assets/nextstep-logo.png" alt="NextStep logo">
                 <div>
                     <p class="brand-name">NextStep Careers</p>
                     <p class="brand-tag">Opportunity intelligence</p>
@@ -110,10 +110,13 @@
                     </form>
 
                     <div class="chips">
-                        <button type="button" class="chip" data-query="I studied economics">I studied economics</button>
-                        <button type="button" class="chip" data-query="Diploma in HR">Diploma in HR</button>
-                        <button type="button" class="chip" data-query="GIS analyst">GIS analyst</button>
-                        <button type="button" class="chip" data-query="Procurement officer">Procurement officer</button>
+                        <button type="button" class="chip" data-query="Remote jobs">Remote</button>
+                        <button type="button" class="chip" data-query="Internship opportunities">Internships</button>
+                        <button type="button" class="chip" data-query="Entry level jobs">Entry-level</button>
+                        <button type="button" class="chip" data-query="Government jobs">Govt</button>
+                        <button type="button" class="chip" data-query="NGO jobs">NGO</button>
+                        <button type="button" class="chip" data-query="Tech jobs">Tech</button>
+                        <button type="button" class="chip" data-query="Sales jobs">Sales</button>
                     </div>
                 </div>
 
@@ -150,12 +153,24 @@
                 </div>
                 <div class="results-filters" id="resultsFilters" hidden>
                     <div class="filter-block">
-                        <p class="filter-title">Titles available</p>
-                        <div class="filter-chips" id="titleClusters"></div>
+                        <p class="filter-title">Role family</p>
+                        <div class="filter-chips" id="roleFamilyClusters"></div>
                     </div>
                     <div class="filter-block">
-                        <p class="filter-title">Companies hiring</p>
-                        <div class="filter-chips" id="companyClusters"></div>
+                        <p class="filter-title">Seniority</p>
+                        <div class="filter-chips" id="seniorityClusters"></div>
+                    </div>
+                    <div class="filter-block">
+                        <p class="filter-title">County</p>
+                        <div class="filter-chips" id="countyClusters"></div>
+                    </div>
+                    <div class="filter-block">
+                        <p class="filter-title">Sector</p>
+                        <div class="filter-chips" id="sectorClusters"></div>
+                    </div>
+                    <div class="filter-block">
+                        <p class="filter-title">Quality</p>
+                        <div class="filter-chips" id="qualityClusters"></div>
                     </div>
                 </div>
                 <div class="results-grid" id="resultsGrid"></div>

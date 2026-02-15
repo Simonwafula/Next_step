@@ -11,8 +11,11 @@ const guidedResults = document.getElementById('guidedResults');
 const guidedResultsGrid = document.getElementById('guidedResultsGrid');
 const guidedModeError = document.getElementById('guidedModeError');
 const resultsFilters = document.getElementById('resultsFilters');
-const titleClustersEl = document.getElementById('titleClusters');
-const companyClustersEl = document.getElementById('companyClusters');
+const roleFamilyClustersEl = document.getElementById('roleFamilyClusters');
+const seniorityClustersEl = document.getElementById('seniorityClusters');
+const countyClustersEl = document.getElementById('countyClusters');
+const sectorClustersEl = document.getElementById('sectorClusters');
+const qualityClustersEl = document.getElementById('qualityClusters');
 const focusSearchBtn = document.getElementById('focusSearch');
 const authModal = document.getElementById('authModal');
 const authTabs = document.querySelectorAll('[data-auth-tab]');
@@ -73,6 +76,11 @@ const pendingProfileKey = 'nextstep_pending_profile';
 
 let selectedTitleCluster = null;
 let selectedCompany = null;
+let selectedRoleFamily = null;
+let selectedSeniority = null;
+let selectedCounty = null;
+let selectedSector = null;
+let highConfidenceOnly = false;
 let currentGuidedMode = 'jobs';
 let currentUserProfile = null;
 
@@ -499,10 +507,33 @@ const renderResults = async (items) => {
             ? ` · Missing: ${missingSkills}`
             : '';
 
+        const skillTags = (item.top_skills || [])
+            .slice(0, 3)
+            .map((s) => `<span class="skill-chip">${escapeHtml(s)}</span>`)
+            .join(' ');
+        const qualityTag = item.quality_tag
+            ? `<span class="quality-tag ${item.high_confidence ? 'high' : 'medium'}">${escapeHtml(item.quality_tag)}</span>`
+            : '';
+        const contractLabel = item.contract_type
+            ? escapeHtml(item.contract_type)
+            : '';
+        const postedLabel = item.posted_at
+            ? escapeHtml(new Date(item.posted_at).toLocaleDateString())
+            : '';
+        const roleFamilyLabel = item.role_family
+            ? escapeHtml(item.role_family)
+            : '';
+        const metaExtra = [contractLabel, roleFamilyLabel, postedLabel].filter(Boolean).join(' · ');
+
         card.innerHTML = `
-            <h3 class="result-title">${escapeHtml(item.title || 'Untitled role')}</h3>
+            <div class="result-card-header">
+                <h3 class="result-title">${escapeHtml(item.title || 'Untitled role')}</h3>
+                ${qualityTag}
+            </div>
             <div class="result-meta">${org} · ${location}</div>
+            ${metaExtra ? `<div class="result-meta">${metaExtra}</div>` : ''}
             <div class="result-meta">${escapeHtml(salaryText)}</div>
+            ${skillTags ? `<div class="result-skills">${skillTags}</div>` : ''}
             ${matchLabel
                 ? `<div class="result-match">${escapeHtml(`${matchLabel}${missingLabel}`)}</div>`
                 : ''}
@@ -513,19 +544,20 @@ const renderResults = async (items) => {
 };
 
 const renderAggregates = (payload) => {
-    if (!payload || !resultsFilters || !titleClustersEl || !companyClustersEl) return;
+    if (!payload || !resultsFilters) return;
 
-    const titleClusters = Array.isArray(payload.title_clusters) ? payload.title_clusters : [];
-    const companies = Array.isArray(payload.companies_hiring) ? payload.companies_hiring : [];
+    const roleFamilies = Array.isArray(payload.role_families) ? payload.role_families : [];
+    const seniorityBuckets = Array.isArray(payload.seniority_buckets) ? payload.seniority_buckets : [];
+    const counties = Array.isArray(payload.counties_hiring) ? payload.counties_hiring : [];
+    const sectors = Array.isArray(payload.sectors_hiring) ? payload.sectors_hiring : [];
 
-    if (!titleClusters.length && !companies.length) {
+    const hasFacets = roleFamilies.length || seniorityBuckets.length || counties.length || sectors.length;
+    if (!hasFacets) {
         resultsFilters.hidden = true;
         return;
     }
 
     resultsFilters.hidden = false;
-    titleClustersEl.innerHTML = '';
-    companyClustersEl.innerHTML = '';
 
     const makeChip = ({ label, pressed, onClick }) => {
         const btn = document.createElement('button');
@@ -537,63 +569,53 @@ const renderAggregates = (payload) => {
         return btn;
     };
 
-    titleClustersEl.appendChild(
-        makeChip({
-            label: 'All',
-            pressed: !selectedTitleCluster,
-            onClick: () => {
-                selectedTitleCluster = null;
-                selectedCompany = null;
-                fetchResults();
-            },
-        })
+    const renderFacet = (el, items, labelKey, selected, onSelect, onClear) => {
+        if (!el) return;
+        el.innerHTML = '';
+        if (!items.length) { el.closest('.filter-block')?.classList.add('empty'); return; }
+        el.closest('.filter-block')?.classList.remove('empty');
+        el.appendChild(makeChip({ label: 'All', pressed: !selected, onClick: onClear }));
+        items.slice(0, 20).forEach((row) => {
+            const value = row[labelKey];
+            el.appendChild(makeChip({
+                label: `${value} (${row.count_ads})`,
+                pressed: selected === value,
+                onClick: () => onSelect(value),
+            }));
+        });
+    };
+
+    renderFacet(roleFamilyClustersEl, roleFamilies, 'role_family', selectedRoleFamily,
+        (v) => { selectedRoleFamily = v; fetchResults(); },
+        () => { selectedRoleFamily = null; fetchResults(); }
+    );
+    renderFacet(seniorityClustersEl, seniorityBuckets, 'seniority', selectedSeniority,
+        (v) => { selectedSeniority = v; fetchResults(); },
+        () => { selectedSeniority = null; fetchResults(); }
+    );
+    renderFacet(countyClustersEl, counties, 'county', selectedCounty,
+        (v) => { selectedCounty = v; fetchResults(); },
+        () => { selectedCounty = null; fetchResults(); }
+    );
+    renderFacet(sectorClustersEl, sectors, 'sector', selectedSector,
+        (v) => { selectedSector = v; fetchResults(); },
+        () => { selectedSector = null; fetchResults(); }
     );
 
-    titleClusters.slice(0, 24).forEach((row) => {
-        const t = row.title;
-        const c = row.count_ads;
-        titleClustersEl.appendChild(
-            makeChip({
-                label: `${t} (${c})`,
-                pressed: selectedTitleCluster === t,
-                onClick: () => {
-                    selectedTitleCluster = t;
-                    selectedCompany = null;
-                    fetchResults();
-                },
-            })
-        );
-    });
-
-    const companiesForTitle = selectedTitleCluster
-        ? companies.filter((row) => row.title === selectedTitleCluster)
-        : companies;
-
-    companyClustersEl.appendChild(
-        makeChip({
-            label: 'All',
-            pressed: !selectedCompany,
-            onClick: () => {
-                selectedCompany = null;
-                fetchResults();
-            },
-        })
-    );
-
-    companiesForTitle.slice(0, 24).forEach((row) => {
-        const co = row.company;
-        const c = row.count_ads;
-        companyClustersEl.appendChild(
-            makeChip({
-                label: `${co} (${c})`,
-                pressed: selectedCompany === co,
-                onClick: () => {
-                    selectedCompany = co;
-                    fetchResults();
-                },
-            })
-        );
-    });
+    // Quality / confidence toggle
+    if (qualityClustersEl) {
+        qualityClustersEl.innerHTML = '';
+        qualityClustersEl.appendChild(makeChip({
+            label: 'All quality',
+            pressed: !highConfidenceOnly,
+            onClick: () => { highConfidenceOnly = false; fetchResults(); },
+        }));
+        qualityClustersEl.appendChild(makeChip({
+            label: 'High confidence only',
+            pressed: highConfidenceOnly,
+            onClick: () => { highConfidenceOnly = true; fetchResults(); },
+        }));
+    }
 };
 
 const fetchResults = async () => {
@@ -610,6 +632,10 @@ const fetchResults = async () => {
     if (seniorityFilter.value) params.append('seniority', seniorityFilter.value);
     if (selectedTitleCluster) params.append('title', selectedTitleCluster);
     if (selectedCompany) params.append('company', selectedCompany);
+    if (selectedRoleFamily) params.append('role_family', selectedRoleFamily);
+    if (selectedCounty) params.append('county', selectedCounty);
+    if (selectedSector) params.append('sector', selectedSector);
+    if (highConfidenceOnly) params.append('high_confidence_only', 'true');
     if (currentGuidedMode !== 'jobs') {
         params.append('mode', currentGuidedMode);
         if (currentUserProfile?.skills && !params.get('skills')) {

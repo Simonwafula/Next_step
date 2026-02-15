@@ -196,37 +196,65 @@ const loadActivityFeed = async (token) => {
     const activityContainer = document.getElementById('activityFeedList');
     if (!activityContainer) return;
 
-    const activities = [
-        { icon: '🔍', text: 'Searched for jobs', time: '2 hours ago' },
-        { icon: '❤️', text: 'Saved a role', time: '5 hours ago' },
-        { icon: '📝', text: 'Submitted application', time: 'Yesterday' },
-        { icon: '👤', text: 'Updated profile', time: '2 days ago' },
-    ];
+    try {
+        const data = await requestJson(`${apiBase}/users/activity?limit=10`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        const activities = data.activities || [];
 
-    const html = activities.map(item => `
-        <div class="data-row">
-            <div style="display: flex; align-items: center; gap: 12px;">
-                <div style="font-size: 20px;">${item.icon}</div>
-                <div>
-                    <strong>${escapeHtml(item.text)}</strong>
-                    <span style="font-size: 12px; color: #718096;">${escapeHtml(item.time)}</span>
+        if (activities.length === 0) {
+            activityContainer.innerHTML = '<p class="panel-placeholder">No recent activity. Start searching for jobs!</p>';
+            return;
+        }
+
+        const html = activities.map(item => {
+            const timeAgo = item.time ? _relativeTime(item.time) : '';
+            return `
+                <div class="data-row">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="font-size: 20px;">${item.icon || '📌'}</div>
+                        <div>
+                            <strong>${escapeHtml(item.text)}</strong>
+                            <span style="font-size: 12px; color: #718096;">${escapeHtml(timeAgo)}</span>
+                        </div>
+                    </div>
                 </div>
-            </div>
-        </div>
-    `).join('');
+            `;
+        }).join('');
 
-    activityContainer.innerHTML = html;
+        activityContainer.innerHTML = html;
+    } catch {
+        activityContainer.innerHTML = '<p class="panel-placeholder">Could not load activity.</p>';
+    }
 };
 
-const renderMomentumChart = () => {
+const _relativeTime = (isoString) => {
+    const diff = Date.now() - new Date(isoString).getTime();
+    const mins = Math.floor(diff / 60000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    const hrs = Math.floor(mins / 60);
+    if (hrs < 24) return `${hrs}h ago`;
+    const days = Math.floor(hrs / 24);
+    return `${days}d ago`;
+};
+
+const renderMomentumChart = async (token) => {
     const chartContainer = document.getElementById('momentumChart');
     if (!chartContainer) return;
 
-    const data = [3, 5, 2, 8, 6, 4, 7];
-    const maxValue = Math.max(...data);
+    let data = [0, 0, 0, 0, 0, 0, 0];
+    try {
+        const resp = await requestJson(`${apiBase}/users/momentum`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+        data = (resp.days || []).map(d => d.count);
+    } catch { /* fall through to zero bars */ }
+
+    const maxValue = Math.max(...data, 1);
 
     const bars = data.map((value) => {
-        const height = maxValue > 0 ? (value / maxValue) * 100 : 0;
+        const height = (value / maxValue) * 100;
         const color = height > 70 ? '#48bb78' : height > 40 ? '#ed8936' : '#cbd5e0';
 
         return `
@@ -419,7 +447,7 @@ const boot = async () => {
 
         await loadActivityFeed(auth.access_token);
 
-        renderMomentumChart();
+        await renderMomentumChart(auth.access_token);
 
         dashboardApp.hidden = false;
     } catch (error) {

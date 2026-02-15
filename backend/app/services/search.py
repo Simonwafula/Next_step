@@ -49,6 +49,10 @@ def search_jobs(
     seniority: str | None = None,
     title: str | None = None,
     company: str | None = None,
+    role_family: str | None = None,
+    county: str | None = None,
+    sector: str | None = None,
+    high_confidence_only: bool = False,
     limit: int = 20,
     offset: int = 0,
 ):
@@ -120,6 +124,26 @@ def search_jobs(
     if seniority:
         seniority_condition = JobPost.seniority.ilike(f"%{seniority.lower()}%")
         filters.append(seniority_condition)
+
+    if role_family:
+        filters.append(TitleNorm.family.ilike(f"%{role_family.lower()}%"))
+
+    if county:
+        like_county = f"%{county.lower()}%"
+        filters.append(
+            or_(
+                Location.region.ilike(like_county),
+                Location.city.ilike(like_county),
+                Location.raw.ilike(like_county),
+            )
+        )
+
+    if sector:
+        filters.append(Organization.sector.ilike(f"%{sector.lower()}%"))
+
+    if high_confidence_only:
+        filters.append(JobPost.quality_score.is_not(None))
+        filters.append(JobPost.quality_score >= 0.7)
 
     normalized_family = None
     normalized_title = None
@@ -261,6 +285,61 @@ def search_jobs(
         .limit(200)
     ).all()
 
+    role_family_rows = db.execute(
+        select(TitleNorm.family, func.count(JobPost.id))
+        .select_from(JobPost)
+        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+        .join(Location, Location.id == JobPost.location_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
+        .where(*filters)
+        .group_by(TitleNorm.family)
+        .order_by(func.count(JobPost.id).desc())
+        .limit(40)
+    ).all()
+
+    seniority_rows = db.execute(
+        select(JobPost.seniority, func.count(JobPost.id))
+        .select_from(JobPost)
+        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+        .join(Location, Location.id == JobPost.location_id, isouter=True)
+        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
+        .where(*filters)
+        .group_by(JobPost.seniority)
+        .order_by(func.count(JobPost.id).desc())
+        .limit(20)
+    ).all()
+
+    county_rows = db.execute(
+        select(
+            func.coalesce(Location.region, Location.city, Location.raw),
+            func.count(JobPost.id),
+        )
+        .select_from(JobPost)
+        .join(Location, Location.id == JobPost.location_id, isouter=True)
+        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
+        .where(*filters)
+        .group_by(func.coalesce(Location.region, Location.city, Location.raw))
+        .order_by(func.count(JobPost.id).desc())
+        .limit(30)
+    ).all()
+
+    sector_rows = db.execute(
+        select(Organization.sector, func.count(JobPost.id))
+        .select_from(JobPost)
+        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+        .join(Location, Location.id == JobPost.location_id, isouter=True)
+        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
+        .where(*filters)
+        .group_by(Organization.sector)
+        .order_by(func.count(JobPost.id).desc())
+        .limit(30)
+    ).all()
+
     # Apply selected refinements for the job list.
     if title:
         stmt_jobs = stmt_jobs.where(cluster_title_expr == title)
@@ -338,24 +417,42 @@ def search_jobs(
         why_match = generate_match_explanation(
             q, jp, title_norm, similarity_score, entities
         )
+        top_skills = extract_entity_skill_values(entities.skills if entities else None)
+        quality_value = float(jp.quality_score) if jp.quality_score is not None else None
+        is_high_confidence = bool(quality_value is not None and quality_value >= 0.7)
+        posted_at = (
+            jp.first_seen.isoformat() if getattr(jp, "first_seen", None) else None
+        )
+        county_value = None
+        if loc:
+            county_value = loc.region or loc.city or loc.raw
 
         results.append(
             {
                 "id": jp.id,
                 "title": jp.title_raw,
                 "organization": org.name if org else "Unknown Company",
+                "sector": org.sector if org else None,
                 "location": format_location(loc),
+                "county": county_value,
                 "url": jp.url,
                 "source_url": getattr(jp, "source_url", None) or jp.url,
                 "application_url": (getattr(jp, "application_url", None) or jp.url),
                 "first_seen": jp.first_seen.isoformat()
                 if getattr(jp, "first_seen", None)
                 else None,
+                "posted_at": posted_at,
                 "apply_url": f"/r/apply/{jp.id}",
                 **build_salary_fields(jp, loc),
                 "tenure": jp.tenure,
+                "contract_type": jp.tenure,
                 "seniority": jp.seniority,
+                "role_family": title_norm.family if title_norm else None,
                 "why_match": why_match,
+                "top_skills": top_skills[:3],
+                "quality_score": quality_value,
+                "high_confidence": is_high_confidence,
+                "quality_tag": "High confidence" if is_high_confidence else "Medium",
                 "similarity_score": round(similarity_score * 100, 1)
                 if similarity_score > 0
                 else None,
@@ -400,7 +497,31 @@ def search_jobs(
         "selected": {
             "title": title,
             "company": company,
+            "role_family": role_family,
+            "county": county,
+            "sector": sector,
+            "high_confidence_only": bool(high_confidence_only),
         },
+        "role_families": [
+            {"role_family": value, "count_ads": int(count or 0)}
+            for value, count in role_family_rows
+            if value
+        ],
+        "seniority_buckets": [
+            {"seniority": value, "count_ads": int(count or 0)}
+            for value, count in seniority_rows
+            if value
+        ],
+        "counties_hiring": [
+            {"county": value, "count_ads": int(count or 0)}
+            for value, count in county_rows
+            if value
+        ],
+        "sectors_hiring": [
+            {"sector": value, "count_ads": int(count or 0)}
+            for value, count in sector_rows
+            if value
+        ],
     }
 
 
@@ -649,6 +770,35 @@ def generate_match_explanation(
         explanations.append("general match")
 
     return "; ".join(explanations[:3])  # Limit to top 3 explanations
+
+
+def extract_entity_skill_values(raw_skills: object) -> list[str]:
+    """Extract normalized skill strings from JobEntities.skills payload."""
+    if not raw_skills:
+        return []
+    if isinstance(raw_skills, list):
+        out: list[str] = []
+        for item in raw_skills:
+            if isinstance(item, str):
+                value = item.strip()
+                if value:
+                    out.append(value)
+                continue
+            if isinstance(item, dict):
+                value = (
+                    item.get("value")
+                    or item.get("name")
+                    or item.get("skill")
+                    or item.get("text")
+                )
+                if isinstance(value, str):
+                    normalized = value.strip()
+                    if normalized:
+                        out.append(normalized)
+        return out
+    if isinstance(raw_skills, dict):
+        return [str(key).strip() for key in raw_skills.keys() if str(key).strip()]
+    return []
 
 
 def format_location(location: Location | None) -> str | None:

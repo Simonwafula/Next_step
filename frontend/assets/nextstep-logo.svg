@@ -1,0 +1,9 @@
+<svg width="240" height="52" viewBox="0 0 240 52" fill="none" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="logoTitle logoDesc">
+  <title id="logoTitle">NextStep logo</title>
+  <desc id="logoDesc">NextStep wordmark with green and blue brand colors.</desc>
+  <rect x="2" y="4" width="26" height="44" rx="13" stroke="#00B64A" stroke-width="4"/>
+  <circle cx="10" cy="36" r="3.6" fill="#00B64A"/>
+  <text x="35" y="38" font-family="Newsreader, serif" font-size="42" fill="#3C4DFF">Next</text>
+  <text x="120" y="38" font-family="Newsreader, serif" font-size="42" fill="#00B64A">Step</text>
+  <text x="203" y="38" font-family="Newsreader, serif" font-size="30" fill="#0B0D0F">.ke</text>
+</svg>

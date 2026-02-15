@@ -19,7 +19,7 @@
     <header class="site-header">
         <div class="container header-inner">
             <div class="brand">
-                <span class="brand-mark">N</span>
+                <img class="brand-logo" src="assets/nextstep-logo.png" alt="NextStep logo">
                 <div>
                     <p class="brand-name">NextStep Careers</p>
                     <p class="brand-tag">Admin console</p>
@@ -57,11 +57,24 @@
                     <span class="action-progress-label" id="adminActionLabel">Working…</span>
                 </div>
                 <p class="auth-message" id="adminStatus"></p>
+                <nav class="admin-section-nav" aria-label="Admin sections">
+                    <a href="#dashboardSection">Dashboard</a>
+                    <a href="#sourcesSection">Sources</a>
+                    <a href="#runsSection">Runs</a>
+                    <a href="#dedupSection">Dedup Review</a>
+                    <a href="#taxonomySection">Taxonomy</a>
+                    <a href="#moderationSection">Moderation</a>
+                    <a href="#analyticsSection">Analytics</a>
+                    <a href="#usersSection">Users & Billing</a>
+                    <a href="#auditSection">Audit Logs</a>
+                </nav>
             </div>
         </section>
 
         <section class="dashboard" id="adminApp" hidden>
             <div class="container">
+                <!-- ═══ Dashboard Section ═══ -->
+                <div id="dashboardSection" class="admin-section">
                 <div class="kpi-grid" id="kpiGrid">
                     <article class="kpi-card" data-kpi="users_total">
                         <p class="kpi-label">Total users</p>
@@ -84,7 +97,11 @@
                         <p class="kpi-note">Active: <span data-kpi-note="sources_active">--</span></p>
                     </article>
                 </div>
+                </div>
 
+                <!-- ═══ Sources Section ═══ -->
+                <div id="sourcesSection" class="admin-section">
+                <h2 class="section-heading">Sources &amp; Coverage</h2>
                 <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
@@ -112,7 +129,6 @@
                             </div>
                         </div>
                     </article>
-
                     <article class="panel">
                         <div class="panel-header">
                             <h3>Pipeline stats</h3>
@@ -122,46 +138,19 @@
                         </div>
                     </article>
                 </div>
-
                 <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
-                            <h3>Skill trends snapshot</h3>
-                            <span class="panel-note" id="adminSkillTrendsNote">Last 3 months</span>
+                            <h3>Sources snapshot</h3>
                         </div>
-                        <div class="data-list" id="adminSkillTrends"></div>
-                    </article>
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>Role evolution snapshot</h3>
-                            <span class="panel-note">Recent shifts</span>
-                        </div>
-                        <div class="data-list" id="adminRoleEvolution"></div>
+                        <div class="data-list" id="adminSources"></div>
                     </article>
                 </div>
-
-                <div class="dashboard-grid">
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>Drift checks</h3>
-                            <span class="panel-note">Recent vs baseline</span>
-                        </div>
-                        <div class="panel-body" id="adminDriftSummary">
-                            <p class="panel-note">Loading...</p>
-                        </div>
-                    </article>
-
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>LMI quality metrics</h3>
-                            <span class="panel-note">Last 7/30 days</span>
-                        </div>
-                        <div class="panel-body" id="adminLmiQuality">
-                            <p class="panel-note">Loading...</p>
-                        </div>
-                    </article>
                 </div>
 
+                <!-- ═══ Runs Section ═══ -->
+                <div id="runsSection" class="admin-section">
+                <h2 class="section-heading">Ingestion Runs</h2>
                 <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
@@ -198,7 +187,6 @@
                             </form>
                         </div>
                     </article>
-
                     <article class="panel">
                         <div class="panel-header">
                             <h3>Alert settings history</h3>
@@ -209,26 +197,7 @@
                         </div>
                     </article>
                 </div>
-
-                <div class="dashboard-grid three">
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>Recent users</h3>
-                        </div>
-                        <div class="data-list" id="adminUsers"></div>
-                    </article>
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>Recent jobs</h3>
-                        </div>
-                        <div class="data-list" id="adminJobs"></div>
-                    </article>
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>Sources snapshot</h3>
-                        </div>
-                        <div class="data-list" id="adminSources"></div>
-                    </article>
+                <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
                             <h3>Automation activity</h3>
@@ -236,7 +205,59 @@
                         <div class="data-list" id="adminActivity"></div>
                     </article>
                 </div>
+                </div>
 
+                <!-- ═══ Dedup Review Section ═══ -->
+                <div id="dedupSection" class="admin-section">
+                <h2 class="section-heading">Dedup Review</h2>
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Duplicate candidates</h3>
+                            <span class="panel-note">Flagged by deduplication engine</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="data-list" id="dedupCandidatesList">
+                                <p class="panel-note">Loading duplicates...</p>
+                            </div>
+                            <div class="dedup-actions" id="dedupActions" hidden>
+                                <button class="solid-btn" type="button" id="dedupMergeBtn">Merge selected</button>
+                                <button class="ghost-btn" type="button" id="dedupDismissBtn">Dismiss</button>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Dedup stats</h3>
+                            <span class="panel-note">Last 30 days</span>
+                        </div>
+                        <div class="panel-body" id="dedupStats">
+                            <div class="kpi-mini-grid">
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="dedupTotal">--</p>
+                                    <p class="kpi-mini-label">Total flagged</p>
+                                </div>
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="dedupMerged">--</p>
+                                    <p class="kpi-mini-label">Merged</p>
+                                </div>
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="dedupDismissed">--</p>
+                                    <p class="kpi-mini-label">Dismissed</p>
+                                </div>
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="dedupPending">--</p>
+                                    <p class="kpi-mini-label">Pending</p>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                </div>
+
+                <!-- ═══ Taxonomy Section ═══ -->
+                <div id="taxonomySection" class="admin-section">
+                <h2 class="section-heading">Taxonomy</h2>
                 <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
@@ -294,6 +315,189 @@
                         </div>
                     </article>
                 </div>
+                </div>
+
+                <!-- ═══ Moderation Section ═══ -->
+                <div id="moderationSection" class="admin-section">
+                <h2 class="section-heading">Moderation Queue</h2>
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Flagged listings</h3>
+                            <div class="summary-controls">
+                                <label for="moderationFilter">Status:</label>
+                                <select id="moderationFilter">
+                                    <option value="pending">Pending review</option>
+                                    <option value="approved">Approved</option>
+                                    <option value="rejected">Rejected</option>
+                                    <option value="all">All</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <div class="data-list" id="moderationQueue">
+                                <p class="panel-note">Loading flagged items...</p>
+                            </div>
+                        </div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Moderation stats</h3>
+                            <span class="panel-note">Last 30 days</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="kpi-mini-grid">
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="modPending">--</p>
+                                    <p class="kpi-mini-label">Pending</p>
+                                </div>
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="modApproved">--</p>
+                                    <p class="kpi-mini-label">Approved</p>
+                                </div>
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="modRejected">--</p>
+                                    <p class="kpi-mini-label">Rejected</p>
+                                </div>
+                                <div class="kpi-mini">
+                                    <p class="kpi-mini-value" id="modAvgTime">--</p>
+                                    <p class="kpi-mini-label">Avg review time</p>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Government source quality</h3>
+                            <span class="panel-note">Quarantine &amp; processing controls</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="admin-btn-row">
+                                <button class="solid-btn" type="button" id="govQualityCheckBtn">Run quality check</button>
+                                <button class="ghost-btn" type="button" id="govProcessBtn">Process pending</button>
+                                <button class="ghost-btn" type="button" id="govQuarantineBtn">Quarantine flagged</button>
+                            </div>
+                            <p class="panel-note" id="govActionStatus"></p>
+                        </div>
+                    </article>
+                </div>
+                </div>
+
+                <!-- ═══ Analytics Section ═══ -->
+                <div id="analyticsSection" class="admin-section">
+                <h2 class="section-heading">Analytics</h2>
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Skill trends snapshot</h3>
+                            <span class="panel-note" id="adminSkillTrendsNote">Last 3 months</span>
+                        </div>
+                        <div class="data-list" id="adminSkillTrends"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Role evolution snapshot</h3>
+                            <span class="panel-note">Recent shifts</span>
+                        </div>
+                        <div class="data-list" id="adminRoleEvolution"></div>
+                    </article>
+                </div>
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>LMI quality metrics</h3>
+                            <span class="panel-note">Last 7/30 days</span>
+                        </div>
+                        <div class="panel-body" id="adminLmiQuality">
+                            <p class="panel-note">Loading...</p>
+                        </div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Drift checks</h3>
+                            <span class="panel-note">Recent vs baseline</span>
+                        </div>
+                        <div class="panel-body" id="adminDriftSummary">
+                            <p class="panel-note">Loading...</p>
+                        </div>
+                    </article>
+                </div>
+                </div>
+
+                <!-- ═══ Users & Billing Section ═══ -->
+                <div id="usersSection" class="admin-section">
+                <h2 class="section-heading">Users &amp; Billing</h2>
+                <div class="dashboard-grid three">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Recent users</h3>
+                        </div>
+                        <div class="data-list" id="adminUsers"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Recent jobs</h3>
+                        </div>
+                        <div class="data-list" id="adminJobs"></div>
+                    </article>
+                </div>
+                </div>
+
+                <!-- ═══ Audit Logs Section ═══ -->
+                <div id="auditSection" class="admin-section">
+                <h2 class="section-heading">Audit Logs</h2>
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Admin actions log</h3>
+                            <div class="summary-controls">
+                                <label for="auditActionFilter">Action:</label>
+                                <select id="auditActionFilter">
+                                    <option value="all">All actions</option>
+                                    <option value="moderation">Moderation</option>
+                                    <option value="dedup">Deduplication</option>
+                                    <option value="taxonomy">Taxonomy</option>
+                                    <option value="ingestion">Ingestion</option>
+                                    <option value="user_mgmt">User management</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="panel-body">
+                            <table class="summary-table">
+                                <thead>
+                                    <tr>
+                                        <th>Timestamp</th>
+                                        <th>Admin</th>
+                                        <th>Action</th>
+                                        <th>Target</th>
+                                        <th>Details</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="auditLogTableBody">
+                                    <tr>
+                                        <td colspan="5" class="panel-note">Loading audit log...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>System events</h3>
+                            <span class="panel-note">Automated operations</span>
+                        </div>
+                        <div class="data-list" id="systemEventsList">
+                            <p class="panel-note">Loading events...</p>
+                        </div>
+                    </article>
+                </div>
+                </div>
+
+                <p class="admin-progress" id="adminActionProgress" hidden>
+                    <span id="adminActionLabel">Running...</span>
+                </p>
             </div>
         </section>
 

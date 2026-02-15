@@ -7,6 +7,9 @@ from sqlalchemy import func, select, text
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
 from .api.admin_routes import router as admin_router
+from .api.admin_audit_routes import router as admin_audit_router
+from .api.admin_dedup_routes import router as admin_dedup_router
+from .api.admin_moderation_routes import router as admin_moderation_router
 from .api.beta_routes import router as beta_router
 from .api.career_insight_routes import router as career_insight_router
 from .api.redirect_routes import router as redirect_router
@@ -268,6 +271,9 @@ app.include_router(redirect_router)
 app.include_router(api_router, prefix="/api")
 app.include_router(beta_router, prefix="/api")
 app.include_router(admin_router)
+app.include_router(admin_audit_router)
+app.include_router(admin_dedup_router)
+app.include_router(admin_moderation_router)
 app.include_router(workflow_router)
 app.include_router(career_insight_router, prefix="/api")
 app.include_router(whatsapp_router, prefix="/whatsapp")

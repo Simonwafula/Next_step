@@ -148,3 +148,44 @@ def test_search_mode_match_uses_profile_skills_when_skills_missing(
     assert response.status_code == 200
     assert observed["user_skills"] == ["Python"]
     assert observed["education"] == "Bachelor's"
+
+
+def test_search_forwards_new_filter_params_to_service(
+    db_session_factory,
+    monkeypatch,
+):
+    app = _create_test_app(db_session_factory, current_user=None)
+
+    observed: dict = {}
+
+    def fake_search_jobs(*args, **kwargs):
+        observed.update(kwargs)
+        return {
+            "jobs": [],
+            "title_clusters": [],
+            "companies_hiring": [],
+            "total": 0,
+            "limit": 20,
+            "offset": 0,
+            "has_more": False,
+        }
+
+    monkeypatch.setattr("app.api.routes.search_jobs", fake_search_jobs)
+
+    with TestClient(app) as client:
+        response = client.get(
+            "/api/search",
+            params={
+                "q": "data",
+                "role_family": "data_analytics",
+                "county": "Nairobi",
+                "sector": "Technology",
+                "high_confidence_only": "true",
+            },
+        )
+
+    assert response.status_code == 200
+    assert observed["role_family"] == "data_analytics"
+    assert observed["county"] == "Nairobi"
+    assert observed["sector"] == "Technology"
+    assert observed["high_confidence_only"] is True

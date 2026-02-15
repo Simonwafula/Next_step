@@ -3,6 +3,40 @@
 ## Legend
 - TODO, IN_PROGRESS, BLOCKED, DONE
 
+## Phase-1: UI Rebrand & Views Implementation (2026-02-15)
+- [x] (T-UI-010) Logo asset: copied `nextstep logo white.png` → `frontend/assets/nextstep-logo.png`
+- [x] (T-UI-020) Replace brand-mark spans with `<img class="brand-logo">` across all 10 HTML pages
+  - index.html, dashboard.html, admin.html, career-pathways.html, skills-gap-scan.html
+  - beta.html, beta-admin.html, 403.html, 404.html, 500.html
+- [x] (T-UI-030) CSS: remove dead `.brand-mark` rule, keep `.brand-logo` in main.css
+- [x] (T-UI-031) CSS: update inline `.brand-mark` → `.brand-logo` in error pages (403, 404, 500)
+- [x] (T-UI-040) CSS: adapt tokens to logo palette (`--teal: #00b64a`, `--sky: #3c4dff`), update all hardcoded accent colors
+- [x] (T-UI-050) Backend: extend `/api/search` with `role_family`, `county`, `sector`, `high_confidence_only` params
+- [x] (T-UI-051) Backend: add 4 new facets (role_families, seniority_buckets, counties_hiring, sectors_hiring) + enriched result fields (top_skills, quality_tag, contract_type, posted_at)
+- [x] (T-UI-052) Backend test: `test_search_forwards_new_filter_params_to_service` passes (4 passed, 209 total)
+- [x] (T-UI-060) Homepage: replace title/company filter chips with role_family/seniority/county/sector/quality facet chips
+- [x] (T-UI-061) Homepage: update quick-search chips to market-first set (Remote, Internships, Entry-level, Govt, NGO, Tech, Sales)
+- [x] (T-UI-070) `main.js`: wire new filter element refs, state vars, renderAggregates for 5 facet types, renderResults with skill chips/quality tags/contract/posted metadata, fetchResults sends new params
+- [x] (T-UI-080) Admin: add section nav (`<nav class="admin-section-nav">`) with 9 anchor links
+- [x] (T-UI-081) Admin: add scroll-spy active-state logic in admin.js
+- [x] (T-UI-082) CSS: admin section-nav active/hover states, result-card-header, result-skills, skill-chip, filter-block.empty styles
+- [ ] (T-UI-090) TODO: delete obsolete `frontend/assets/nextstep-logo.svg`
+- [ ] (T-UI-100) TODO: institutional portal view (new page)
+- [ ] (T-UI-110) TODO: student/professional dashboard enhancements
+- [x] (T-UI-120) Admin moderation queue, audit log, dedup review endpoints + frontend wiring
+
+## Phase-1b: Admin & Dashboard Backend Endpoints (2026-02-17)
+- [x] (T-ADM-010) Model changes: added `status`/`reviewed_at`/`reviewed_by` to `JobDedupeMap`, `moderation_status`/`moderated_at`/`moderated_by` to `CompanyReview`
+- [x] (T-ADM-020) Admin dedup routes (`backend/app/api/admin_dedup_routes.py`): GET /candidates, POST /merge, POST /dismiss, GET /stats
+- [x] (T-ADM-030) Admin moderation routes (`backend/app/api/admin_moderation_routes.py`): GET /queue, POST /{id}/approve, POST /{id}/reject, GET /stats
+- [x] (T-ADM-040) Admin audit routes (`backend/app/api/admin_audit_routes.py`): GET /audit-log, GET /system-events
+- [x] (T-ADM-050) User activity endpoints (`backend/app/api/user_routes.py`): GET /activity, GET /momentum
+- [x] (T-ADM-060) Registered 3 new admin routers in `backend/app/main.py`
+- [x] (T-ADM-070) Alembic migration `7e3a2b1c8d5f` for new model columns
+- [x] (T-ADM-080) Frontend admin.js: `loadAdminSections()` wires dedup/moderation/audit/events to real APIs, dedup merge/dismiss actions
+- [x] (T-ADM-090) Frontend dashboard-ui.js: `loadActivityFeed()` + `renderMomentumChart()` call real APIs
+- [x] (T-ADM-100) Tests: `test_admin_sections.py` (19 tests) + `test_user_activity.py` (4 tests) — 232 total passing
+
 ## 0. Repo Scan & Reconcile (MANDATORY)
 - [x] (T-000-SCAN) Repo Scan & Reconcile (must run before any new feature work)
   - [x] (T-000a) Generate repo snapshot (tree, deps, tests, DB schema summary)
@@ -806,3 +840,44 @@
 - Improved government scraper link detection, added PDF text extraction, and fallback capture for list pages.
 - Added a script to remove government sources returning 404/410.
 - Expanded recommendation scoring with keyword, location, and recency signals and removed stale recs before storing.
+
+## Phase-1 Views Implementation — Admin Restructure & Dashboard Cleanup
+
+### T-UI-200 Admin HTML restructure — DONE
+- Replaced entire admin body with 9 properly separated `<div class="admin-section">` wrappers.
+- Old: section IDs misaligned (dedupSection inside taxonomySection, moderationSection wrapping education mappings).
+- New sections: dashboardSection, sourcesSection, runsSection, dedupSection (NEW), taxonomySection, moderationSection (NEW), analyticsSection, usersSection, auditSection (NEW).
+- Each section has `<h2 class="section-heading">` headers.
+
+### T-UI-210 Dedup Review section — DONE
+- New HTML section with candidates list (`#dedupCandidatesList`), merge/dismiss action buttons, dedup stats (total/merged/dismissed/pending).
+- admin.js: `renderDedupCandidates()`, `updateDedupStats()` helpers, element refs wired.
+
+### T-UI-220 Moderation Queue section — DONE
+- New HTML section with status filter select (pending/approved/rejected/all), flagged listings queue, moderation stats, government source quality controls (quality/process/quarantine buttons).
+- admin.js: `renderModerationQueue()`, `updateModerationStats()`, `wireGovControls()` — government buttons call existing `/admin/government/{quality,process,quarantine}` endpoints.
+
+### T-UI-230 Audit Logs section — DONE
+- New HTML section with action filter select, admin actions table (timestamp/admin/action/target/details), system events list.
+- admin.js: `renderAuditLog()`, `renderSystemEvents()` helpers.
+
+### T-UI-240 Dashboard inline style cleanup — DONE
+- Replaced all inline `style=` attributes in dashboard.html with CSS classes.
+- Beta progress panel: `.beta-progress-panel`, `.beta-hero`, `.beta-hero-title`, `.beta-hero-sub`, `.beta-hero-countdown`, `.beta-days`, `.beta-days-label`, `.beta-kpis`, `.beta-reward`.
+- Quick actions: `.quick-actions-grid`, `.quick-action-card`, `.quick-action-icon`, `.quick-action-title`, `.quick-action-desc`.
+- Career momentum: `.momentum-panel`, `.momentum-body`, `.momentum-chart`, `.momentum-axis`.
+- Placeholders: `.panel-placeholder`.
+
+### T-UI-250 CSS for new components — DONE
+Added to `main.css`:
+- Admin sections: `.admin-section`, `.section-heading`.
+- Compact stats: `.kpi-mini-grid`, `.kpi-mini`, `.kpi-mini-value`, `.kpi-mini-label`.
+- Action rows: `.dedup-actions`, `.admin-btn-row` with hover states.
+- Filters: `.moderation-filter`, `.audit-filter` select styling.
+- Admin table: `.admin-table` with hover row highlight.
+- All dashboard panel classes (beta, quick actions, momentum, placeholder).
+
+### Verification
+- `pytest backend/tests/ -q --tb=short` → **209 passed, 8 warnings** (60s).
+- Zero inline `style=` remaining in dashboard.html.
+- All new admin sections render with proper CSS classes.
