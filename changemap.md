@@ -734,6 +734,18 @@
 - (BLOCKED) ruff check backend failed with pre-existing lint violations (E402/F401/E712/F541 etc.); next: decide whether to run repo-wide fixes or scope lint to touched files.
 - (BLOCKED) pytest backend aborted importing torch during `backend/scripts/smoke_test.py::test_search_function`; next: isolate torch import or skip embedding-dependent smoke test in CI.
 
+### 2026-02-15 (T-741: Add Telegram + Opportunity Aggregator Sources)
+- Added Telegram ingestion connector (`backend/app/ingestion/connectors/telegram.py`) with bounded payload storage + incremental/backfill cursors stored in `ingestion_state.meta_json`.
+- Added helper script to generate Telethon `StringSession` for non-interactive server ingestion (`backend/scripts/telegram_create_session.py`).
+- Added two HTML opportunity aggregators plus Telegram channel to `backend/app/ingestion/sources.yaml`.
+- Updated `gov_careers` connector to support configurable `JobPost.source` attribution via `source:` in YAML (defaults remain unchanged for government).
+- Wired the new connector type into the ingestion runner (`backend/app/ingestion/runner.py`).
+- Updated deployment docs with Telegram ingestion setup (`backend/DEPLOYMENT.md`).
+- Verification:
+  - `backend/venv3.11/bin/ruff check ...` (pass)
+  - `backend/venv3.11/bin/ruff format ...` (pass)
+  - `backend/venv3.11/bin/pytest -q` (217 passed, 1 skipped)
+
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
 - (local sqlite path) Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.

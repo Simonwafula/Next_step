@@ -364,6 +364,10 @@ def ingest_gov_careers(db: Session, **src) -> int:
     if not list_urls:
         return 0
 
+    # Allow non-government sources to reuse this connector while preserving the
+    # JobPost.source attribution (default remains "gov_careers").
+    job_source = str(src.get("source") or "gov_careers")[:120]
+
     org_name = src.get("org") or src.get("name")
     keywords = src.get("keywords") or DEFAULT_KEYWORDS
     max_links = int(src.get("max_links", 200))
@@ -522,7 +526,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                 seniority = _extract_seniority_from_text(title, description)
 
                 jp = JobPost(
-                    source="gov_careers",
+                    source=job_source,
                     url=link_url,
                     source_url=link_url,
                     application_url=link_url,
@@ -561,7 +565,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                         seniority = _extract_seniority_from_text(title, description)
 
                         jp = JobPost(
-                            source="gov_careers",
+                            source=job_source,
                             url=list_url,
                             source_url=list_url,
                             application_url=list_url,

@@ -1,17 +1,91 @@
-# Example configuration for ingestion sources. Extend as needed.
-# Government monitoring sources live in government_sources.yaml.
+# Ingestion sources (non-job-board).
+#
+# Notes:
+# - Government monitoring sources live in government_sources.yaml and are scheduled
+#   separately via Celery beat in production.
+# - This file is intended to be extended in production; each entry is processed
+#   by backend/app/ingestion/runner.py.
 sources:
-  - name: Example Co (Greenhouse)
-    type: greenhouse
-    board_token: exampleco
-    org: Example Co
+  # ---------------------------------------------------------------------------
+  # Opportunity boards / aggregators (HTML)
+  # ---------------------------------------------------------------------------
+  - name: Global South Opportunities
+    type: gov_careers
+    source: globalsouthopportunities.co.ke
+    org: Global South Opportunities
+    list_urls:
+      - https://www.globalsouthopportunities.co.ke
+    # Keep this broadly "opportunities" but still job-biased.
+    keywords:
+      - job
+      - vacancy
+      - vacancies
+      - hiring
+      - careers
+      - internship
+      - intern
+      - attachment
+      - graduate
+      - fellowship
+      - opportunity
+    max_links: 300
+    max_detail_pages: 40
+    fetch_detail: true
 
-  - name: Cool Startup (Lever)
-    type: lever
-    board_token: cool-startup
-    org: Cool Startup
+  - name: Standard Arena Opportunities
+    type: gov_careers
+    source: standardarena.co.ke
+    org: Standard Arena
+    list_urls:
+      - https://www.standardarena.co.ke
+    keywords:
+      - job
+      - vacancy
+      - vacancies
+      - hiring
+      - careers
+      - internship
+      - intern
+      - attachment
+      - graduate
+      - fellowship
+      - opportunity
+    max_links: 300
+    max_detail_pages: 40
+    fetch_detail: true
 
-  - name: NGO Jobs Feed
-    type: rss
-    url: https://example.org/jobs/feed
-    org: Example NGO
+  # ---------------------------------------------------------------------------
+  # Telegram channels/groups
+  # ---------------------------------------------------------------------------
+  - name: Job Vacancy Kenya (Telegram)
+    type: telegram
+    channel: https://t.me/job_vacancy_kenya
+    source: "telegram:job_vacancy_kenya"
+    org: "Telegram: job_vacancy_kenya"
+    # Incremental + backfill (processes older history over time).
+    backfill: true
+    max_messages: 300
+    backfill_limit: 300
+    min_text_len: 80
+    exclude_keywords:
+      - subscribe
+      - advertise
+      - promo
+
+  # ---------------------------------------------------------------------------
+  # Templates / examples (ATS and RSS)
+  # ---------------------------------------------------------------------------
+  # - name: Example Co (Greenhouse)
+  #   type: greenhouse
+  #   board_token: exampleco
+  #   org: Example Co
+  #
+  # - name: Cool Startup (Lever)
+  #   type: lever
+  #   board_token: cool-startup
+  #   org: Cool Startup
+  #
+  # - name: NGO Jobs Feed
+  #   type: rss
+  #   url: https://example.org/jobs/feed
+  #   org: Example NGO

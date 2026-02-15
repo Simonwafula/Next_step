@@ -181,6 +181,48 @@ db.close()
 "
 ```
 
+### Telegram Sources (Channels / Groups)
+
+Telegram ingestion is supported via Telethon (MTProto). It requires a one-time
+login to generate a `StringSession` that the server can reuse non-interactively.
+
+1. Generate a session string (interactive):
+
+```bash
+cd /home/nextstep.co.ke/public_html/backend
+source /home/nextstep.co.ke/.venv/bin/activate
+TELEGRAM_API_ID=... TELEGRAM_API_HASH=... python scripts/telegram_create_session.py
+```
+
+2. Add the following to `/home/nextstep.co.ke/.env`:
+
+```bash
+TELEGRAM_API_ID=...
+TELEGRAM_API_HASH=...
+TELEGRAM_SESSION=...
+```
+
+3. Add a source entry in `backend/app/ingestion/sources.yaml`:
+
+```yaml
+- name: Job Vacancy Kenya (Telegram)
+  type: telegram
+  channel: https://t.me/job_vacancy_kenya
+```
+
+4. Run ingestion (one-shot):
+
+```bash
+python -c "
+from app.db.database import SessionLocal
+from app.ingestion.runner import run_all_sources
+db = SessionLocal()
+count = run_all_sources(db)
+print(f'Ingested {count} items')
+db.close()
+"
+```
+
 ### Run Specific Sources
 
 ```bash

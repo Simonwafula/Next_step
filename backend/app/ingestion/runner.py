@@ -10,6 +10,7 @@ from .connectors.rss import ingest_rss
 from .connectors.html_generic import ingest_html_generic
 from .connectors.gov_careers import ingest_gov_careers
 from .connectors.tender_rss import ingest_tender_rss
+from .connectors.telegram import ingest_telegram
 from ..db.models import IngestionState
 
 DEFAULT_CONFIG_PATHS = [
@@ -64,6 +65,8 @@ def _run_source(db: Session, src: dict) -> int:
         return ingest_gov_careers(db, **src)
     if stype == "tender_rss":
         return ingest_tender_rss(db, **src)
+    if stype == "telegram":
+        return ingest_telegram(db, **src)
     return 0
 
 
