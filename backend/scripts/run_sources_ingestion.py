@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+# ruff: noqa: E402
+
 import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 import yaml
+
+# Ensure the backend root (containing the `app/` package) is importable even when
+# this script is executed from `backend/scripts/`.
+_BACKEND_DIR = Path(__file__).resolve().parents[1]
+if str(_BACKEND_DIR) not in sys.path:
+    sys.path.insert(0, str(_BACKEND_DIR))
 
 from app.db.database import SessionLocal
 from app.ingestion.runner import run_all_sources
