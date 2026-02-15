@@ -67,6 +67,25 @@ Commit: `be19852` (`[OPS-EMBED] Schedule embeddings backfill and harden search s
 - `backend/venv3.11/bin/ruff check backend` (pass)
 - `backend/venv3.11/bin/pytest -q` (pass; 164 passed, 1 skipped)
 
+## 2026-02-15 (Scraper Endpoints Aligned With config.yaml Spiders)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `0593884` (`[OPS-SCRAPE] Align scraper endpoints with config.yaml spiders`)
+
+### Summary
+- Fixed a production mismatch where `/api/scrapers/run*` and Celery scraper tasks did not actually scrape anything (site keys didn’t match and the code path wasn’t using `config.yaml`).
+- `backend/app/services/scraper_service.py` now:
+  - Runs the same `SiteSpider` implementation used by the production pipeline (`scrapers/main.py` + `scrapers/config.yaml`)
+  - Returns `jobs_scraped`/`scraped_jobs` as the number of **new rows inserted**
+  - When `process_jobs=true`, triggers deterministic post-processing via `process_job_posts()` for the site’s derived domain source (e.g. `brightermonday.co.ke`)
+  - Skips `migrate_sqlite_to_postgres()` when `USE_POSTGRES=true` (scrapers already write directly to Postgres)
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format --check backend` (pass)
+- `backend/venv3.11/bin/ruff check backend` (pass)
+- `backend/venv3.11/bin/pytest -q` (pass; 174 passed, 1 skipped)
+
 ## 2026-02-14 (VPS JSON Upload + Postgres Import)
 
 Branch: `feat/T-630-fix-json-import-postgres`
