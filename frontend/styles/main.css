@@ -410,6 +410,12 @@ a {
     margin-bottom: 0.8rem;
 }
 
+.result-match {
+    font-size: 0.85rem;
+    color: var(--teal);
+    margin-bottom: 0.7rem;
+}
+
 .result-link {
     font-size: 0.85rem;
     color: var(--teal);

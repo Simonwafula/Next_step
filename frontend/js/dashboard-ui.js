@@ -119,6 +119,133 @@ const renderList = (target, items, emptyMessage) => {
         .join('');
 };
 
+const loadBetaProgress = async (token, email) => {
+    const betaPanel = document.getElementById('betaProgressPanel');
+    if (!betaPanel) return;
+
+    try {
+        const usersResponse = await requestJson(`${apiBase}/beta/users?limit=50`);
+        const betaUser = (usersResponse.users || []).find(u => u.email === email);
+
+        if (!betaUser) {
+            betaPanel.style.display = 'none';
+            return;
+        }
+
+        betaPanel.style.display = 'block';
+
+        const signupDate = new Date(betaUser.signed_up_at);
+        const endDate = new Date(signupDate);
+        endDate.setDate(endDate.getDate() + 30);
+        const today = new Date();
+        const daysRemaining = Math.max(0, Math.ceil((endDate - today) / (1000 * 60 * 60 * 24)));
+
+        let engagementScore = 0;
+        if (betaUser.profile_completed) engagementScore += 25;
+        if (betaUser.jobs_viewed > 0) engagementScore += 20;
+        if (betaUser.jobs_saved > 0) engagementScore += 25;
+        if (betaUser.jobs_applied > 0) engagementScore += 30;
+
+        document.getElementById('betaDaysRemaining').textContent = daysRemaining;
+        document.getElementById('betaEngagementScore').textContent = `${engagementScore}%`;
+        document.getElementById('betaProfileStatus').textContent = betaUser.profile_completed ? '✅ Complete' : '⏳ Pending';
+        document.getElementById('betaJobsViewed').textContent = betaUser.jobs_viewed || 0;
+        document.getElementById('betaApplications').textContent = betaUser.jobs_applied || 0;
+
+    } catch (error) {
+        console.log('Not a beta user:', error);
+        betaPanel.style.display = 'none';
+    }
+};
+
+const renderProfileChecklist = (profile) => {
+    const checklistContainer = document.getElementById('profileChecklistList');
+    if (!checklistContainer) return;
+
+    const checklist = [
+        { label: 'Basic Info', completed: profile?.full_name && profile?.email },
+        { label: 'Phone Number', completed: profile?.phone },
+        { label: 'Location', completed: profile?.preferred_locations?.length > 0 },
+        { label: 'Skills', completed: profile?.skills?.length > 0 },
+        { label: 'Education', completed: profile?.education?.length > 0 },
+        { label: 'Work Experience', completed: profile?.experience?.length > 0 },
+    ];
+
+    const completedCount = checklist.filter(item => item.completed).length;
+    const totalCount = checklist.length;
+    const percentage = Math.round((completedCount / totalCount) * 100);
+
+    document.getElementById('profileCompletionPct').textContent = `${percentage}% complete`;
+
+    const html = checklist.map(item => `
+        <div class="data-row" style="cursor: pointer;" onclick="editProfile()">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 20px;">${item.completed ? '✅' : '⭕'}</div>
+                <div>
+                    <strong>${escapeHtml(item.label)}</strong>
+                    <span style="font-size: 12px; color: #718096;">${item.completed ? 'Completed' : 'Click to add'}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    checklistContainer.innerHTML = html;
+};
+
+const loadActivityFeed = async (token) => {
+    const activityContainer = document.getElementById('activityFeedList');
+    if (!activityContainer) return;
+
+    const activities = [
+        { icon: '🔍', text: 'Searched for jobs', time: '2 hours ago' },
+        { icon: '❤️', text: 'Saved a role', time: '5 hours ago' },
+        { icon: '📝', text: 'Submitted application', time: 'Yesterday' },
+        { icon: '👤', text: 'Updated profile', time: '2 days ago' },
+    ];
+
+    const html = activities.map(item => `
+        <div class="data-row">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="font-size: 20px;">${item.icon}</div>
+                <div>
+                    <strong>${escapeHtml(item.text)}</strong>
+                    <span style="font-size: 12px; color: #718096;">${escapeHtml(item.time)}</span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    activityContainer.innerHTML = html;
+};
+
+const renderMomentumChart = () => {
+    const chartContainer = document.getElementById('momentumChart');
+    if (!chartContainer) return;
+
+    const data = [3, 5, 2, 8, 6, 4, 7];
+    const maxValue = Math.max(...data);
+
+    const bars = data.map((value) => {
+        const height = maxValue > 0 ? (value / maxValue) * 100 : 0;
+        const color = height > 70 ? '#48bb78' : height > 40 ? '#ed8936' : '#cbd5e0';
+
+        return `
+            <div style="flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end;">
+                <div style="
+                    width: 100%;
+                    height: ${height}%;
+                    background: ${color};
+                    border-radius: 4px 4px 0 0;
+                    transition: all 0.3s;
+                    min-height: 8px;
+                " title="${value} activities"></div>
+            </div>
+        `;
+    }).join('');
+
+    chartContainer.innerHTML = bars;
+};
+
 const boot = async () => {
     const auth = getAuth();
     if (!auth || !auth.access_token) {
@@ -285,6 +412,14 @@ const boot = async () => {
                 window.location.href = 'index.html';
             });
         }
+
+        await loadBetaProgress(auth.access_token, me.email);
+
+        renderProfileChecklist(profile);
+
+        await loadActivityFeed(auth.access_token);
+
+        renderMomentumChart();
 
         dashboardApp.hidden = false;
     } catch (error) {

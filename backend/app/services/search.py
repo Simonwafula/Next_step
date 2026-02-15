@@ -9,6 +9,7 @@ from ..normalization.titles import (
     get_careers_for_degree,
 )
 from .ranking import rank_results
+from .salary_service import salary_service
 import numpy as np
 import re
 from collections import Counter
@@ -351,9 +352,7 @@ def search_jobs(
                 if getattr(jp, "first_seen", None)
                 else None,
                 "apply_url": f"/r/apply/{jp.id}",
-                "salary_range": format_salary(
-                    jp.salary_min, jp.salary_max, jp.currency
-                ),
+                **build_salary_fields(jp, loc),
                 "tenure": jp.tenure,
                 "seniority": jp.seniority,
                 "why_match": why_match,
@@ -482,9 +481,7 @@ def search_by_degree(
                 "first_seen": jp.first_seen.isoformat()
                 if getattr(jp, "first_seen", None)
                 else None,
-                "salary_range": format_salary(
-                    jp.salary_min, jp.salary_max, jp.currency
-                ),
+                **build_salary_fields(jp, loc),
                 "tenure": jp.tenure,
                 "seniority": jp.seniority,
                 "why_match": why_match,
@@ -549,9 +546,7 @@ def suggest_alternatives(
                         "organization": org.name if org else "Unknown Company",
                         "location": format_location(loc),
                         "url": jp.url,
-                        "salary_range": format_salary(
-                            jp.salary_min, jp.salary_max, jp.currency
-                        ),
+                        **build_salary_fields(jp, loc),
                         "why_match": (
                             f"Broader match in "
                             f"{normalized_family.replace('_', ' ')} field"
@@ -689,3 +684,33 @@ def format_salary(
         return f"Up to {curr} {max_sal:,.0f}"
 
     return None
+
+
+def build_salary_fields(job_post: JobPost, location: Location | None) -> dict:
+    salary_range = format_salary(
+        job_post.salary_min,
+        job_post.salary_max,
+        job_post.currency,
+    )
+    if salary_range:
+        return {
+            "salary_range": salary_range,
+            "salary_estimated": False,
+            "salary_confidence": None,
+        }
+
+    estimate = salary_service.estimate_salary_range(
+        title=job_post.title_raw,
+        seniority=job_post.seniority,
+        location_text=format_location(location),
+        currency=job_post.currency or "KES",
+    )
+    return {
+        "salary_range": salary_service.format_salary_range(
+            estimate["min"],
+            estimate["max"],
+            estimate["currency"],
+        ),
+        "salary_estimated": bool(estimate["estimated"]),
+        "salary_confidence": float(estimate["confidence"]),
+    }

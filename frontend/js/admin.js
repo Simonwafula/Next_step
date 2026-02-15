@@ -21,6 +21,7 @@ const adminSkillTrends = document.getElementById('adminSkillTrends');
 const adminRoleEvolution = document.getElementById('adminRoleEvolution');
 const adminSkillTrendsNote = document.getElementById('adminSkillTrendsNote');
 const adminDriftSummary = document.getElementById('adminDriftSummary');
+const adminLmiQuality = document.getElementById('adminLmiQuality');
 const summaryDimension = document.getElementById('summaryDimension');
 const summaryTableBody = document.getElementById('summaryTableBody');
 const summaryModal = document.getElementById('summaryModal');
@@ -307,6 +308,48 @@ const renderDriftSummary = (payload) => {
         <div class="metric-row">
             <span>Salary delta</span>
             <strong>${payload.salary.delta_ratio === null ? 'n/a' : `${Math.round(payload.salary.delta_ratio * 100)}%`}</strong>
+        </div>
+    `;
+};
+
+const renderLmiQuality = (payload) => {
+    if (!adminLmiQuality) {
+        return;
+    }
+    if (!payload || payload.error) {
+        adminLmiQuality.innerHTML = '<p class="panel-note">No LMI quality data available.</p>';
+        return;
+    }
+
+    const scraping = payload.scraping_health || {};
+    const skills = payload.skills_extraction || {};
+    const engagement = payload.engagement || {};
+    const revenue = payload.revenue || {};
+
+    adminLmiQuality.innerHTML = `
+        <div class="metric-row">
+            <span>Scraper success rate (7d)</span>
+            <strong>${escapeHtml(scraping.success_rate_7d ?? 0)}%</strong>
+        </div>
+        <div class="metric-row">
+            <span>Extraction quality score</span>
+            <strong>${escapeHtml(skills.quality_score ?? 0)}%</strong>
+        </div>
+        <div class="metric-row">
+            <span>LMI engagement (30d)</span>
+            <strong>${escapeHtml(engagement.lmi_engagement_rate_30d ?? 0)}%</strong>
+        </div>
+        <div class="metric-row">
+            <span>Estimated MRR</span>
+            <strong>KES ${escapeHtml(revenue.estimated_mrr_kes ?? 0)}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Estimated ARPU</span>
+            <strong>KES ${escapeHtml(revenue.estimated_arpu_kes ?? 0)}</strong>
+        </div>
+        <div class="metric-row">
+            <span>Estimated churn</span>
+            <strong>${escapeHtml(revenue.estimated_churn_rate ?? 0)}%</strong>
         </div>
     `;
 };
@@ -707,7 +750,14 @@ const boot = async () => {
         showAdminApp();
         wireActions(auth.access_token);
 
-        const [overview, usersPayload, jobsPayload, sourcesPayload, operationsPayload] = await Promise.all([
+        const [
+            overview,
+            usersPayload,
+            jobsPayload,
+            sourcesPayload,
+            operationsPayload,
+            lmiQualityPayload,
+        ] = await Promise.all([
             requestJson(`${apiBase}/admin/overview`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
             }).catch((error) => ({ error })),
@@ -721,6 +771,9 @@ const boot = async () => {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
             }).catch((error) => ({ error })),
             requestJson(`${apiBase}/admin/operations?limit=20`, {
+                headers: { Authorization: `Bearer ${auth.access_token}` },
+            }).catch((error) => ({ error })),
+            requestJson(`${apiBase}/admin/lmi-quality`, {
                 headers: { Authorization: `Bearer ${auth.access_token}` },
             }).catch((error) => ({ error })),
         ]);
@@ -748,6 +801,11 @@ const boot = async () => {
         }
         if (operationsPayload && !operationsPayload.error) {
             renderAutomationActivity(operationsPayload);
+        }
+        if (lmiQualityPayload && !lmiQualityPayload.error) {
+            renderLmiQuality(lmiQualityPayload);
+        } else {
+            renderLmiQuality(null);
         }
 
         if (adminSkillTrends || adminRoleEvolution || adminDriftSummary) {

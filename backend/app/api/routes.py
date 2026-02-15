@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
 from ..db.database import get_db
@@ -23,6 +23,10 @@ from ..services.recommend import (
 )
 from ..services.scraper_service import scraper_service
 from ..services.search import search_jobs
+from ..services.career_pathways_service import (
+    CareerPathwayNotFoundError,
+    career_pathways_service,
+)
 from .analytics_routes import router as analytics_router
 from .auth_routes import router as auth_router
 from .user_routes import router as user_router
@@ -30,20 +34,28 @@ from .user_routes import router as user_router
 api_router = APIRouter()
 
 api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
-api_router.include_router(user_router, prefix="/users", tags=["user-management"])
+api_router.include_router(
+    user_router, prefix="/users", tags=["user-management"]
+)
 api_router.include_router(analytics_router, tags=["analytics"])
 
 
 @api_router.get("/search")
 def search(
-    q: str = Query("", description="Search query, job title, or 'I studied [degree]'"),
+    q: str = Query(
+        "", description="Search query, job title, or 'I studied [degree]'"
+    ),
     location: str | None = Query(None, description="Location filter"),
     seniority: str | None = Query(None, description="Seniority level"),
-    title: str | None = Query(None, description="Selected title cluster filter"),
+    title: str | None = Query(
+        None, description="Selected title cluster filter"
+    ),
     company: str | None = Query(None, description="Selected company filter"),
     limit: int = Query(20, ge=1, le=50, description="Jobs page size"),
     offset: int = Query(0, ge=0, description="Jobs page offset"),
-    personalized: bool = Query(False, description="Enable personalized results"),
+    personalized: bool = Query(
+        False, description="Enable personalized results"
+    ),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_optional),
 ):
@@ -74,7 +86,9 @@ def search(
             "personalized": True,
             "user_profile_used": bool(current_user.profile),
             "total": (
-                payload.get("total") if isinstance(payload, dict) else len(payload)
+                payload.get("total")
+                if isinstance(payload, dict)
+                else len(payload)
             ),
         }
 
@@ -82,7 +96,9 @@ def search(
 
 
 @api_router.get("/translate-title")
-def translate_title(title: str = Query(..., description="Job title to normalize")):
+def translate_title(
+    title: str = Query(..., description="Job title to normalize"),
+):
     """
     Translate messy job titles into standard career families.
 
@@ -128,9 +144,19 @@ def recommend(
     return recs
 
 
+@api_router.get("/career-pathways/{role_slug}")
+def get_career_pathway(role_slug: str):
+    """Get a career roadmap for a supported role slug."""
+    try:
+        return career_pathways_service.get_pathway(role_slug)
+    except CareerPathwayNotFoundError as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+
+
 @api_router.get("/trending-transitions")
 def trending_transitions(
-    days: int = Query(30, description="Days to analyze"), db: Session = Depends(get_db)
+    days: int = Query(30, description="Days to analyze"),
+    db: Session = Depends(get_db),
 ):
     """Get trending career transitions based on recent job market activity."""
     trends = get_trending_transitions(db, days=days)
@@ -193,13 +219,16 @@ def salary_insights(
     - Salary by role family
     - Data coverage transparency
     """
-    insights = get_salary_insights(db, role_family=role_family, location=location)
+    insights = get_salary_insights(
+        db, role_family=role_family, location=location
+    )
     return insights
 
 
 @api_router.get("/lmi/trending-skills")
 def trending_skills(
-    days: int = Query(7, description="Days to analyze"), db: Session = Depends(get_db)
+    days: int = Query(7, description="Days to analyze"),
+    db: Session = Depends(get_db),
 ):
     """Get trending skills with week-over-week growth rates."""
     skills = get_trending_skills(db, days=days)
@@ -216,13 +245,17 @@ def coverage_stats(db: Session = Depends(get_db)):
     total_posts = db.execute(select(func.count(JobPost.id))).scalar() or 0
     posts_with_salary = (
         db.execute(
-            select(func.count(JobPost.id)).where(JobPost.salary_min.is_not(None))
+            select(func.count(JobPost.id)).where(
+                JobPost.salary_min.is_not(None)
+            )
         ).scalar()
         or 0
     )
     posts_with_skills = (
         db.execute(
-            select(func.count(JobPost.id.distinct())).join_from(JobPost, JobSkill)
+            select(func.count(JobPost.id.distinct())).join_from(
+                JobPost, JobSkill
+            )
         ).scalar()
         or 0
     )
@@ -344,7 +377,10 @@ async def run_scraper(
         False, description="Include recent ingested jobs in the response"
     ),
     recent_jobs_limit: int = Query(
-        10, ge=1, le=50, description="Number of recent jobs to return when requested"
+        10,
+        ge=1,
+        le=50,
+        description="Number of recent jobs to return when requested",
     ),
 ):
     """Run scraper for a specific site."""
@@ -365,7 +401,10 @@ async def run_all_scrapers(
         False, description="Include recent ingested jobs in the response"
     ),
     recent_jobs_limit: int = Query(
-        10, ge=1, le=50, description="Number of recent jobs to return when requested"
+        10,
+        ge=1,
+        le=50,
+        description="Number of recent jobs to return when requested",
     ),
 ):
     """Run scrapers for all configured sites."""

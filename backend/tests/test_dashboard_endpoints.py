@@ -75,7 +75,9 @@ def app(db_session_factory, admin_user, monkeypatch):
         return admin_user
 
     application.dependency_overrides[get_db] = override_get_db
-    application.dependency_overrides[get_current_user] = override_get_current_user
+    application.dependency_overrides[get_current_user] = (
+        override_get_current_user
+    )
     return application
 
 
@@ -311,6 +313,39 @@ class TestAdminOverview:
         assert data["kpis"]["organizations_total"] >= 1
         assert data["kpis"]["locations_total"] >= 1
         assert data["coverage"]["salary"]["count"] >= 1
+
+
+class TestAdminLmiQuality:
+    def test_lmi_quality_empty_db(self, client):
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "scraping_health" in data
+        assert "skills_extraction" in data
+        assert "engagement" in data
+        assert "revenue" in data
+
+    def test_lmi_quality_with_seeded_data(self, client, seeded_db):
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+        data = resp.json()
+
+        scraping = data["scraping_health"]
+        assert scraping["total_runs_7d"] >= 1
+        assert 0 <= scraping["success_rate_7d"] <= 100
+
+        skills = data["skills_extraction"]
+        assert skills["jobs_with_skills"] >= 1
+        assert 0 <= skills["coverage_percentage"] <= 100
+
+        engagement = data["engagement"]
+        assert "active_search_users_30d" in engagement
+        assert 0 <= engagement["lmi_engagement_rate_30d"] <= 100
+
+        revenue = data["revenue"]
+        assert "estimated_mrr_kes" in revenue
+        assert "estimated_arpu_kes" in revenue
+        assert "estimated_churn_rate" in revenue
 
 
 # ---------------------------------------------------------------------------

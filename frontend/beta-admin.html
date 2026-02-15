@@ -121,7 +121,8 @@
         }
         .status-badge.pending { background: #fef3c7; color: #92400e; }
         .status-badge.active { background: #d1fae5; color: #065f46; }
-        .status-badge.rewarded { background: #dbeafe; color: #1e40af; }
+        .status-badge.paid { background: #dbeafe; color: #1e40af; }
+        .status-badge.churned { background: #fee2e2; color: #991b1b; }
 
         .roi-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -263,24 +264,24 @@
 
         <!-- ROI Summary Card -->
         <div class="roi-card">
-            <h2>📊 ROI Metrics for University Pitch</h2>
-            <p>These metrics prove student engagement and platform value for university partnerships.</p>
+            <h2>💰 B2C Conversion Metrics</h2>
+            <p>Key metrics for freemium business model viability (Target: 20% conversion rate).</p>
             <div class="roi-metrics">
                 <div class="roi-metric">
+                    <div class="roi-metric-value" id="roiConversionRate">--%</div>
+                    <div class="roi-metric-label">Conversion Rate (Free → Paid)</div>
+                </div>
+                <div class="roi-metric">
+                    <div class="roi-metric-value" id="roiPaidUsers">--</div>
+                    <div class="roi-metric-label">Paid Subscribers</div>
+                </div>
+                <div class="roi-metric">
+                    <div class="roi-metric-value" id="roiMRR">KES --</div>
+                    <div class="roi-metric-label">Monthly Recurring Revenue</div>
+                </div>
+                <div class="roi-metric">
                     <div class="roi-metric-value" id="roiEngagement">--%</div>
-                    <div class="roi-metric-label">Overall Engagement Rate</div>
-                </div>
-                <div class="roi-metric">
-                    <div class="roi-metric-value" id="roiActiveUsers">--</div>
-                    <div class="roi-metric-label">Active Users (30 days)</div>
-                </div>
-                <div class="roi-metric">
-                    <div class="roi-metric-value" id="roiApplications">--</div>
-                    <div class="roi-metric-label">Total Applications Sent</div>
-                </div>
-                <div class="roi-metric">
-                    <div class="roi-metric-value" id="roiJobsSecured">--</div>
-                    <div class="roi-metric-label">Jobs Secured (Self-Reported)</div>
+                    <div class="roi-metric-label">Avg Engagement Score</div>
                 </div>
             </div>
         </div>
@@ -294,9 +295,10 @@
                 <input type="text" id="searchInput" placeholder="🔍 Search by name, email, or university..." onkeyup="filterUsers()">
                 <select id="statusFilter" onchange="filterUsers()">
                     <option value="">All Statuses</option>
-                    <option value="pending">Pending</option>
-                    <option value="active">Active</option>
-                    <option value="rewarded">Rewarded</option>
+                    <option value="pending">Pending (Trial)</option>
+                    <option value="active">Active (Free)</option>
+                    <option value="paid">Paid (Converted)</option>
+                    <option value="churned">Churned</option>
                 </select>
                 <select id="universityFilter" onchange="filterUsers()">
                     <option value="">All Universities</option>
@@ -443,12 +445,27 @@
                 document.getElementById('jobsViewed').textContent = totalJobsViewed;
                 document.getElementById('avgJobsViewed').textContent = `${avgJobsViewed} avg per active user`;
 
-                // ROI Metrics
-                const engagementRate = stats.activation_rate;
-                document.getElementById('roiEngagement').textContent = `${engagementRate}%`;
-                document.getElementById('roiActiveUsers').textContent = stats.active_users;
-                document.getElementById('roiApplications').textContent = details.total_applications || 0;
-                document.getElementById('roiJobsSecured').textContent = details.jobs_secured || 0;
+                // B2C Conversion Metrics
+                const paidUsers = (allUsers || []).filter(u => u.status === 'paid').length;
+                const conversionRate = stats.total_signups > 0 ? Math.round((paidUsers / stats.total_signups) * 100) : 0;
+                const mrr = paidUsers * 250; // Avg KES 250/month
+
+                // Calculate average engagement score
+                const avgEngagement = allUsers.length > 0
+                    ? Math.round(allUsers.reduce((sum, u) => {
+                        let score = 0;
+                        if (u.profile_completed) score += 25;
+                        if (u.jobs_viewed > 0) score += 20;
+                        if (u.jobs_saved > 0) score += 25;
+                        if (u.jobs_applied > 0) score += 30;
+                        return sum + score;
+                    }, 0) / allUsers.length)
+                    : 0;
+
+                document.getElementById('roiConversionRate').textContent = `${conversionRate}%`;
+                document.getElementById('roiPaidUsers').textContent = paidUsers;
+                document.getElementById('roiMRR').textContent = `KES ${mrr.toLocaleString()}`;
+                document.getElementById('roiEngagement').textContent = `${avgEngagement}%`;
 
                 // User Journey Funnel
                 const funnel = details.funnel || {};
@@ -718,6 +735,10 @@ Last Active: ${user.last_active_at ? new Date(user.last_active_at).toLocaleStrin
 
         // Engagement report
         function showEngagementReport() {
+            const paidUsers = allUsers.filter(u => u.status === 'paid').length;
+            const conversionRate = allUsers.length > 0 ? Math.round((paidUsers / allUsers.length) * 100) : 0;
+            const mrr = paidUsers * 250;
+
             const high = allUsers.filter(u => calculateEngagementScore(u) >= 75).length;
             const medium = allUsers.filter(u => calculateEngagementScore(u) >= 50 && calculateEngagementScore(u) < 75).length;
             const low = allUsers.filter(u => calculateEngagementScore(u) >= 25 && calculateEngagementScore(u) < 50).length;
@@ -728,19 +749,25 @@ Last Active: ${user.last_active_at ? new Date(user.last_active_at).toLocaleStrin
                 : 0;
 
             const report = `
-📈 ENGAGEMENT REPORT
+💰 B2C FREEMIUM METRICS
 
 Total Users: ${allUsers.length}
-Average Engagement: ${avgEngagement}%
+Paid Subscribers: ${paidUsers}
+Conversion Rate: ${conversionRate}%
+Monthly Revenue: KES ${mrr.toLocaleString()}
 
-BREAKDOWN:
+ENGAGEMENT BREAKDOWN:
 🔥 High (75%+): ${high} users (${Math.round(high/allUsers.length*100)}%)
 ⚡ Medium (50-74%): ${medium} users (${Math.round(medium/allUsers.length*100)}%)
 💤 Low (25-49%): ${low} users (${Math.round(low/allUsers.length*100)}%)
 ❌ None (<25%): ${none} users (${Math.round(none/allUsers.length*100)}%)
 
-GOAL: 70%+ engagement rate for university pitch
-STATUS: ${avgEngagement >= 70 ? '✅ ACHIEVED' : `⏳ ${70 - avgEngagement}% to go`}
+Average Engagement: ${avgEngagement}%
+
+🎯 GOAL: 20% conversion rate
+STATUS: ${conversionRate >= 20 ? '✅ ACHIEVED!' : `⏳ Need ${Math.ceil((20 - conversionRate) * allUsers.length / 100)} more conversions`}
+
+NEXT MILESTONE: ${allUsers.length < 50 ? `Get ${50 - allUsers.length} more signups` : 'Scale to 200 users'}
             `;
             alert(report);
         }

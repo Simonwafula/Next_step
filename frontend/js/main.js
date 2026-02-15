@@ -307,7 +307,17 @@ const loadAccountData = async (token) => {
     }
 };
 
-const renderResults = (items) => {
+const fetchJobMatch = async (token, jobId) => {
+    try {
+        return await requestJson(`${apiBase}/users/job-match/${jobId}`, {
+            headers: { Authorization: `Bearer ${token}` },
+        });
+    } catch (error) {
+        return null;
+    }
+};
+
+const renderResults = async (items) => {
     resultsGrid.innerHTML = '';
 
     if (!items.length) {
@@ -320,17 +330,53 @@ const renderResults = (items) => {
     resultsMeta.textContent = `${items.length} openings found.`;
     resultsTitle.textContent = 'Openings you can act on';
 
+    const auth = getAuth();
+    const token = auth?.access_token;
+    const matchByJobId = new Map();
+
+    if (token) {
+        const matchRequests = items.map(async (item) => {
+            const jobId = item.id || item.job_id;
+            if (!jobId) return;
+
+            const matchData = await fetchJobMatch(token, jobId);
+            if (matchData && typeof matchData.match_percentage === 'number') {
+                matchByJobId.set(jobId, matchData);
+            }
+        });
+        await Promise.all(matchRequests);
+    }
+
     items.forEach((item) => {
         const card = document.createElement('article');
         card.className = 'result-card';
+        const jobId = item.id || item.job_id;
+        const matchData = jobId ? matchByJobId.get(jobId) : null;
         const org = escapeHtml(item.organization || item.org || 'Unknown organization');
         const location = escapeHtml(
             item.location || item.location_raw || 'Location unspecified'
         );
+        const salaryText = item.salary_range
+            ? `${item.salary_estimated ? 'Estimated: ' : ''}${item.salary_range}`
+            : 'Salary not provided';
         const applyLink = escapeHtml(safeUrl(item.apply_url || item.url));
+        const matchLabel = matchData
+            ? `${matchData.match_percentage}% match`
+            : '';
+        const missingSkills = Array.isArray(matchData?.missing_skills)
+            ? matchData.missing_skills.slice(0, 2).join(', ')
+            : '';
+        const missingLabel = missingSkills
+            ? ` · Missing: ${missingSkills}`
+            : '';
+
         card.innerHTML = `
             <h3 class="result-title">${escapeHtml(item.title || 'Untitled role')}</h3>
             <div class="result-meta">${org} · ${location}</div>
+            <div class="result-meta">${escapeHtml(salaryText)}</div>
+            ${matchLabel
+                ? `<div class="result-match">${escapeHtml(`${matchLabel}${missingLabel}`)}</div>`
+                : ''}
             <a class="result-link" href="${applyLink}" target="_blank" rel="noopener">Apply</a>
         `;
         resultsGrid.appendChild(card);
@@ -445,7 +491,7 @@ const fetchResults = async () => {
         const payload = await response.json();
         const rawItems = Array.isArray(payload) ? payload : payload.results || payload.jobs || [];
         renderAggregates(Array.isArray(payload) ? null : payload);
-        renderResults(rawItems);
+        await renderResults(rawItems);
         document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         resultsMeta.textContent = 'We could not reach the API. Is the backend running?';

@@ -7,6 +7,12 @@ from ..db.database import get_db
 from ..services.auth_service import get_current_user, require_subscription
 from ..services.personalized_recommendations import personalized_recommendations
 from ..services.ai_service import ai_service
+from ..services.matching_service import (
+    JobNotFoundError,
+    ProfileNotCompleteError,
+    matching_service,
+)
+from ..services.skills_gap_service import skills_gap_service
 from ..db.models import (
     User,
     SavedJob,
@@ -55,6 +61,61 @@ class JobAlertRequest(BaseModel):
 
 class CareerAdviceRequest(BaseModel):
     query: str
+
+
+class SkillsGapScanRequest(BaseModel):
+    target_role: str
+
+
+@router.post("/skills-gap-scan")
+async def skills_gap_scan(
+    request: SkillsGapScanRequest,
+    current_user: User = Depends(require_subscription("professional")),
+):
+    """Run a premium skills gap scan for the authenticated user."""
+    profile = current_user.profile
+    if not profile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Please complete your profile first",
+        )
+
+    preferred_location = None
+    if isinstance(profile.preferred_locations, list) and profile.preferred_locations:
+        preferred_location = str(profile.preferred_locations[0])
+
+    return skills_gap_service.scan_profile(
+        profile_skills=profile.skills or {},
+        target_role=request.target_role,
+        experience_level=profile.experience_level,
+        preferred_location=preferred_location,
+    )
+
+
+@router.get("/job-match/{job_id}")
+async def get_job_match(
+    job_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Get match score details between current user profile and a job."""
+    try:
+        return matching_service.get_job_match(db, current_user, job_id)
+    except ProfileNotCompleteError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    except JobNotFoundError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(exc),
+        ) from exc
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to calculate job match",
+        )
 
 
 # Personalized Recommendations

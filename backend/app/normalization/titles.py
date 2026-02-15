@@ -1,6 +1,4 @@
-# Enhanced title normalization with broader job family coverage
 TITLE_ALIASES = {
-    # Data & Analytics
     "data analyst": [
         "data ninja",
         "bi analyst",
@@ -33,7 +31,6 @@ TITLE_ALIASES = {
         "monitoring and evaluation officer",
         "program evaluation specialist",
     ],
-    # Technology
     "software developer": [
         "programmer",
         "software engineer",
@@ -54,7 +51,6 @@ TITLE_ALIASES = {
         "cyber security officer",
     ],
     "database administrator": ["dba", "database manager", "data engineer"],
-    # Finance & Accounting
     "financial analyst": [
         "finance analyst",
         "investment analyst",
@@ -74,7 +70,6 @@ TITLE_ALIASES = {
         "risk analyst",
     ],
     "credit analyst": ["loan officer", "credit officer", "risk assessment specialist"],
-    # Marketing & Communications
     "marketing coordinator": [
         "marketing assistant",
         "digital marketing specialist",
@@ -91,7 +86,6 @@ TITLE_ALIASES = {
         "social media manager",
         "digital content specialist",
     ],
-    # Human Resources
     "hr generalist": [
         "human resources officer",
         "hr coordinator",
@@ -103,21 +97,18 @@ TITLE_ALIASES = {
         "hiring coordinator",
     ],
     "training coordinator": ["learning and development specialist", "training officer"],
-    # Healthcare
     "clinical research coordinator": [
         "clinical research associate",
         "clinical trials coordinator",
     ],
     "health program officer": ["public health officer", "health promotion specialist"],
     "medical assistant": ["clinical assistant", "healthcare assistant"],
-    # Education
     "program coordinator": [
         "project coordinator",
         "program assistant",
         "program officer",
     ],
     "training specialist": ["trainer", "facilitator", "capacity building officer"],
-    # Government & Policy
     "policy analyst": [
         "economist (policy)",
         "policy researcher",
@@ -125,7 +116,6 @@ TITLE_ALIASES = {
         "public policy specialist",
     ],
     "program officer": ["development officer", "project officer", "field officer"],
-    # Sales & Business Development
     "sales representative": [
         "sales executive",
         "business development representative",
@@ -136,7 +126,6 @@ TITLE_ALIASES = {
         "process analyst",
         "operations analyst",
     ],
-    # Operations & Logistics
     "operations coordinator": [
         "operations assistant",
         "logistics coordinator",
@@ -145,7 +134,6 @@ TITLE_ALIASES = {
     "project manager": ["project coordinator", "program manager", "project lead"],
 }
 
-# Degree to career family mapping
 DEGREE_TO_CAREERS = {
     "economics": [
         "data analyst",
@@ -255,13 +243,102 @@ DEGREE_TO_CAREERS = {
 }
 
 
+def classify_seniority(title: str) -> str:
+    """
+    Classify seniority level from job title.
+
+    Returns one of: entry, mid, senior, manager, executive
+    """
+    t = (title or "").lower().strip()
+
+    if any(
+        keyword in t
+        for keyword in [
+            "ceo",
+            "cto",
+            "cfo",
+            "coo",
+            "cmo",
+            "chief ",
+            "executive director",
+            "managing director",
+            "president",
+            "founder",
+            "co-founder",
+        ]
+    ):
+        return "executive"
+
+    if any(
+        keyword in t
+        for keyword in [
+            "manager",
+            "head of",
+            "director",
+            "vp ",
+            "vice president",
+            "country director",
+            "regional director",
+        ]
+    ):
+        return "manager"
+
+    if any(
+        keyword in t
+        for keyword in [
+            "senior",
+            " sr ",
+            "sr.",
+            "lead ",
+            "principal",
+            "staff ",
+            "expert",
+        ]
+    ):
+        return "senior"
+
+    if any(
+        keyword in t
+        for keyword in [
+            "junior",
+            "entry",
+            "intern",
+            "trainee",
+            "graduate",
+            "assistant",
+            "intern ",
+        ]
+    ):
+        return "entry"
+
+    if (
+        any(
+            keyword in t
+            for keyword in [
+                "officer",
+                "coordinator",
+                "specialist",
+                "associate",
+                "analyst",
+                "engineer",
+                "developer",
+            ]
+        )
+        and "senior" not in t
+        and "lead" not in t
+        and "principal" not in t
+    ):
+        return "mid"
+
+    return "mid"
+
+
 def normalize_title(raw: str) -> tuple[str, str]:
     """Normalize job title to family and canonical form"""
     r = (raw or "").lower().strip()
 
     for canon, aliases in TITLE_ALIASES.items():
         if canon in r or any(alias.lower() in r for alias in aliases):
-            # Determine family based on canonical title
             if any(
                 keyword in canon
                 for keyword in ["data", "research", "analyst", "statistics"]
@@ -307,20 +384,32 @@ def normalize_title(raw: str) -> tuple[str, str]:
     return ("other", r)
 
 
+def normalize_title_with_seniority(raw: str) -> tuple[str, str, str]:
+    """
+    Normalize job title with seniority classification.
+
+    Returns: (family, canonical_title, seniority)
+
+    Example:
+        "Senior Data Analyst" -> ("data_analytics", "data analyst", "senior")
+        "Junior Software Developer" -> ("technology", "software developer", "entry")
+    """
+    family, canonical = normalize_title(raw)
+    seniority = classify_seniority(raw)
+    return (family, canonical, seniority)
+
+
 def get_careers_for_degree(degree: str) -> list[str]:
     """Get relevant career paths for a given degree"""
     degree_lower = degree.lower().strip()
 
-    # Direct match
     if degree_lower in DEGREE_TO_CAREERS:
         return DEGREE_TO_CAREERS[degree_lower]
 
-    # Partial match
     for deg, careers in DEGREE_TO_CAREERS.items():
         if deg in degree_lower or degree_lower in deg:
             return careers
 
-    # Default suggestions for unknown degrees
     return [
         "program coordinator",
         "research analyst",
@@ -360,7 +449,6 @@ def update_title_mappings(new_mappings: dict) -> None:
     """
     for k, v in (new_mappings or {}).items():
         if k in TITLE_ALIASES:
-            # extend existing alias list
             existing = set(TITLE_ALIASES[k])
             existing.update(v if isinstance(v, (list, tuple)) else [v])
             TITLE_ALIASES[k] = list(existing)

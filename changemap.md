@@ -80,6 +80,15 @@
   - [x] (T-415) Visualization service: word clouds, bar charts, pie charts (`backend/app/services/career_visualization.py`)
   - [x] (T-416) Tests for career insight service (`backend/tests/test_career_insight_service.py` — 14 tests)
 
+## 4.2 LMI Monetization Foundations (Phase 1+)
+- [x] (T-420) Match scoring + salary intelligence + premium diagnostics
+  - [x] (T-421) Job match scoring service + endpoint (`backend/app/services/matching_service.py`, `/api/users/job-match/{job_id}`)
+  - [x] (T-422) Match/salary visibility in search UI (`frontend/js/main.js`, `frontend/styles/main.css`)
+  - [x] (T-423) Salary estimation service + search fallback integration (`backend/app/services/salary_service.py`, `backend/app/services/search.py`)
+  - [x] (T-424) Skills Gap Scan premium flow (`backend/app/services/skills_gap_service.py`, `/api/users/skills-gap-scan`, `frontend/skills-gap-scan.html`)
+  - [x] (T-425) Career Pathway products API + UI (`backend/app/services/career_pathways_service.py`, `/api/career-pathways/{role_slug}`, `frontend/career-pathways.html`)
+  - [x] (T-426) Enhanced admin LMI quality metrics (`/api/admin/lmi-quality`, `frontend/admin.html`, `frontend/js/admin.js`)
+
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
 - [ ] (T-501) task→role mapping
@@ -127,6 +136,23 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (LMI Monetization Build-out)
+- Delivered core LMI monetization milestones from `docs/LMI_IMPLEMENTATION_PLAN.md`:
+  - Match scoring service and user endpoint (`/api/users/job-match/{job_id}`)
+  - Salary intelligence service with estimated fallback in search payloads
+  - Skills Gap Scan premium diagnostic endpoint + dedicated frontend page
+  - Career pathway products endpoint and frontend roadmap page
+  - Enhanced admin dashboard metrics endpoint for scraping health, extraction quality, engagement, and revenue signals
+- Added/updated test coverage:
+  - `backend/tests/test_user_job_match_endpoint.py`
+  - `backend/tests/test_salary_service.py`
+  - `backend/tests/test_skills_gap_scan_endpoint.py`
+  - `backend/tests/test_career_pathways_endpoint.py`
+  - `backend/tests/test_dashboard_endpoints.py` (LMI quality metrics tests)
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_career_pathways_endpoint.py backend/tests/test_skills_gap_scan_endpoint.py backend/tests/test_salary_service.py backend/tests/test_user_job_match_endpoint.py` (11 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview"` (4 passed)
 
 ### 2026-02-15
 - Wired production embeddings backfill as a systemd `oneshot` + `timer` pair:

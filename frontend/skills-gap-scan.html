@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Skills Gap Scan - NextStep Careers</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-api-base="/api">
+    <header class="site-header">
+        <div class="container header-inner">
+            <div class="brand">
+                <span class="brand-mark">N</span>
+                <div>
+                    <p class="brand-name">NextStep Careers</p>
+                    <p class="brand-tag">Skills Gap Scan</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html">Search</a>
+                <a href="dashboard.html">Dashboard</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container" style="max-width: 860px;">
+                <p class="eyebrow">Premium diagnostic</p>
+                <h1>See your skill gaps for a target role.</h1>
+                <p class="hero-subtitle">
+                    Get your match percentage, missing skills, project recommendations,
+                    and a practical 30/60/90-day action plan.
+                </p>
+
+                <form id="skillsGapForm" class="search-card">
+                    <label class="search-label" for="targetRole">Target role</label>
+                    <div class="search-row">
+                        <input
+                            id="targetRole"
+                            type="text"
+                            placeholder="Example: Data Scientist"
+                            required
+                        >
+                        <button type="submit" class="solid-btn">Run Scan</button>
+                    </div>
+                    <p class="auth-message" id="scanMessage"></p>
+                </form>
+
+                <section id="scanResults" class="dashboard" hidden>
+                    <div class="kpi-grid">
+                        <article class="kpi-card">
+                            <p class="kpi-label">Target role</p>
+                            <p class="kpi-value" id="scanTargetRole">--</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Match score</p>
+                            <p class="kpi-value" id="scanMatchPercentage">--%</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Expected pay range</p>
+                            <p class="kpi-value" id="scanExpectedPay">--</p>
+                        </article>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>Missing skills</h3>
+                            </div>
+                            <div id="scanMissingSkills" class="skills-list"></div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>Matching skills</h3>
+                            </div>
+                            <div id="scanMatchingSkills" class="skills-list"></div>
+                        </article>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>Recommended projects</h3>
+                            </div>
+                            <div id="scanProjects" class="data-list"></div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>30 / 60 / 90 day plan</h3>
+                            </div>
+                            <div id="scanActionPlan" class="data-list"></div>
+                        </article>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/sanitize.js"></script>
+    <script src="js/skills-gap-scan.js"></script>
+</body>
+</html>

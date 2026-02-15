@@ -164,9 +164,9 @@
     </header>
 
     <div class="beta-hero">
-        <div class="beta-badge">🌟 VIP BETA PROGRAM</div>
-        <h1>Get Early Access + Premium Features</h1>
-        <p>Join 50 students testing Kenya's smartest career platform. Get exclusive lifetime premium access.</p>
+        <div class="beta-badge">🚀 EARLY ACCESS PROGRAM</div>
+        <h1>Accelerate Your Career Growth</h1>
+        <p>Join 50 professionals testing Kenya's first AI-powered career intelligence platform. 30-day free trial + exclusive founding member pricing.</p>
     </div>
 
     <main style="background: #f7fafc; padding: 48px 20px;">
@@ -178,30 +178,30 @@
 
             <div class="benefits-grid">
                 <div class="benefit-card">
-                    <div class="benefit-icon">🎯</div>
-                    <h3>Early Access</h3>
-                    <p>Be among the first 50 students to shape Kenya's smartest job platform.</p>
+                    <div class="benefit-icon">📊</div>
+                    <h3>Labor Market Intelligence</h3>
+                    <p>Real-time salary data, in-demand skills, and career path insights for your field.</p>
                 </div>
                 <div class="benefit-card">
                     <div class="benefit-icon">🤖</div>
-                    <h3>Smart Job Matching</h3>
-                    <p>AI-powered recommendations based on your skills, courses, and career goals.</p>
+                    <h3>AI Career Advisor</h3>
+                    <p>Personalized recommendations based on your experience, skills, and career goals.</p>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">⚡</div>
-                    <h3>WhatsApp Updates</h3>
-                    <p>Get daily job alerts via WhatsApp. No need to check websites constantly.</p>
+                    <div class="benefit-icon">🛠️</div>
+                    <h3>Premium Tools</h3>
+                    <p>CV builder, interview prep, application tracker - everything to land your next role.</p>
                 </div>
                 <div class="benefit-card">
-                    <div class="benefit-icon">🔓</div>
-                    <h3>Lifetime Premium</h3>
-                    <p>Unlock all features forever. No subscription fees, ever.</p>
+                    <div class="benefit-icon">💰</div>
+                    <h3>Founding Member Pricing</h3>
+                    <p>KES 200/month (50% off) forever. Regular price: KES 400/month after launch.</p>
                 </div>
             </div>
 
             <div class="beta-form">
-                <h2>Join the Beta Program</h2>
-                <p class="subtitle">Takes 2 minutes. We'll contact you within 24 hours.</p>
+                <h2>Start Your 30-Day Free Trial</h2>
+                <p class="subtitle">No credit card required. Cancel anytime.</p>
 
                 <form id="betaForm">
                     <div class="form-group">
@@ -220,42 +220,48 @@
                     </div>
 
                     <div class="form-group">
-                        <label for="university">University *</label>
-                        <input type="text" id="university" name="university" required placeholder="e.g., Strathmore University">
+                        <label for="company">Current Company (optional)</label>
+                        <input type="text" id="company" name="company" placeholder="e.g., Safaricom, KCB Bank">
                     </div>
 
                     <div class="form-group">
-                        <label for="yearOfStudy">Year of Study *</label>
-                        <select id="yearOfStudy" name="yearOfStudy" required>
+                        <label for="jobTitle">Current Job Title *</label>
+                        <input type="text" id="jobTitle" name="jobTitle" required placeholder="e.g., Marketing Manager, Software Developer">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="yearsExperience">Years of Experience *</label>
+                        <select id="yearsExperience" name="yearsExperience" required>
                             <option value="">Select...</option>
-                            <option value="1">Year 1</option>
-                            <option value="2">Year 2</option>
-                            <option value="3">Year 3</option>
-                            <option value="4">Year 4</option>
-                            <option value="5">Year 5+</option>
-                            <option value="graduate">Recent Graduate</option>
+                            <option value="0-1">0-1 years</option>
+                            <option value="1-3">1-3 years</option>
+                            <option value="3-5">3-5 years</option>
+                            <option value="5-10">5-10 years</option>
+                            <option value="10+">10+ years</option>
                         </select>
                     </div>
 
                     <div class="form-group">
-                        <label for="fieldOfStudy">Field of Study *</label>
-                        <input type="text" id="fieldOfStudy" name="fieldOfStudy" required placeholder="e.g., Computer Science, Economics">
+                        <label for="skills">Top 3 Skills *</label>
+                        <input type="text" id="skills" name="skills" required placeholder="e.g., Python, Financial Analysis, Digital Marketing">
                     </div>
 
                     <div class="form-group">
-                        <label for="skills">Top 3 Skills (comma separated)</label>
-                        <input type="text" id="skills" name="skills" placeholder="e.g., Python, Excel, Content Writing">
+                        <label for="careerGoals">What are you looking for? *</label>
+                        <select id="careerGoals" name="careerGoals" required>
+                            <option value="">Select...</option>
+                            <option value="new_job">New job in same field</option>
+                            <option value="career_switch">Career switch to new field</option>
+                            <option value="promotion">Promotion/advancement</option>
+                            <option value="salary_increase">Higher salary</option>
+                            <option value="skill_development">Skill development</option>
+                        </select>
                     </div>
 
-                    <div class="form-group">
-                        <label for="careerGoals">Career Goals (optional)</label>
-                        <input type="text" id="careerGoals" name="careerGoals" placeholder="e.g., Data Analyst, Marketing Manager">
-                    </div>
-
-                    <button type="submit" class="submit-btn" id="submitBtn">🚀 Join Beta Program</button>
+                    <button type="submit" class="submit-btn" id="submitBtn">🚀 Start Free Trial</button>
 
                     <div class="success-message" id="successMessage">
-                        ✅ <strong>You're in!</strong> Check your email (and WhatsApp) within 24 hours for access instructions.
+                        ✅ <strong>You're in!</strong> Check your email and WhatsApp for login credentials. Your 30-day free trial starts now.
                     </div>
 
                     <div class="error-message" id="errorMessage">
@@ -267,10 +273,10 @@
             <div style="text-align: center; margin-top: 48px; color: #718096;">
                 <p><strong>What happens next?</strong></p>
                 <p style="max-width: 600px; margin: 16px auto;">
-                    1️⃣ We'll send you login credentials within 24 hours<br>
-                    2️⃣ Complete your profile on the platform<br>
-                    3️⃣ Use it for 30 days (search jobs, save roles, apply)<br>
-                    4️⃣ Get lifetime premium access (free forever)
+                    1️⃣ Get instant access to all premium features (30 days free)<br>
+                    2️⃣ Explore salary data, AI recommendations, and custom tools<br>
+                    3️⃣ After 30 days: Keep premium at KES 200/month (50% founding member discount)<br>
+                    4️⃣ Or downgrade to free tier anytime - no questions asked
                 </p>
             </div>
 
@@ -307,11 +313,11 @@
                     full_name: document.getElementById('fullName').value.trim(),
                     email: document.getElementById('email').value.trim(),
                     phone: document.getElementById('phone').value.trim(),
-                    university: document.getElementById('university').value.trim(),
-                    year_of_study: document.getElementById('yearOfStudy').value,
-                    field_of_study: document.getElementById('fieldOfStudy').value.trim(),
+                    university: document.getElementById('company').value.trim() || 'Professional',
+                    year_of_study: document.getElementById('yearsExperience').value,
+                    field_of_study: document.getElementById('jobTitle').value.trim(),
                     skills: document.getElementById('skills').value.trim(),
-                    career_goals: document.getElementById('careerGoals').value.trim(),
+                    career_goals: document.getElementById('careerGoals').value,
                 };
 
                 const response = await fetch(`${API_BASE}/beta/signup`, {

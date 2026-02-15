@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Career Pathways - NextStep Careers</title>
+    <link rel="stylesheet" href="styles/main.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body data-api-base="/api">
+    <header class="site-header">
+        <div class="container header-inner">
+            <div class="brand">
+                <span class="brand-mark">N</span>
+                <div>
+                    <p class="brand-name">NextStep Careers</p>
+                    <p class="brand-tag">Career Roadmaps</p>
+                </div>
+            </div>
+            <nav class="nav-links">
+                <a href="index.html">Search</a>
+                <a href="dashboard.html">Dashboard</a>
+                <a href="skills-gap-scan.html">Skills gap scan</a>
+            </nav>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="container" style="max-width: 920px;">
+                <p class="eyebrow">Career pathway products</p>
+                <h1>Explore role roadmaps you can execute.</h1>
+                <p class="hero-subtitle">
+                    See required skills, certifications, salary ladder,
+                    employers hiring, and practical project ideas.
+                </p>
+
+                <form class="search-card" id="pathwayForm">
+                    <label class="search-label" for="roleSlug">Select a role</label>
+                    <div class="search-row">
+                        <select id="roleSlug" required>
+                            <option value="">Choose a pathway...</option>
+                            <option value="data-analyst">Data Analyst</option>
+                            <option value="software-engineer">Software Engineer</option>
+                        </select>
+                        <button type="submit" class="solid-btn">Load Roadmap</button>
+                    </div>
+                    <p class="auth-message" id="pathwayMessage"></p>
+                </form>
+
+                <section id="pathwayResults" class="dashboard" hidden>
+                    <div class="kpi-grid">
+                        <article class="kpi-card">
+                            <p class="kpi-label">Roadmap</p>
+                            <p class="kpi-value" id="pathwayTitle">--</p>
+                        </article>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <div class="panel-header"><h3>Required skills</h3></div>
+                            <div id="pathwaySkills" class="skills-list"></div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-header"><h3>Certifications</h3></div>
+                            <div id="pathwayCerts" class="data-list"></div>
+                        </article>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <div class="panel-header"><h3>Experience ladder</h3></div>
+                            <div id="pathwayLadder" class="data-list"></div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-header"><h3>Employers hiring</h3></div>
+                            <div id="pathwayEmployers" class="data-list"></div>
+                        </article>
+                    </div>
+
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <div class="panel-header"><h3>Learning resources</h3></div>
+                            <div id="pathwayResources" class="data-list"></div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-header"><h3>Project ideas</h3></div>
+                            <div id="pathwayProjects" class="data-list"></div>
+                        </article>
+                    </div>
+                </section>
+            </div>
+        </section>
+    </main>
+
+    <script src="js/sanitize.js"></script>
+    <script src="js/career-pathways.js"></script>
+</body>
+</html>
