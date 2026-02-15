@@ -1,5 +1,32 @@
 # Handoff
 
+## 2026-02-15 (MVIL Task 4: Explore Mode API)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Completed Task 4 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+- Added guided explore service in `backend/app/services/guided_search.py`:
+  - role-level career cards from MVIL baselines
+  - query matching against role families and canonical titles
+  - evidence union in `sample_job_ids`
+  - low-confidence signaling for small sample families
+  - empty-baseline fallback message (no expensive live-query fallback)
+- Added route in `backend/app/api/routes.py`:
+  - `GET /api/guided/explore`
+- Added endpoint tests in `backend/tests/test_guided_explore.py`.
+- Updated plan progress tracker:
+  - Completed 4 / Remaining 4.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_guided_explore.py` (2 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- Next step in this plan is Task 5 (Match mode API for role matching and skill gaps).
+
 ## 2026-02-15 (MVIL Task 3: Admin Refresh Endpoint)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

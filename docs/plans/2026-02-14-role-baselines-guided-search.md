@@ -96,13 +96,13 @@ Worktree: Yes
 - [x] Task 1: MVIL database models
 - [x] Task 2: MVIL aggregation service
 - [x] Task 3: Admin aggregation endpoint + runner
-- [ ] Task 4: Explore mode API (Student career cards)
+- [x] Task 4: Explore mode API (Student career cards)
 - [ ] Task 5: Match mode API (Early-career role matching)
 - [ ] Task 6: Advance mode API (Professional transitions)
 - [ ] Task 7: Search API mode routing
 - [ ] Task 8: Frontend mode selector + guided results UI
 
-**Total Tasks:** 8 | **Completed:** 3 | **Remaining:** 5
+**Total Tasks:** 8 | **Completed:** 4 | **Remaining:** 4
 
 ## Implementation Tasks
 
@@ -250,13 +250,13 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] `GET /api/guided/explore` endpoint returns career cards with education, skills, demand
-- [ ] Each career card includes `sample_job_ids` evidence
-- [ ] Cards with `count_total_jobs_used < 10` include `low_confidence: true`
-- [ ] Career cards contain NO salary-related fields
-- [ ] Empty MVIL tables return empty `guided_results` with helpful message (no live query fallback)
-- [ ] Empty query returns top 10 career cards by demand
-- [ ] Test with fixture data verifies card structure and evidence presence
+- [x] `GET /api/guided/explore` endpoint returns career cards with education, skills, demand
+- [x] Each career card includes `sample_job_ids` evidence
+- [x] Cards with `count_total_jobs_used < 10` include `low_confidence: true`
+- [x] Career cards contain NO salary-related fields
+- [x] Empty MVIL tables return empty `guided_results` with helpful message (no live query fallback)
+- [x] Empty query returns top 10 career cards by demand
+- [x] Test with fixture data verifies card structure and evidence presence
 
 **Verify:**
 

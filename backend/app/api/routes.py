@@ -18,6 +18,7 @@ from ..services.lmi import (
     get_trending_skills,
     get_weekly_insights,
 )
+from ..services.guided_search import explore_careers
 from ..services.mvil_service import refresh_all_baselines
 from ..services.post_ingestion_processing_service import process_job_posts
 from ..services.processing_log_service import log_processing_event
@@ -125,6 +126,16 @@ def careers_for_degree(
         "relevant_careers": careers,
         "explanation": f"Based on {degree} background, these roles match your skills and knowledge",
     }
+
+
+@api_router.get("/guided/explore")
+def guided_explore(
+    q: str | None = Query(None, description="Role query"),
+    location: str | None = Query(None, description="Location filter"),
+    db: Session = Depends(get_db),
+):
+    del location
+    return explore_careers(db, query=q, limit=10)
 
 
 @api_router.get("/recommend", response_model=list[dict])

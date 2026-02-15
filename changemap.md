@@ -104,6 +104,7 @@
   - [x] (T-441) MVIL database baseline models (`backend/app/db/models.py`, `backend/tests/test_mvil_models.py`)
   - [x] (T-442) MVIL aggregation service (`backend/app/services/mvil_service.py`, `backend/tests/test_mvil_service.py`)
   - [x] (T-443) MVIL admin refresh endpoint (`backend/app/api/routes.py`, `backend/tests/test_mvil_admin.py`)
+  - [x] (T-444) Guided Explore API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_explore.py`)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -152,6 +153,23 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (MVIL Task 4: Explore Mode API)
+- Implemented guided Explore mode service in `backend/app/services/guided_search.py`:
+  - `explore_careers(db, query, limit)` returns role-level career cards
+  - sources insights from MVIL baseline tables (skills, education, experience, demand)
+  - supports query matching by role family + canonical titles
+  - returns deterministic evidence `sample_job_ids`
+  - returns low-confidence flags when `count_total_jobs_used < 10`
+  - returns empty `guided_results` with helpful message when MVIL baselines are missing
+- Added endpoint in `backend/app/api/routes.py`:
+  - `GET /api/guided/explore`
+- Added endpoint tests in `backend/tests/test_guided_explore.py`:
+  - empty-baseline response behavior
+  - populated career-card structure with evidence and no salary fields
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_guided_explore.py` (2 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (MVIL Task 3: Admin Refresh Endpoint)
 - Added secure MVIL admin refresh endpoint:
