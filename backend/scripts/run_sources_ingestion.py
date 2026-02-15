@@ -5,6 +5,8 @@ import json
 import os
 from pathlib import Path
 
+import yaml
+
 from app.db.database import SessionLocal
 from app.ingestion.runner import run_all_sources
 from app.services.post_ingestion_processing_service import process_job_posts
@@ -13,6 +15,29 @@ from app.services.post_ingestion_processing_service import process_job_posts
 def _default_config_paths() -> list[str]:
     backend_dir = Path(__file__).resolve().parents[1]
     return [str(backend_dir / "app" / "ingestion" / "sources.yaml")]
+
+
+def _load_sources_from_configs(config_paths: list[str]) -> list[dict]:
+    sources: list[dict] = []
+    for path in config_paths:
+        try:
+            with open(path, "r", encoding="utf-8") as f:
+                cfg = yaml.safe_load(f) or {}
+            sources.extend(cfg.get("sources", []) or [])
+        except Exception:
+            # CLI helper: tolerate unreadable configs so ingestion can still run
+            # (runner will surface its own per-source errors).
+            continue
+    return sources
+
+
+def _default_process_sources(config_paths: list[str]) -> list[str]:
+    values: set[str] = set()
+    for src in _load_sources_from_configs(config_paths):
+        val = str(src.get("source") or "").strip()
+        if val:
+            values.add(val)
+    return sorted(values)
 
 
 def main() -> int:
@@ -58,8 +83,13 @@ def main() -> int:
         ingested = run_all_sources(db, config_paths=config_paths)
         post_process_results = []
         if not args.no_process:
-            if args.process_source:
-                for src in args.process_source:
+            process_sources = (
+                [str(s).strip() for s in (args.process_source or []) if str(s).strip()]
+                if args.process_source
+                else _default_process_sources(config_paths)
+            )
+            if process_sources:
+                for src in process_sources:
                     post_process_results.append(
                         process_job_posts(
                             db,
