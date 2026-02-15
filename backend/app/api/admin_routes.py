@@ -185,6 +185,44 @@ def update_lmi_alert_settings(
     }
 
 
+@router.get("/lmi-alert-settings/history")
+def get_lmi_alert_settings_history(
+    limit: int = Query(10, ge=1, le=100),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    rows = (
+        db.execute(
+            select(ProcessingLog)
+            .where(
+                ProcessingLog.process_type
+                == CONVERSION_ALERT_SETTINGS_PROCESS_TYPE
+            )
+            .order_by(desc(ProcessingLog.processed_at))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
+
+    history = []
+    for row in rows:
+        results = row.results or {}
+        history.append(
+            {
+                "id": row.id,
+                "processed_at": row.processed_at.isoformat(),
+                "updated_by": results.get("updated_by"),
+                "settings": results.get("settings") or {},
+            }
+        )
+
+    return {
+        "history": history,
+        "count": len(history),
+    }
+
+
 @router.get("/overview")
 def admin_overview(
     db: Session = Depends(get_db),

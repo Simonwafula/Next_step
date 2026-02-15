@@ -39,6 +39,7 @@ const lmiAlertInAppEnabled = document.getElementById('lmiAlertInAppEnabled');
 const lmiAlertEmailEnabled = document.getElementById('lmiAlertEmailEnabled');
 const lmiAlertWhatsappEnabled = document.getElementById('lmiAlertWhatsappEnabled');
 const lmiAlertSettingsSource = document.getElementById('lmiAlertSettingsSource');
+const lmiAlertSettingsHistory = document.getElementById('lmiAlertSettingsHistory');
 
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
@@ -757,6 +758,52 @@ const fetchLmiAlertSettings = async (token) => {
     return payload;
 };
 
+const renderLmiAlertSettingsHistory = (items = []) => {
+    if (!lmiAlertSettingsHistory) {
+        return;
+    }
+    if (!items.length) {
+        lmiAlertSettingsHistory.innerHTML = '<p class="panel-note">No settings updates yet.</p>';
+        return;
+    }
+
+    lmiAlertSettingsHistory.innerHTML = items
+        .map((item) => {
+            const when = item.processed_at
+                ? new Date(item.processed_at).toLocaleString()
+                : 'Unknown time';
+            const updatedBy = escapeHtml(item.updated_by || 'unknown');
+            const settingsPayload = item.settings || {};
+            const threshold = escapeHtml(settingsPayload.threshold ?? '--');
+            const cooldown = escapeHtml(settingsPayload.cooldown_hours ?? '--');
+            const inApp = settingsPayload.in_app_enabled ? 'on' : 'off';
+            const email = settingsPayload.email_enabled ? 'on' : 'off';
+            const whatsapp = settingsPayload.whatsapp_enabled ? 'on' : 'off';
+
+            return `
+                <div class="data-row">
+                    <div>
+                        <strong>${escapeHtml(when)}</strong>
+                        <span>by ${updatedBy}</span>
+                    </div>
+                    <span class="badge">${escapeHtml(`T:${threshold}% C:${cooldown}h I:${inApp} E:${email} W:${whatsapp}`)}</span>
+                </div>
+            `;
+        })
+        .join('');
+};
+
+const fetchLmiAlertSettingsHistory = async (token) => {
+    if (!lmiAlertSettingsHistory) {
+        return null;
+    }
+    const payload = await requestJson(`${apiBase}/admin/lmi-alert-settings/history?limit=8`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    renderLmiAlertSettingsHistory(payload.history || []);
+    return payload;
+};
+
 const wireLmiAlertSettingsForm = (token) => {
     if (!lmiAlertSettingsForm) {
         return;
@@ -782,6 +829,7 @@ const wireLmiAlertSettingsForm = (token) => {
         });
 
         await fetchLmiAlertSettings(token);
+        await fetchLmiAlertSettingsHistory(token);
         const lmiQualityPayload = await requestJson(`${apiBase}/admin/lmi-quality`, {
             headers: { Authorization: `Bearer ${token}` },
         }).catch(() => null);
@@ -942,6 +990,7 @@ const boot = async () => {
         }
         if (lmiAlertSettingsForm) {
             await fetchLmiAlertSettings(auth.access_token);
+            await fetchLmiAlertSettingsHistory(auth.access_token);
             wireLmiAlertSettingsForm(auth.access_token);
         }
 

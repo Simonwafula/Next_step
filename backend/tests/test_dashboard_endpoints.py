@@ -726,6 +726,41 @@ class TestAdminLmiQuality:
         ]
         assert threshold == 7.5
 
+    def test_lmi_alert_settings_history_returns_recent_entries(self, client):
+        first = client.put(
+            "/api/admin/lmi-alert-settings",
+            json={
+                "threshold": 6.0,
+                "cooldown_hours": 6,
+                "in_app_enabled": True,
+                "email_enabled": True,
+                "whatsapp_enabled": True,
+            },
+        )
+        second = client.put(
+            "/api/admin/lmi-alert-settings",
+            json={
+                "threshold": 8.0,
+                "cooldown_hours": 24,
+                "in_app_enabled": True,
+                "email_enabled": False,
+                "whatsapp_enabled": False,
+            },
+        )
+        assert first.status_code == 200
+        assert second.status_code == 200
+
+        history_resp = client.get("/api/admin/lmi-alert-settings/history?limit=5")
+        assert history_resp.status_code == 200
+        payload = history_resp.json()
+        assert payload["count"] >= 2
+        assert len(payload["history"]) >= 2
+
+        latest = payload["history"][0]
+        assert "processed_at" in latest
+        assert "updated_by" in latest
+        assert latest["settings"]["threshold"] in {8.0, 6.0}
+
 
 # ---------------------------------------------------------------------------
 # Admin users

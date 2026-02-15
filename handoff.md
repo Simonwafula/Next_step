@@ -1,5 +1,26 @@
 # Handoff
 
+## 2026-02-15 (Alert Settings Audit History View)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added alert settings history API in `backend/app/api/admin_routes.py`:
+  - `GET /api/admin/lmi-alert-settings/history`
+  - returns recent settings changes (timestamp, editor, values).
+- Added admin history panel in `frontend/admin.html` + `frontend/js/admin.js` to show latest settings changes.
+- History panel auto-refreshes after saving controls so operators can immediately verify updates.
+- Added regression coverage in `backend/tests/test_dashboard_endpoints.py` for history retrieval.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or lmi_alert_settings"` (12 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- History is backed by `ProcessingLog` records for `admin_conversion_alert_settings` and ordered by most recent first.
+
 ## 2026-02-15 (Admin Settings UI/API for Conversion Alert Controls)
 
 Branch: `feat/T-740-scheduled-scrape-processing`
