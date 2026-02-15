@@ -95,6 +95,7 @@
   - [x] (T-431) Conversion drop-off alerting (7-day average threshold check + admin surface)
   - [x] (T-432) Conversion warning notification routing (email + WhatsApp + in-app with cooldown dedupe)
   - [x] (T-433) Configurable conversion alert threshold + channel toggles (env-driven)
+  - [x] (T-434) Admin settings API/UI for conversion alert controls (runtime overrides)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -244,6 +245,22 @@
   - channel toggle behavior (email/WhatsApp disabled)
 - Verification runs:
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` (9 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### 2026-02-15 (Admin Settings UI/API for Alert Controls)
+- Added runtime override API for alert controls in `backend/app/api/admin_routes.py`:
+  - `GET /api/admin/lmi-alert-settings`
+  - `PUT /api/admin/lmi-alert-settings`
+- Persisted overrides via `ProcessingLog` (`process_type="admin_conversion_alert_settings"`) to avoid schema migration.
+- Applied overrides in `GET /api/admin/lmi-quality` for threshold and dispatch behavior.
+- Updated admin dispatch service (`backend/app/services/admin_alert_service.py`) to accept runtime override parameters.
+- Added admin UI controls in `frontend/admin.html` + `frontend/js/admin.js` for threshold, cooldown, and channel toggles with save flow.
+- Added tests in `backend/tests/test_dashboard_endpoints.py` for:
+  - settings defaults retrieval
+  - persisted override updates
+  - lmi-quality threshold reflecting override value
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or lmi_alert_settings"` (11 passed)
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (LMI Monetization Build-out)

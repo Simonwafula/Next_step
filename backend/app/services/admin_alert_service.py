@@ -23,8 +23,12 @@ class AdminAlertService:
     def __init__(self) -> None:
         pass
 
-    def _cooldown_hours(self) -> int:
-        configured = settings.ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS
+    def _cooldown_hours(self, override: int | None = None) -> int:
+        configured = (
+            override
+            if override is not None
+            else settings.ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS
+        )
         return configured if configured > 0 else 6
 
     def _admin_emails(self) -> list[str]:
@@ -66,7 +70,27 @@ class AdminAlertService:
         avg_conversion_7d: float,
         threshold: float,
         conversion_rate_30d: float,
+        cooldown_hours: int | None = None,
+        in_app_enabled: bool | None = None,
+        email_enabled: bool | None = None,
+        whatsapp_enabled: bool | None = None,
     ) -> dict[str, Any]:
+        in_app_enabled = (
+            settings.ADMIN_CONVERSION_ALERT_IN_APP_ENABLED
+            if in_app_enabled is None
+            else in_app_enabled
+        )
+        email_enabled = (
+            settings.ADMIN_CONVERSION_ALERT_EMAIL_ENABLED
+            if email_enabled is None
+            else email_enabled
+        )
+        whatsapp_enabled = (
+            settings.ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED
+            if whatsapp_enabled is None
+            else whatsapp_enabled
+        )
+
         admin_emails = self._admin_emails()
         if not admin_emails:
             return {
@@ -75,7 +99,9 @@ class AdminAlertService:
                 "notifications_created": 0,
             }
 
-        cutoff = datetime.utcnow() - timedelta(hours=self._cooldown_hours())
+        cutoff = datetime.utcnow() - timedelta(
+            hours=self._cooldown_hours(cooldown_hours)
+        )
         admin_users = (
             db.execute(
                 select(User).where(
@@ -123,13 +149,13 @@ class AdminAlertService:
             delivered_via = []
             delivery_status = {}
 
-            if settings.ADMIN_CONVERSION_ALERT_IN_APP_ENABLED:
+            if in_app_enabled:
                 delivered_via.append("in_app")
                 delivery_status["in_app"] = "sent"
             else:
                 delivery_status["in_app"] = "disabled"
 
-            if settings.ADMIN_CONVERSION_ALERT_EMAIL_ENABLED:
+            if email_enabled:
                 email_ok = False
                 try:
                     email_ok = send_email(admin.email, subject, message)
@@ -145,7 +171,7 @@ class AdminAlertService:
                 delivery_status["email"] = "disabled"
 
             recipient_number = admin.whatsapp_number or admin.phone
-            if settings.ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED and recipient_number:
+            if whatsapp_enabled and recipient_number:
                 try:
                     whatsapp_ok = bool(
                         _run_async(
@@ -160,7 +186,7 @@ class AdminAlertService:
                     whatsapp_sent += 1
                 else:
                     delivery_status["whatsapp"] = "failed"
-            elif not settings.ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED:
+            elif not whatsapp_enabled:
                 delivery_status["whatsapp"] = "disabled"
             else:
                 delivery_status["whatsapp"] = "skipped_no_number"

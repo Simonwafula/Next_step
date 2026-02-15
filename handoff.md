@@ -1,5 +1,27 @@
 # Handoff
 
+## 2026-02-15 (Admin Settings UI/API for Conversion Alert Controls)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Added runtime settings endpoints in `backend/app/api/admin_routes.py`:
+  - `GET /api/admin/lmi-alert-settings`
+  - `PUT /api/admin/lmi-alert-settings`
+- Settings overrides are persisted in `ProcessingLog` (`admin_conversion_alert_settings`) so ops can tune controls without env redeploy.
+- Updated `GET /api/admin/lmi-quality` to use effective (override + default) alert settings.
+- Updated `backend/app/services/admin_alert_service.py` to accept override inputs for threshold/cooldown/channels.
+- Added admin controls panel in `frontend/admin.html` and wired load/save in `frontend/js/admin.js`.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or lmi_alert_settings"` (11 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### Notes
+- Current persistence uses `processing_log` as a lightweight runtime config store to avoid migration overhead.
+
 ## 2026-02-15 (Configurable Conversion Alert Controls)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

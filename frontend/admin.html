@@ -162,6 +162,44 @@
                     </article>
                 </div>
 
+                <div class="dashboard-grid">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>LMI alert controls</h3>
+                            <span class="panel-note" id="lmiAlertSettingsSource">Loading settings...</span>
+                        </div>
+                        <div class="panel-body">
+                            <form class="mapping-form" id="lmiAlertSettingsForm">
+                                <div class="mapping-grid">
+                                    <label>
+                                        <span>Warning threshold (%)</span>
+                                        <input type="number" step="0.1" min="0" max="100" id="lmiAlertThreshold" required>
+                                    </label>
+                                    <label>
+                                        <span>Cooldown (hours)</span>
+                                        <input type="number" min="1" max="168" id="lmiAlertCooldown" required>
+                                    </label>
+                                </div>
+                                <div class="mapping-grid">
+                                    <label>
+                                        <span>In-app</span>
+                                        <input type="checkbox" id="lmiAlertInAppEnabled">
+                                    </label>
+                                    <label>
+                                        <span>Email</span>
+                                        <input type="checkbox" id="lmiAlertEmailEnabled">
+                                    </label>
+                                    <label>
+                                        <span>WhatsApp</span>
+                                        <input type="checkbox" id="lmiAlertWhatsappEnabled">
+                                    </label>
+                                </div>
+                                <button class="solid-btn" type="submit">Save alert controls</button>
+                            </form>
+                        </div>
+                    </article>
+                </div>
+
                 <div class="dashboard-grid three">
                     <article class="panel">
                         <div class="panel-header">

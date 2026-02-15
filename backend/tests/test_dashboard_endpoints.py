@@ -683,6 +683,49 @@ class TestAdminLmiQuality:
         assert notification.delivery_status.get("whatsapp") == "disabled"
         db.close()
 
+    def test_get_lmi_alert_settings_returns_defaults(self, client):
+        resp = client.get("/api/admin/lmi-alert-settings")
+        assert resp.status_code == 200
+        payload = resp.json()
+        assert payload["source"] in {"defaults", "override"}
+        settings_payload = payload["settings"]
+        assert "threshold" in settings_payload
+        assert "cooldown_hours" in settings_payload
+        assert "in_app_enabled" in settings_payload
+        assert "email_enabled" in settings_payload
+        assert "whatsapp_enabled" in settings_payload
+
+    def test_update_lmi_alert_settings_persists_overrides(self, client):
+        update_payload = {
+            "threshold": 7.5,
+            "cooldown_hours": 12,
+            "in_app_enabled": True,
+            "email_enabled": False,
+            "whatsapp_enabled": False,
+        }
+        update_resp = client.put(
+            "/api/admin/lmi-alert-settings",
+            json=update_payload,
+        )
+        assert update_resp.status_code == 200
+
+        get_resp = client.get("/api/admin/lmi-alert-settings")
+        assert get_resp.status_code == 200
+        payload = get_resp.json()
+        assert payload["source"] == "override"
+        settings_payload = payload["settings"]
+        assert settings_payload["threshold"] == 7.5
+        assert settings_payload["cooldown_hours"] == 12
+        assert settings_payload["email_enabled"] is False
+        assert settings_payload["whatsapp_enabled"] is False
+
+        quality_resp = client.get("/api/admin/lmi-quality")
+        assert quality_resp.status_code == 200
+        threshold = quality_resp.json()["revenue"]["conversion_alert"][
+            "threshold"
+        ]
+        assert threshold == 7.5
+
 
 # ---------------------------------------------------------------------------
 # Admin users

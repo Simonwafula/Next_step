@@ -32,6 +32,13 @@ const educationMappingList = document.getElementById('educationMappingList');
 const educationRaw = document.getElementById('educationRaw');
 const educationNormalized = document.getElementById('educationNormalized');
 const educationNotes = document.getElementById('educationNotes');
+const lmiAlertSettingsForm = document.getElementById('lmiAlertSettingsForm');
+const lmiAlertThreshold = document.getElementById('lmiAlertThreshold');
+const lmiAlertCooldown = document.getElementById('lmiAlertCooldown');
+const lmiAlertInAppEnabled = document.getElementById('lmiAlertInAppEnabled');
+const lmiAlertEmailEnabled = document.getElementById('lmiAlertEmailEnabled');
+const lmiAlertWhatsappEnabled = document.getElementById('lmiAlertWhatsappEnabled');
+const lmiAlertSettingsSource = document.getElementById('lmiAlertSettingsSource');
 
 const apiBase = document.body.dataset.apiBase || 'http://localhost:8000/api';
 const authStorageKey = 'nextstep_auth';
@@ -712,6 +719,79 @@ const wireEducationMappingForm = (token) => {
         });
     }
 };
+
+const fillLmiAlertSettingsForm = (settingsPayload = {}, source = '') => {
+    if (!lmiAlertSettingsForm) {
+        return;
+    }
+    if (lmiAlertThreshold) {
+        lmiAlertThreshold.value = String(settingsPayload.threshold ?? 5);
+    }
+    if (lmiAlertCooldown) {
+        lmiAlertCooldown.value = String(settingsPayload.cooldown_hours ?? 6);
+    }
+    if (lmiAlertInAppEnabled) {
+        lmiAlertInAppEnabled.checked = Boolean(settingsPayload.in_app_enabled);
+    }
+    if (lmiAlertEmailEnabled) {
+        lmiAlertEmailEnabled.checked = Boolean(settingsPayload.email_enabled);
+    }
+    if (lmiAlertWhatsappEnabled) {
+        lmiAlertWhatsappEnabled.checked = Boolean(settingsPayload.whatsapp_enabled);
+    }
+    if (lmiAlertSettingsSource) {
+        lmiAlertSettingsSource.textContent = source
+            ? `Source: ${source}`
+            : 'Source: unknown';
+    }
+};
+
+const fetchLmiAlertSettings = async (token) => {
+    if (!lmiAlertSettingsForm) {
+        return null;
+    }
+    const payload = await requestJson(`${apiBase}/admin/lmi-alert-settings`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    fillLmiAlertSettingsForm(payload.settings || {}, payload.source || '');
+    return payload;
+};
+
+const wireLmiAlertSettingsForm = (token) => {
+    if (!lmiAlertSettingsForm) {
+        return;
+    }
+    lmiAlertSettingsForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const threshold = Number(lmiAlertThreshold ? lmiAlertThreshold.value : 5);
+        const cooldown = Number(lmiAlertCooldown ? lmiAlertCooldown.value : 6);
+
+        await requestJson(`${apiBase}/admin/lmi-alert-settings`, {
+            method: 'PUT',
+            headers: {
+                Authorization: `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                threshold,
+                cooldown_hours: cooldown,
+                in_app_enabled: Boolean(lmiAlertInAppEnabled?.checked),
+                email_enabled: Boolean(lmiAlertEmailEnabled?.checked),
+                whatsapp_enabled: Boolean(lmiAlertWhatsappEnabled?.checked),
+            }),
+        });
+
+        await fetchLmiAlertSettings(token);
+        const lmiQualityPayload = await requestJson(`${apiBase}/admin/lmi-quality`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => null);
+        if (lmiQualityPayload && !lmiQualityPayload.error) {
+            renderLmiQuality(lmiQualityPayload);
+        }
+        setStatus('LMI alert controls saved.');
+    });
+};
+
 const wireActions = (token) => {
     document.querySelectorAll('[data-admin-action]').forEach((button) => {
         button.addEventListener('click', async () => {
@@ -859,6 +939,10 @@ const boot = async () => {
         if (educationMappingForm) {
             await fetchEducationMappings(auth.access_token);
             wireEducationMappingForm(auth.access_token);
+        }
+        if (lmiAlertSettingsForm) {
+            await fetchLmiAlertSettings(auth.access_token);
+            wireLmiAlertSettingsForm(auth.access_token);
         }
 
         if (adminSignOut) {

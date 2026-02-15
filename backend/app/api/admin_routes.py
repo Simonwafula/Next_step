@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from pydantic import BaseModel, Field
 from sqlalchemy import desc, func, select
 from sqlalchemy.orm import Session
 import yaml
@@ -47,6 +48,15 @@ from ..core.config import settings
 router = APIRouter(prefix="/api/admin", tags=["admin"])
 
 BASE_DIR = Path(__file__).resolve().parents[1]
+CONVERSION_ALERT_SETTINGS_PROCESS_TYPE = "admin_conversion_alert_settings"
+
+
+class ConversionAlertSettingsUpdateRequest(BaseModel):
+    threshold: float | None = Field(default=None, ge=0.0, le=100.0)
+    cooldown_hours: int | None = Field(default=None, ge=1, le=168)
+    in_app_enabled: bool | None = None
+    email_enabled: bool | None = None
+    whatsapp_enabled: bool | None = None
 
 
 def _load_sources(path: Path) -> List[Dict[str, Any]]:
@@ -69,6 +79,110 @@ def _source_summary(sources: List[Dict[str, Any]]) -> Dict[str, int]:
         else:
             inactive += 1
     return {"total": len(sources), "active": active, "inactive": inactive}
+
+
+def _default_conversion_alert_settings() -> Dict[str, Any]:
+    return {
+        "threshold": settings.ADMIN_CONVERSION_ALERT_THRESHOLD,
+        "cooldown_hours": settings.ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS,
+        "in_app_enabled": settings.ADMIN_CONVERSION_ALERT_IN_APP_ENABLED,
+        "email_enabled": settings.ADMIN_CONVERSION_ALERT_EMAIL_ENABLED,
+        "whatsapp_enabled": settings.ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED,
+    }
+
+
+def _load_conversion_alert_settings(db: Session) -> tuple[Dict[str, Any], str]:
+    defaults = _default_conversion_alert_settings()
+    latest = (
+        db.execute(
+            select(ProcessingLog)
+            .where(
+                ProcessingLog.process_type
+                == CONVERSION_ALERT_SETTINGS_PROCESS_TYPE
+            )
+            .order_by(desc(ProcessingLog.processed_at))
+            .limit(1)
+        )
+        .scalars()
+        .first()
+    )
+    if latest is None:
+        return defaults, "defaults"
+
+    results = latest.results or {}
+    persisted_settings = results.get("settings") or {}
+    merged = {
+        **defaults,
+        **{
+            "threshold": persisted_settings.get(
+                "threshold",
+                defaults["threshold"],
+            ),
+            "cooldown_hours": persisted_settings.get(
+                "cooldown_hours",
+                defaults["cooldown_hours"],
+            ),
+            "in_app_enabled": persisted_settings.get(
+                "in_app_enabled",
+                defaults["in_app_enabled"],
+            ),
+            "email_enabled": persisted_settings.get(
+                "email_enabled",
+                defaults["email_enabled"],
+            ),
+            "whatsapp_enabled": persisted_settings.get(
+                "whatsapp_enabled",
+                defaults["whatsapp_enabled"],
+            ),
+        },
+    }
+    return merged, "override"
+
+
+@router.get("/lmi-alert-settings")
+def get_lmi_alert_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    settings_payload, source = _load_conversion_alert_settings(db)
+    return {
+        "settings": settings_payload,
+        "source": source,
+    }
+
+
+@router.put("/lmi-alert-settings")
+def update_lmi_alert_settings(
+    payload: ConversionAlertSettingsUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    current_settings, _ = _load_conversion_alert_settings(db)
+
+    updates = payload.model_dump(exclude_none=True)
+    new_settings = {
+        **current_settings,
+        **updates,
+    }
+
+    db.add(
+        ProcessingLog(
+            process_type=CONVERSION_ALERT_SETTINGS_PROCESS_TYPE,
+            results={
+                "status": "success",
+                "settings": new_settings,
+                "updated_by": current_user.email,
+                "updated_at": datetime.utcnow().isoformat(),
+            },
+            processed_at=datetime.utcnow(),
+        )
+    )
+    db.commit()
+
+    return {
+        "message": "LMI alert settings updated",
+        "settings": new_settings,
+    }
 
 
 @router.get("/overview")
@@ -356,7 +470,8 @@ def admin_lmi_quality(
         if recent_7d
         else 0.0
     )
-    conversion_threshold = settings.ADMIN_CONVERSION_ALERT_THRESHOLD
+    alert_settings, _alert_settings_source = _load_conversion_alert_settings(db)
+    conversion_threshold = float(alert_settings["threshold"])
     conversion_alert = {
         "status": "warning"
         if avg_conversion_7d < conversion_threshold
@@ -376,6 +491,10 @@ def admin_lmi_quality(
             avg_conversion_7d=avg_conversion_7d,
             threshold=conversion_threshold,
             conversion_rate_30d=conversion_rate_30d,
+            cooldown_hours=int(alert_settings["cooldown_hours"]),
+            in_app_enabled=bool(alert_settings["in_app_enabled"]),
+            email_enabled=bool(alert_settings["email_enabled"]),
+            whatsapp_enabled=bool(alert_settings["whatsapp_enabled"]),
         )
 
     return {
