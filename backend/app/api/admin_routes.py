@@ -96,10 +96,7 @@ def _load_conversion_alert_settings(db: Session) -> tuple[Dict[str, Any], str]:
     latest = (
         db.execute(
             select(ProcessingLog)
-            .where(
-                ProcessingLog.process_type
-                == CONVERSION_ALERT_SETTINGS_PROCESS_TYPE
-            )
+            .where(ProcessingLog.process_type == CONVERSION_ALERT_SETTINGS_PROCESS_TYPE)
             .order_by(desc(ProcessingLog.processed_at))
             .limit(1)
         )
@@ -163,10 +160,7 @@ def update_lmi_alert_settings(
         for email in settings.ADMIN_SETTINGS_EDITORS.split(",")
         if email.strip()
     }
-    if (
-        allowed_editors
-        and current_user.email.lower() not in allowed_editors
-    ):
+    if allowed_editors and current_user.email.lower() not in allowed_editors:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not authorized to update LMI alert settings",
@@ -216,10 +210,7 @@ def get_lmi_alert_settings_history(
     rows = (
         db.execute(
             select(ProcessingLog)
-            .where(
-                ProcessingLog.process_type
-                == CONVERSION_ALERT_SETTINGS_PROCESS_TYPE
-            )
+            .where(ProcessingLog.process_type == CONVERSION_ALERT_SETTINGS_PROCESS_TYPE)
             .order_by(desc(ProcessingLog.processed_at))
             .limit(limit)
         )
@@ -455,16 +446,12 @@ def admin_lmi_quality(
     )
 
     estimated_mrr_kes = paid_users * 250
-    estimated_arpu_kes = (
-        round(estimated_mrr_kes / paid_users, 1) if paid_users else 0.0
-    )
+    estimated_arpu_kes = round(estimated_mrr_kes / paid_users, 1) if paid_users else 0.0
     estimated_churn_rate = (
         round((churned_paid_users / paid_users) * 100, 1) if paid_users else 0.0
     )
     conversion_rate_30d = (
-        round((upgraded_users_30d / users_new_30d) * 100, 1)
-        if users_new_30d
-        else 0.0
+        round((upgraded_users_30d / users_new_30d) * 100, 1) if users_new_30d else 0.0
     )
     paid_conversion_overall = (
         round((paid_users / total_users) * 100, 1) if total_users else 0.0
@@ -510,9 +497,7 @@ def admin_lmi_quality(
         day_key = day.isoformat()
         upgrades = upgrades_by_date.get(day_key, 0)
         new_users = new_users_by_date.get(day_key, 0)
-        day_conversion = (
-            round((upgrades / new_users) * 100, 1) if new_users else 0.0
-        )
+        day_conversion = round((upgrades / new_users) * 100, 1) if new_users else 0.0
         conversion_trend_14d.append(
             {
                 "date": day_key,
@@ -534,9 +519,7 @@ def admin_lmi_quality(
     alert_settings, _alert_settings_source = _load_conversion_alert_settings(db)
     conversion_threshold = float(alert_settings["threshold"])
     conversion_alert = {
-        "status": "warning"
-        if avg_conversion_7d < conversion_threshold
-        else "healthy",
+        "status": "warning" if avg_conversion_7d < conversion_threshold else "healthy",
         "avg_conversion_7d": avg_conversion_7d,
         "threshold": conversion_threshold,
         "message": (

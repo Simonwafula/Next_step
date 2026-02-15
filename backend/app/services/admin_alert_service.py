@@ -136,8 +136,7 @@ class AdminAlertService:
                 db.execute(
                     select(func.count(UserNotification.id)).where(
                         UserNotification.user_id == admin.id,
-                        UserNotification.type
-                        == "admin_conversion_dropoff_alert",
+                        UserNotification.type == "admin_conversion_dropoff_alert",
                         UserNotification.created_at >= cutoff,
                     )
                 ).scalar()
@@ -174,9 +173,7 @@ class AdminAlertService:
             if whatsapp_enabled and recipient_number:
                 try:
                     whatsapp_ok = bool(
-                        _run_async(
-                            send_whatsapp_message(recipient_number, message)
-                        )
+                        _run_async(send_whatsapp_message(recipient_number, message))
                     )
                 except Exception:
                     whatsapp_ok = False

@@ -122,9 +122,7 @@ def search(
 
     parsed_skills = []
     if skills:
-        parsed_skills = [
-            value.strip() for value in skills.split(",") if value.strip()
-        ]
+        parsed_skills = [value.strip() for value in skills.split(",") if value.strip()]
 
     profile = getattr(current_user, "profile", None)
     profile_skills_dict = profile.skills if profile and profile.skills else {}
@@ -249,9 +247,7 @@ def guided_advance(
     del location
     parsed_skills = []
     if skills:
-        parsed_skills = [
-            value.strip() for value in skills.split(",") if value.strip()
-        ]
+        parsed_skills = [value.strip() for value in skills.split(",") if value.strip()]
 
     return advance_transitions(
         db,

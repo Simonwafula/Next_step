@@ -19,6 +19,7 @@ def _create_test_app(
     app.include_router(api_router, prefix="/api")
 
     if db_session_factory and current_user_id is not None:
+
         def override_get_db():
             db = db_session_factory()
             try:
@@ -127,6 +128,5 @@ def test_career_pathway_requires_professional_subscription(db_session_factory):
 
     assert response.status_code == 403
     assert (
-        response.json()["detail"]
-        == "This feature requires professional subscription"
+        response.json()["detail"] == "This feature requires professional subscription"
     )

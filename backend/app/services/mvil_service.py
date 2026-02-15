@@ -46,9 +46,7 @@ def _family_jobs(db: Session) -> dict[str, list[JobPost]]:
             grouped[family].append(job_post)
 
     return {
-        family: jobs
-        for family, jobs in grouped.items()
-        if len(jobs) >= MIN_FAMILY_JOBS
+        family: jobs for family, jobs in grouped.items() if len(jobs) >= MIN_FAMILY_JOBS
     }
 
 
@@ -140,10 +138,7 @@ def _normalize_education(value: object) -> str:
 
     if any(token in text for token in ("phd", "doctor", "doctoral")):
         return "PhD"
-    if any(
-        token in text
-        for token in ("master", "msc", "m.sc", "m.s", "ma", "mba")
-    ):
+    if any(token in text for token in ("master", "msc", "m.sc", "m.s", "ma", "mba")):
         return "Master's"
     if any(
         token in text
@@ -158,9 +153,7 @@ def _normalize_education(value: object) -> str:
         )
     ):
         return "Bachelor's"
-    if any(
-        token in text for token in ("diploma", "certificate", "certification")
-    ):
+    if any(token in text for token in ("diploma", "certificate", "certification")):
         return "Certificate/Diploma"
 
     return "Not specified"
@@ -215,10 +208,7 @@ def _extract_experience_years(value: object) -> float | None:
     if single_match:
         return float(single_match.group(1))
 
-    if any(
-        token in text_lower
-        for token in ("entry", "junior", "graduate", "intern")
-    ):
+    if any(token in text_lower for token in ("entry", "junior", "graduate", "intern")):
         return 1.0
     if any(token in text_lower for token in ("mid", "intermediate")):
         return 4.0
@@ -239,17 +229,14 @@ def _experience_band_from_record(entities_row: JobEntities | None) -> str:
         joined_values = " ".join(
             _clean_text(item)
             for item in (
-                list(experience_value.keys())
-                + list(experience_value.values())
+                list(experience_value.keys()) + list(experience_value.values())
             )
             if _clean_text(item)
         )
     else:
         joined_values = _clean_text(experience_value)
 
-    return _experience_band_from_years(
-        _extract_experience_years(joined_values)
-    )
+    return _experience_band_from_years(_extract_experience_years(joined_values))
 
 
 def _is_low_confidence(total_jobs: int) -> bool:
@@ -286,9 +273,7 @@ def _build_role_skill_rows(db: Session) -> list[RoleSkillBaseline]:
             if not job_skills:
                 entity_row = entities_map.get(job.id)
                 if entity_row:
-                    job_skills.update(
-                        _extract_nested_skill_values(entity_row.skills)
-                    )
+                    job_skills.update(_extract_nested_skill_values(entity_row.skills))
 
             for skill_name in job_skills:
                 skill_to_job_ids[skill_name].add(job.id)
@@ -310,8 +295,7 @@ def _build_role_skill_rows(db: Session) -> list[RoleSkillBaseline]:
                     skill_share=len(skill_job_ids) / total_jobs,
                     low_confidence=low_confidence,
                     sample_job_ids=[
-                        job.id
-                        for job in sorted_skill_jobs[:MAX_SAMPLE_JOB_IDS]
+                        job.id for job in sorted_skill_jobs[:MAX_SAMPLE_JOB_IDS]
                     ],
                     count_total_jobs_used=total_jobs,
                     updated_at=datetime.utcnow(),
@@ -354,9 +338,7 @@ def _build_role_education_rows(db: Session) -> list[RoleEducationBaseline]:
                     education_level=level,
                     education_share=len(job_ids) / total_jobs,
                     low_confidence=low_confidence,
-                    sample_job_ids=[
-                        job.id for job in sorted_jobs[:MAX_SAMPLE_JOB_IDS]
-                    ],
+                    sample_job_ids=[job.id for job in sorted_jobs[:MAX_SAMPLE_JOB_IDS]],
                     count_total_jobs_used=total_jobs,
                     updated_at=datetime.utcnow(),
                 )
@@ -398,9 +380,7 @@ def _build_role_experience_rows(db: Session) -> list[RoleExperienceBaseline]:
                     experience_band=band,
                     experience_share=len(job_ids) / total_jobs,
                     low_confidence=low_confidence,
-                    sample_job_ids=[
-                        job.id for job in sorted_jobs[:MAX_SAMPLE_JOB_IDS]
-                    ],
+                    sample_job_ids=[job.id for job in sorted_jobs[:MAX_SAMPLE_JOB_IDS]],
                     count_total_jobs_used=total_jobs,
                     updated_at=datetime.utcnow(),
                 )
@@ -485,18 +465,14 @@ def refresh_all_baselines(db: Session) -> dict:
     demand_rows = _build_role_demand_rows(db)
 
     old_ids_by_model = {
-        RoleSkillBaseline: list(
-            db.execute(select(RoleSkillBaseline.id)).scalars()
-        ),
+        RoleSkillBaseline: list(db.execute(select(RoleSkillBaseline.id)).scalars()),
         RoleEducationBaseline: list(
             db.execute(select(RoleEducationBaseline.id)).scalars()
         ),
         RoleExperienceBaseline: list(
             db.execute(select(RoleExperienceBaseline.id)).scalars()
         ),
-        RoleDemandSnapshot: list(
-            db.execute(select(RoleDemandSnapshot.id)).scalars()
-        ),
+        RoleDemandSnapshot: list(db.execute(select(RoleDemandSnapshot.id)).scalars()),
     }
 
     try:

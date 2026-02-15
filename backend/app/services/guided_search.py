@@ -28,9 +28,7 @@ def _latest_demand_by_family(db: Session) -> dict[str, RoleDemandSnapshot]:
 
 
 def _canonical_titles_by_family(db: Session) -> dict[str, list[str]]:
-    rows = db.execute(
-        select(TitleNorm.family, TitleNorm.canonical_title)
-    ).all()
+    rows = db.execute(select(TitleNorm.family, TitleNorm.canonical_title)).all()
     grouped: dict[str, set[str]] = defaultdict(set)
 
     for family, canonical_title in rows:
@@ -38,8 +36,7 @@ def _canonical_titles_by_family(db: Session) -> dict[str, list[str]]:
             grouped[family].add(canonical_title)
 
     return {
-        family: sorted(canonical_titles)
-        for family, canonical_titles in grouped.items()
+        family: sorted(canonical_titles) for family, canonical_titles in grouped.items()
     }
 
 
@@ -123,9 +120,7 @@ def explore_careers(
     if not demand_by_family:
         return {
             "guided_results": [],
-            "message": (
-                "Insights not yet available — run baseline aggregation first"
-            ),
+            "message": ("Insights not yet available — run baseline aggregation first"),
         }
 
     skill_map = _skill_distribution(db)
@@ -143,10 +138,7 @@ def explore_careers(
             for family in families
             if family == family_hint
             or query_lower in family.replace("_", " ").lower()
-            or any(
-                query_lower in title.lower()
-                for title in titles_map.get(family, [])
-            )
+            or any(query_lower in title.lower() for title in titles_map.get(family, []))
         ]
 
     cards = []
@@ -279,9 +271,7 @@ def match_roles(
     if not demand_by_family:
         return {
             "guided_results": [],
-            "message": (
-                "Insights not yet available — run baseline aggregation first"
-            ),
+            "message": ("Insights not yet available — run baseline aggregation first"),
         }
 
     normalized_user_skills = _normalize_skill_list(user_skills)
@@ -298,10 +288,7 @@ def match_roles(
             for family in families
             if family == family_hint
             or query_lower in family.replace("_", " ").lower()
-            or any(
-                query_lower in title.lower()
-                for title in titles_map.get(family, [])
-            )
+            or any(query_lower in title.lower() for title in titles_map.get(family, []))
         ]
 
     matches = []
@@ -321,17 +308,11 @@ def match_roles(
 
         target_skill_names = [skill_name for skill_name, _ in target_skills]
         overlap_count = len(
-            {
-                skill.casefold() for skill in normalized_user_skills
-            }
-            & {
-                skill_name.casefold() for skill_name in target_skill_names
-            }
+            {skill.casefold() for skill in normalized_user_skills}
+            & {skill_name.casefold() for skill_name in target_skill_names}
         )
         skill_overlap_score = (
-            overlap_count / len(target_skill_names)
-            if target_skill_names
-            else 0.0
+            overlap_count / len(target_skill_names) if target_skill_names else 0.0
         )
 
         matching_skills = [
@@ -423,9 +404,7 @@ def advance_transitions(
     if not demand_by_family:
         return {
             "guided_results": [],
-            "message": (
-                "Insights not yet available — run baseline aggregation first"
-            ),
+            "message": ("Insights not yet available — run baseline aggregation first"),
         }
 
     current_family, _ = normalize_title(current_role)
@@ -464,9 +443,7 @@ def advance_transitions(
                 "shared_skills": shared_skills,
                 "demand_trend": {
                     "count_ads": demand.demand_count,
-                    "signal": "growing"
-                    if demand.demand_count >= 10
-                    else "steady",
+                    "signal": "growing" if demand.demand_count >= 10 else "steady",
                 },
                 "target_jobs": _target_jobs_for_family(db, family, limit=5),
                 "sample_job_ids": _combined_sample_ids(

@@ -66,9 +66,7 @@ def test_subscription_plans_returns_catalog(db_session_factory):
     assert response.status_code == 200
     payload = response.json()
     assert "plans" in payload
-    assert any(
-        plan["code"] == "professional_monthly" for plan in payload["plans"]
-    )
+    assert any(plan["code"] == "professional_monthly" for plan in payload["plans"])
 
 
 def test_subscription_checkout_returns_checkout_url(db_session_factory):

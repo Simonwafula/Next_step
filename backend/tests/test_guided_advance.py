@@ -133,14 +133,10 @@ def _seed_advance_data(db_session_factory):
     )
 
     pm_title = db.execute(
-        db.query(TitleNorm)
-        .filter(TitleNorm.family == "product_management")
-        .statement
+        db.query(TitleNorm).filter(TitleNorm.family == "product_management").statement
     ).scalar_one()
     cloud_title = db.execute(
-        db.query(TitleNorm)
-        .filter(TitleNorm.family == "cloud_engineering")
-        .statement
+        db.query(TitleNorm).filter(TitleNorm.family == "cloud_engineering").statement
     ).scalar_one()
 
     db.add_all(

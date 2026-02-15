@@ -77,9 +77,7 @@ def app(db_session_factory, admin_user, monkeypatch):
         return admin_user
 
     application.dependency_overrides[get_db] = override_get_db
-    application.dependency_overrides[
-        get_current_user
-    ] = override_get_current_user
+    application.dependency_overrides[get_current_user] = override_get_current_user
     return application
 
 
@@ -721,9 +719,7 @@ class TestAdminLmiQuality:
 
         quality_resp = client.get("/api/admin/lmi-quality")
         assert quality_resp.status_code == 200
-        threshold = quality_resp.json()["revenue"]["conversion_alert"][
-            "threshold"
-        ]
+        threshold = quality_resp.json()["revenue"]["conversion_alert"]["threshold"]
         assert threshold == 7.5
 
     def test_lmi_alert_settings_history_returns_recent_entries(self, client):
@@ -781,10 +777,7 @@ class TestAdminLmiQuality:
             json={"threshold": 9.0},
         )
         assert resp.status_code == 403
-        assert (
-            resp.json()["detail"]
-            == "Not authorized to update LMI alert settings"
-        )
+        assert resp.json()["detail"] == "Not authorized to update LMI alert settings"
 
 
 # ---------------------------------------------------------------------------

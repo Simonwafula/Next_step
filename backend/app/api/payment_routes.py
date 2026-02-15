@@ -73,10 +73,7 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     if event.get("type") != "checkout.session.completed":
         return {"status": "ignored"}
 
-    metadata = (
-        ((event.get("data") or {}).get("object") or {}).get("metadata")
-        or {}
-    )
+    metadata = ((event.get("data") or {}).get("object") or {}).get("metadata") or {}
     user_id = _parse_user_id(metadata.get("user_id"))
     plan_code = metadata.get("plan_code") or "professional_monthly"
 

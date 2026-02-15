@@ -228,9 +228,7 @@ def test_compute_role_baselines_handles_filters_shapes_and_confidence(
     assert {row.role_family for row in education_rows} == {"data_analytics"}
     assert all(row.count_total_jobs_used == 3 for row in education_rows)
 
-    experience_rows = (
-        db.execute(select(RoleExperienceBaseline)).scalars().all()
-    )
+    experience_rows = db.execute(select(RoleExperienceBaseline)).scalars().all()
     assert experience_rows
     assert {row.role_family for row in experience_rows} == {"data_analytics"}
 

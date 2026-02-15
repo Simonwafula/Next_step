@@ -79,16 +79,13 @@ class Settings(BaseModel):
         os.getenv("ADMIN_CONVERSION_ALERT_COOLDOWN_HOURS", "6")
     )
     ADMIN_CONVERSION_ALERT_IN_APP_ENABLED: bool = (
-        os.getenv("ADMIN_CONVERSION_ALERT_IN_APP_ENABLED", "true").lower()
-        == "true"
+        os.getenv("ADMIN_CONVERSION_ALERT_IN_APP_ENABLED", "true").lower() == "true"
     )
     ADMIN_CONVERSION_ALERT_EMAIL_ENABLED: bool = (
-        os.getenv("ADMIN_CONVERSION_ALERT_EMAIL_ENABLED", "true").lower()
-        == "true"
+        os.getenv("ADMIN_CONVERSION_ALERT_EMAIL_ENABLED", "true").lower() == "true"
     )
     ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED: bool = (
-        os.getenv("ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED", "true").lower()
-        == "true"
+        os.getenv("ADMIN_CONVERSION_ALERT_WHATSAPP_ENABLED", "true").lower() == "true"
     )
     ADMIN_SETTINGS_EDITORS: str = os.getenv("ADMIN_SETTINGS_EDITORS", "")
 

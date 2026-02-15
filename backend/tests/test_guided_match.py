@@ -30,9 +30,7 @@ def _create_test_app(db_session_factory, current_user=None):
         return current_user
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[
-        get_current_user_optional
-    ] = override_current_user_optional
+    app.dependency_overrides[get_current_user_optional] = override_current_user_optional
     return app
 
 
@@ -211,10 +209,7 @@ def test_guided_match_ranks_roles_and_returns_gaps_and_starter_jobs(
     assert first["match_score"] > payload["guided_results"][1]["match_score"]
     assert "Excel" in first["missing_skills"]
     assert first["starter_jobs"]
-    assert all(
-        job["seniority"] in {"entry", "junior"}
-        for job in first["starter_jobs"]
-    )
+    assert all(job["seniority"] in {"entry", "junior"} for job in first["starter_jobs"])
     assert "salary" not in first
 
 

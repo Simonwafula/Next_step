@@ -33,9 +33,7 @@ def _create_test_app(db_session_factory, current_user=None):
         return current_user
 
     app.dependency_overrides[get_db] = override_get_db
-    app.dependency_overrides[
-        get_current_user_optional
-    ] = override_current_user_optional
+    app.dependency_overrides[get_current_user_optional] = override_current_user_optional
     return app
 
 

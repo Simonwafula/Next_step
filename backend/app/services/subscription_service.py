@@ -139,9 +139,7 @@ class SubscriptionService:
             "message": "Subscription activated successfully",
             "plan_code": plan_code,
             "subscription_tier": managed_user.subscription_tier,
-            "subscription_expires": (
-                managed_user.subscription_expires.isoformat()
-            ),
+            "subscription_expires": (managed_user.subscription_expires.isoformat()),
         }
 
 
