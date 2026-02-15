@@ -14,7 +14,7 @@ sources:
     source: globalsouthopportunities.co.ke
     org: Global South Opportunities
     list_urls:
-      - https://www.globalsouthopportunities.co.ke
+      - https://www.globalsouthopportunities.co.ke/jobs/
     # Keep this broadly "opportunities" but still job-biased.
     keywords:
       - job
@@ -31,6 +31,9 @@ sources:
     max_links: 300
     max_detail_pages: 40
     fetch_detail: true
+    timeout: 60
+    retries: 2
+    user_agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36
 
   - name: Standard Arena Opportunities
     type: gov_careers

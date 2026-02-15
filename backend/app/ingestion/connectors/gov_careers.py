@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import logging
 import re
+import time
 from datetime import datetime
 import io
 from typing import Iterable, List, Tuple, Optional
@@ -411,16 +412,36 @@ def ingest_gov_careers(db: Session, **src) -> int:
     seen_urls: set[str] = set()
     added = 0
 
-    # Government sites often have SSL certificate issues
-    # Use verify=False as a fallback for sites with expired/invalid certs
+    timeout_s = float(src.get("timeout_s") or src.get("timeout") or 30)
+    retries = int(src.get("retries") or 1)
+    retry_backoff_s = float(src.get("retry_backoff_s") or 1.0)
+    user_agent = str(src.get("user_agent") or "NextStepGovMonitor/1.0")
+
+    # Government sites often have SSL certificate issues.
+    # Use verify=False as a fallback for sites with expired/invalid certs.
     client = httpx.Client(
-        timeout=30,
+        timeout=timeout_s,
         follow_redirects=True,
         verify=False,  # Handle SSL cert issues common with gov sites
-        headers={"User-Agent": "NextStepGovMonitor/1.0"},
+        headers={"User-Agent": user_agent},
     )
 
     try:
+
+        def _get(url: str) -> httpx.Response:
+            last_exc: Exception | None = None
+            for attempt in range(max(0, retries) + 1):
+                try:
+                    return client.get(url)
+                except Exception as exc:  # pragma: no cover - network dependent
+                    last_exc = exc
+                    if attempt >= max(0, retries):
+                        raise
+                    time.sleep(max(0.0, retry_backoff_s) * (2**attempt))
+            # Defensive: loop always returns or raises.
+            assert last_exc is not None
+            raise last_exc
+
         detail_fetches = 0
         for list_url in list_urls:
             if not list_url:
@@ -436,7 +457,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                 if is_list_doc:
                     link_candidates.append((list_url, ""))
                 else:
-                    resp = client.get(list_url)
+                    resp = _get(list_url)
                     if resp.status_code >= 400:
                         logger.warning(
                             "Gov source fetch failed: %s (%s)",
@@ -492,7 +513,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
                 if fetch_detail and detail_fetches < max_detail_pages:
                     if not is_doc:
                         try:
-                            detail_resp = client.get(link_url)
+                            detail_resp = _get(link_url)
                             if detail_resp.status_code < 400:
                                 page_title, page_text = _extract_page_content(
                                     detail_resp.text

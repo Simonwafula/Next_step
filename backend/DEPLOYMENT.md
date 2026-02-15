@@ -181,6 +181,21 @@ db.close()
 "
 ```
 
+### Run `sources.yaml` + Post-Process (One-Shot)
+
+For non-job-board sources configured in `backend/app/ingestion/sources.yaml`, use:
+
+```bash
+python scripts/run_sources_ingestion.py --config app/ingestion/sources.yaml --process-limit 2000
+```
+
+Note: production `systemd` units load `/home/nextstep.co.ke/.env` via `EnvironmentFile=...`. If you run this manually over SSH, remember to export the env first (example):
+
+```bash
+set -a; source /home/nextstep.co.ke/.env; set +a
+python scripts/run_sources_ingestion.py --config app/ingestion/sources.yaml
+```
+
 ### Telegram Sources (Channels / Groups)
 
 Telegram ingestion is supported via Telethon (MTProto). It requires a one-time

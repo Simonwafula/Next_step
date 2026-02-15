@@ -739,6 +739,9 @@
 - Added helper script to generate Telethon `StringSession` for non-interactive server ingestion (`backend/scripts/telegram_create_session.py`).
 - Added two HTML opportunity aggregators plus Telegram channel to `backend/app/ingestion/sources.yaml`.
 - Updated `gov_careers` connector to support configurable `JobPost.source` attribution via `source:` in YAML (defaults remain unchanged for government).
+- Added a one-shot runner script for periodic production ingestion + post-processing of `sources.yaml` (`backend/scripts/run_sources_ingestion.py`).
+- Hardened the HTML ingestion connector with per-source HTTP settings (`timeout`/`timeout_s`, `retries`, `retry_backoff_s`, `user_agent`) and added retries for list/detail fetches (`backend/app/ingestion/connectors/gov_careers.py`).
+- Updated Global South Opportunities seed URL to the dedicated listings page and set a longer timeout + retries (`backend/app/ingestion/sources.yaml`).
 - Wired the new connector type into the ingestion runner (`backend/app/ingestion/runner.py`).
 - Updated deployment docs with Telegram ingestion setup (`backend/DEPLOYMENT.md`).
 - Verification:
