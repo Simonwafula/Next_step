@@ -99,10 +99,10 @@ Worktree: Yes
 - [x] Task 4: Explore mode API (Student career cards)
 - [x] Task 5: Match mode API (Early-career role matching)
 - [x] Task 6: Advance mode API (Professional transitions)
-- [ ] Task 7: Search API mode routing
-- [ ] Task 8: Frontend mode selector + guided results UI
+- [x] Task 7: Search API mode routing
+- [x] Task 8: Frontend mode selector + guided results UI
 
-**Total Tasks:** 8 | **Completed:** 6 | **Remaining:** 2
+**Total Tasks:** 8 | **Completed:** 8 | **Remaining:** 0
 
 ## Implementation Tasks
 
@@ -387,12 +387,12 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] `GET /api/search?mode=explore` returns `guided_results` with career cards
-- [ ] `GET /api/search?mode=match` returns `guided_results` with role matches
-- [ ] `GET /api/search?mode=advance` returns `guided_results` with transition cards
-- [ ] Public search without `mode` parameter returns same response shape as current: `{jobs, title_clusters, companies_hiring, total}` (backward compat verified by snapshot test)
-- [ ] Unauthenticated request with `mode` set returns `mode_error: "Authentication required..."` (NOT silent ignore)
-- [ ] Test verifies all three modes, backward compatibility, and unauthenticated mode_error
+- [x] `GET /api/search?mode=explore` returns `guided_results` with career cards
+- [x] `GET /api/search?mode=match` returns `guided_results` with role matches
+- [x] `GET /api/search?mode=advance` returns `guided_results` with transition cards
+- [x] Public search without `mode` parameter returns same response shape as current: `{jobs, title_clusters, companies_hiring, total}` (backward compat verified by snapshot test)
+- [x] Unauthenticated request with `mode` set returns `mode_error: "Authentication required..."` (NOT silent ignore)
+- [x] Test verifies all three modes, backward compatibility, and unauthenticated mode_error
 
 **Verify:**
 
@@ -426,17 +426,17 @@ Worktree: Yes
 
 **Definition of Done:**
 
-- [ ] Mode selector tabs visible for logged-in users (determined by backend `user_authenticated` flag in search response or `/api/auth/me` check — NOT solely by token presence in localStorage)
-- [ ] Mode selector hidden for unauthenticated users
-- [ ] Selecting a mode triggers search with `mode` parameter
-- [ ] Career cards render with education, skills, demand for Explore mode
-- [ ] Cards with `low_confidence: true` show "Limited data (N jobs)" badge
-- [ ] Match cards render with skill gap and starter jobs for Match mode
-- [ ] Advance cards render with transition info for Advance mode
-- [ ] If `mode_error` is returned, show login prompt instead of blank results
-- [ ] Jobs tab works unchanged for all users
-- [ ] All user-generated content sanitized with `_esc()` helper
-- [ ] Mode selector and cards render without layout breaks at desktop (>=1024px) and mobile (<768px)
+- [x] Mode selector tabs visible for logged-in users (determined by backend `user_authenticated` flag in search response or `/api/auth/me` check — NOT solely by token presence in localStorage)
+- [x] Mode selector hidden for unauthenticated users
+- [x] Selecting a mode triggers search with `mode` parameter
+- [x] Career cards render with education, skills, demand for Explore mode
+- [x] Cards with `low_confidence: true` show "Limited data (N jobs)" badge
+- [x] Match cards render with skill gap and starter jobs for Match mode
+- [x] Advance cards render with transition info for Advance mode
+- [x] If `mode_error` is returned, show login prompt instead of blank results
+- [x] Jobs tab works unchanged for all users
+- [x] All user-generated content sanitized with `_esc()` helper
+- [x] Mode selector and cards render without layout breaks at desktop (>=1024px) and mobile (<768px)
 
 **Verify:**
 

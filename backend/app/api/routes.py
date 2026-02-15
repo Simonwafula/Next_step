@@ -60,6 +60,10 @@ def search(
     limit: int = Query(20, ge=1, le=50, description="Jobs page size"),
     offset: int = Query(0, ge=0, description="Jobs page offset"),
     personalized: bool = Query(False, description="Enable personalized results"),
+    mode: str | None = Query(None, description="Guided mode"),
+    skills: str | None = Query(None, description="Comma-separated skills"),
+    education: str | None = Query(None, description="Education level"),
+    current_role: str | None = Query(None, description="Current role"),
     db: Session = Depends(get_db),
     current_user=Depends(get_current_user_optional),
 ):
@@ -84,9 +88,11 @@ def search(
         offset=offset,
     )
 
+    response_payload = payload if isinstance(payload, dict) else {"results": payload}
+
     if current_user and personalized:
-        return {
-            **(payload if isinstance(payload, dict) else {"results": payload}),
+        response_payload = {
+            **response_payload,
             "personalized": True,
             "user_profile_used": bool(current_user.profile),
             "total": (
@@ -94,7 +100,65 @@ def search(
             ),
         }
 
-    return payload
+    if not mode:
+        return response_payload
+
+    normalized_mode = mode.strip().lower()
+    if normalized_mode not in {"explore", "match", "advance"}:
+        return {
+            **response_payload,
+            "guided_results": None,
+            "mode": None,
+            "mode_error": "Invalid guided mode",
+        }
+
+    if not current_user:
+        return {
+            **response_payload,
+            "guided_results": None,
+            "mode": None,
+            "mode_error": "Authentication required for guided search",
+        }
+
+    parsed_skills = []
+    if skills:
+        parsed_skills = [
+            value.strip() for value in skills.split(",") if value.strip()
+        ]
+
+    profile = getattr(current_user, "profile", None)
+    profile_skills_dict = profile.skills if profile and profile.skills else {}
+    if not parsed_skills and isinstance(profile_skills_dict, dict):
+        parsed_skills = list(profile_skills_dict.keys())
+
+    profile_education = profile.education if profile else None
+    profile_current_role = profile.current_role if profile else None
+
+    if normalized_mode == "explore":
+        guided_payload = explore_careers(db, query=q, limit=10)
+    elif normalized_mode == "match":
+        guided_payload = match_roles(
+            db,
+            query=q,
+            user_skills=parsed_skills,
+            education=education or profile_education,
+            limit=10,
+        )
+    else:
+        effective_current_role = current_role or profile_current_role or q
+        guided_payload = advance_transitions(
+            db,
+            current_role=effective_current_role,
+            user_skills=parsed_skills,
+            limit=10,
+        )
+
+    return {
+        **response_payload,
+        "guided_results": guided_payload.get("guided_results"),
+        "mode": normalized_mode,
+        "mode_error": None,
+    }
 
 
 @api_router.get("/translate-title")

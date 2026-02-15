@@ -107,6 +107,8 @@
   - [x] (T-444) Guided Explore API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_explore.py`)
   - [x] (T-445) Guided Match API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_match.py`)
   - [x] (T-446) Guided Advance API + service (`backend/app/services/guided_search.py`, `backend/app/api/routes.py`, `backend/tests/test_guided_advance.py`)
+  - [x] (T-447) Search mode routing (`backend/app/api/routes.py`, `backend/tests/test_search_modes.py`)
+  - [x] (T-448) Frontend mode selector + guided cards (`frontend/index.html`, `frontend/js/main.js`, `frontend/styles/main.css`)
 
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
@@ -155,6 +157,33 @@
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
 ## Logs
+
+### 2026-02-15 (MVIL Task 7: Search Mode Routing)
+- Extended `GET /api/search` in `backend/app/api/routes.py`:
+  - added `mode` dispatch for `explore`, `match`, `advance`
+  - includes `guided_results`, `mode`, `mode_error` in response when mode is provided
+  - enforces auth for guided mode requests with explicit `mode_error`
+  - adds profile fallback for `skills`, `education`, and `current_role` when authenticated
+- Added tests in `backend/tests/test_search_modes.py`:
+  - unauthenticated mode request returns `mode_error`
+  - authenticated explore mode injects guided results
+  - match mode uses `UserProfile.skills` dict keys as skill list fallback
+- Verification run:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_search_modes.py` (3 passed)
+
+### 2026-02-15 (MVIL Task 8: Frontend Mode Selector + Guided Results)
+- Updated search page UI and client logic:
+  - Added mode tabs in `frontend/index.html` (`Explore`, `Match`, `Advance`, `Jobs`)
+  - Added guided results container and mode error surface in `frontend/index.html`
+  - Added guided mode/tab styling in `frontend/styles/main.css`
+  - Added mode state + guided rendering flow in `frontend/js/main.js`
+  - Search requests now include `mode` and optional profile-derived params for guided tabs
+- Runtime smoke verification:
+  - Served frontend via `python3 -m http.server 8088`
+  - Verified guided elements are present in served page markup via curl/grep:
+    - `guidedModeWrap`, `data-guided-mode`, `guidedResultsGrid`
+- Regression verification run:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_search_modes.py backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
 
 ### 2026-02-15 (MVIL Task 6: Advance Mode API)
 - Implemented guided Advance mode in `backend/app/services/guided_search.py`:

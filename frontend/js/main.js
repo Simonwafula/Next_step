@@ -2,9 +2,14 @@ const form = document.getElementById('searchForm');
 const searchInput = document.getElementById('searchInput');
 const locationFilter = document.getElementById('locationFilter');
 const seniorityFilter = document.getElementById('seniorityFilter');
+const guidedModeWrap = document.getElementById('guidedModeWrap');
+const guidedModeButtons = document.querySelectorAll('[data-guided-mode]');
 const resultsGrid = document.getElementById('resultsGrid');
 const resultsMeta = document.getElementById('resultsMeta');
 const resultsTitle = document.getElementById('resultsTitle');
+const guidedResults = document.getElementById('guidedResults');
+const guidedResultsGrid = document.getElementById('guidedResultsGrid');
+const guidedModeError = document.getElementById('guidedModeError');
 const resultsFilters = document.getElementById('resultsFilters');
 const titleClustersEl = document.getElementById('titleClusters');
 const companyClustersEl = document.getElementById('companyClusters');
@@ -68,6 +73,8 @@ const pendingProfileKey = 'nextstep_pending_profile';
 
 let selectedTitleCluster = null;
 let selectedCompany = null;
+let currentGuidedMode = 'jobs';
+let currentUserProfile = null;
 
 const saveAuth = (payload) => {
     localStorage.setItem(authStorageKey, JSON.stringify(payload));
@@ -111,6 +118,12 @@ const setAuthState = (user) => {
         if (dashboardNav) dashboardNav.hidden = false;
         if (dashboardMenuLink) dashboardMenuLink.hidden = false;
         if (adminMenuLink) adminMenuLink.hidden = !user.is_admin;
+        if (guidedModeWrap) {
+            guidedModeWrap.hidden = false;
+            if (currentGuidedMode === 'jobs') {
+                setGuidedMode('explore', { refresh: false });
+            }
+        }
     } else {
         authActions.hidden = false;
         userActions.hidden = true;
@@ -119,6 +132,26 @@ const setAuthState = (user) => {
         if (dashboardNav) dashboardNav.hidden = true;
         if (dashboardMenuLink) dashboardMenuLink.hidden = true;
         if (adminMenuLink) adminMenuLink.hidden = true;
+        currentUserProfile = null;
+        if (guidedModeWrap) {
+            guidedModeWrap.hidden = true;
+            setGuidedMode('jobs', { refresh: false });
+        }
+        renderGuidedResults({ guided_results: null, mode_error: null }, 'jobs');
+    }
+};
+
+const setGuidedMode = (mode, options = {}) => {
+    const { refresh = true } = options;
+    currentGuidedMode = mode;
+
+    guidedModeButtons.forEach((button) => {
+        const selected = button.dataset.guidedMode === mode;
+        button.setAttribute('aria-pressed', selected ? 'true' : 'false');
+    });
+
+    if (refresh && searchInput.value.trim()) {
+        fetchResults();
     }
 };
 
@@ -286,6 +319,7 @@ const loadAccountData = async (token) => {
         const profile = await requestJson(`${apiBase}/auth/profile`, {
             headers: { Authorization: `Bearer ${token}` },
         });
+        currentUserProfile = profile;
         const location = (profile.preferred_locations || [])[0];
         profileLocation.textContent = location || 'Not set';
         if (location && !locationFilter.value) {
@@ -293,6 +327,7 @@ const loadAccountData = async (token) => {
         }
         renderSkills(profile.skills || {});
     } catch (error) {
+        currentUserProfile = null;
         profileLocation.textContent = 'Not set';
         renderSkills({});
     }
@@ -305,6 +340,100 @@ const loadAccountData = async (token) => {
     } catch (error) {
         renderSavedJobs([]);
     }
+};
+
+const renderGuidedResults = (payload, mode) => {
+    if (!guidedResults || !guidedResultsGrid || !guidedModeError) return;
+
+    if (mode === 'jobs') {
+        guidedResults.hidden = true;
+        guidedResultsGrid.innerHTML = '';
+        guidedModeError.hidden = true;
+        guidedModeError.textContent = '';
+        return;
+    }
+
+    guidedResults.hidden = false;
+    guidedResultsGrid.innerHTML = '';
+
+    const modeError = payload?.mode_error;
+    if (modeError) {
+        guidedModeError.hidden = false;
+        guidedModeError.textContent = modeError;
+        return;
+    }
+
+    guidedModeError.hidden = true;
+    guidedModeError.textContent = '';
+
+    const guidedItems = Array.isArray(payload?.guided_results)
+        ? payload.guided_results
+        : [];
+
+    if (!guidedItems.length) {
+        const empty = document.createElement('article');
+        empty.className = 'result-card';
+        empty.innerHTML = '<p class="result-meta">No guided insights available yet for this query.</p>';
+        guidedResultsGrid.appendChild(empty);
+        return;
+    }
+
+    guidedItems.forEach((item) => {
+        const card = document.createElement('article');
+        card.className = 'result-card';
+
+        if (mode === 'explore') {
+            const skillTags = (item.top_skills || [])
+                .slice(0, 5)
+                .map((row) => `<span>${escapeHtml(row.skill_name || '')}</span>`)
+                .join(', ');
+            const demandCount = item.demand?.count_ads ?? 0;
+            const lowConfidence = item.low_confidence
+                ? `<div class="result-meta">Limited data (${escapeHtml(item.demand?.count_total_jobs_used || 0)} jobs)</div>`
+                : '';
+            card.innerHTML = `
+                <h3 class="result-title">${escapeHtml(item.role_family || 'Role')}</h3>
+                <div class="result-meta">Demand: ${escapeHtml(demandCount)}</div>
+                ${lowConfidence}
+                <div class="result-meta">Top skills: ${skillTags || 'Not available'}</div>
+            `;
+        } else if (mode === 'match') {
+            const score = Math.round((Number(item.match_score || 0) * 100));
+            const missing = (item.missing_skills || []).slice(0, 5).join(', ');
+            const starterJobs = (item.starter_jobs || [])
+                .slice(0, 3)
+                .map((job) => {
+                    const href = escapeHtml(safeUrl(job.url));
+                    return `<a class="result-link" href="${href}" target="_blank" rel="noopener">${escapeHtml(job.title || 'Starter role')}</a>`;
+                })
+                .join('<br>');
+            card.innerHTML = `
+                <h3 class="result-title">${escapeHtml(item.role_family || 'Role')}</h3>
+                <div class="result-match">${escapeHtml(score)}% match</div>
+                <div class="result-meta">Missing skills: ${escapeHtml(missing || 'None')}</div>
+                <div class="result-meta">${starterJobs || 'No starter jobs available.'}</div>
+            `;
+        } else {
+            const gap = (item.skill_gap || []).slice(0, 6).join(', ');
+            const shared = (item.shared_skills || []).slice(0, 5).join(', ');
+            const jobs = (item.target_jobs || [])
+                .slice(0, 3)
+                .map((job) => {
+                    const href = escapeHtml(safeUrl(job.url));
+                    return `<a class="result-link" href="${href}" target="_blank" rel="noopener">${escapeHtml(job.title || 'Target role')}</a>`;
+                })
+                .join('<br>');
+            card.innerHTML = `
+                <h3 class="result-title">${escapeHtml(item.target_role || 'Transition role')}</h3>
+                <div class="result-match">Difficulty: ${escapeHtml(item.difficulty_proxy || 'Unknown')}</div>
+                <div class="result-meta">Skill gap: ${escapeHtml(gap || 'None')}</div>
+                <div class="result-meta">Shared skills: ${escapeHtml(shared || 'None')}</div>
+                <div class="result-meta">${jobs || 'No target jobs available.'}</div>
+            `;
+        }
+
+        guidedResultsGrid.appendChild(card);
+    });
 };
 
 const fetchJobMatch = async (token, jobId) => {
@@ -481,6 +610,19 @@ const fetchResults = async () => {
     if (seniorityFilter.value) params.append('seniority', seniorityFilter.value);
     if (selectedTitleCluster) params.append('title', selectedTitleCluster);
     if (selectedCompany) params.append('company', selectedCompany);
+    if (currentGuidedMode !== 'jobs') {
+        params.append('mode', currentGuidedMode);
+        if (currentUserProfile?.skills && !params.get('skills')) {
+            const profileSkills = Object.keys(currentUserProfile.skills);
+            if (profileSkills.length) params.append('skills', profileSkills.join(','));
+        }
+        if (currentUserProfile?.education) {
+            params.append('education', currentUserProfile.education);
+        }
+        if (currentUserProfile?.current_role) {
+            params.append('current_role', currentUserProfile.current_role);
+        }
+    }
 
     try {
         const response = await fetch(`${apiBase}/search?${params.toString()}`);
@@ -490,6 +632,7 @@ const fetchResults = async () => {
 
         const payload = await response.json();
         const rawItems = Array.isArray(payload) ? payload : payload.results || payload.jobs || [];
+        renderGuidedResults(payload, currentGuidedMode);
         renderAggregates(Array.isArray(payload) ? null : payload);
         await renderResults(rawItems);
         document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
@@ -497,6 +640,7 @@ const fetchResults = async () => {
         resultsMeta.textContent = 'We could not reach the API. Is the backend running?';
         resultsTitle.textContent = 'Search unavailable';
         resultsGrid.innerHTML = '';
+        renderGuidedResults({ guided_results: null, mode_error: null }, 'jobs');
         if (resultsFilters) resultsFilters.hidden = true;
         console.error(error);
     }
@@ -511,11 +655,17 @@ focusSearchBtn.addEventListener('click', () => {
     searchInput.focus();
 });
 
-const chips = document.querySelectorAll('.chip');
+const chips = document.querySelectorAll('.chips .chip');
 chips.forEach((chip) => {
     chip.addEventListener('click', () => {
         searchInput.value = chip.dataset.query || '';
         fetchResults();
+    });
+});
+
+guidedModeButtons.forEach((button) => {
+    button.addEventListener('click', () => {
+        setGuidedMode(button.dataset.guidedMode || 'jobs');
     });
 });
 

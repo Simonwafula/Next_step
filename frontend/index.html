@@ -89,6 +89,15 @@
                                 <option value="executive">Executive</option>
                             </select>
                         </div>
+                        <div class="guided-mode" id="guidedModeWrap" hidden>
+                            <span class="guided-mode-label">Guided mode</span>
+                            <div class="guided-mode-tabs" role="tablist" aria-label="Guided search modes">
+                                <button type="button" class="guided-mode-btn" data-guided-mode="explore" aria-pressed="false">🎓 Explore</button>
+                                <button type="button" class="guided-mode-btn" data-guided-mode="match" aria-pressed="false">🎯 Match</button>
+                                <button type="button" class="guided-mode-btn" data-guided-mode="advance" aria-pressed="false">📈 Advance</button>
+                                <button type="button" class="guided-mode-btn" data-guided-mode="jobs" aria-pressed="true">📋 Jobs</button>
+                            </div>
+                        </div>
                         <datalist id="locationList">
                             <option value="Nairobi"></option>
                             <option value="Mombasa"></option>
@@ -134,6 +143,10 @@
                         <h2 id="resultsTitle">Ready when you are</h2>
                     </div>
                     <div class="results-meta" id="resultsMeta">Enter a query to see matches.</div>
+                </div>
+                <div class="guided-results" id="guidedResults" hidden>
+                    <p class="guided-mode-error" id="guidedModeError" hidden></p>
+                    <div class="results-grid" id="guidedResultsGrid"></div>
                 </div>
                 <div class="results-filters" id="resultsFilters" hidden>
                     <div class="filter-block">

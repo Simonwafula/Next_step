@@ -1,5 +1,37 @@
 # Handoff
 
+## 2026-02-15 (MVIL Tasks 7-8: Search Mode Routing + Frontend Guided UI)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Completed Task 7 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+  - Extended `/api/search` mode routing in `backend/app/api/routes.py`.
+  - Added mode-aware response fields: `guided_results`, `mode`, `mode_error`.
+  - Enforced authentication for guided mode and wired profile fallback skills/education/current role.
+- Completed Task 8 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+  - Added guided mode selector tabs and guided results panel in `frontend/index.html`.
+  - Added guided mode styling in `frontend/styles/main.css`.
+  - Extended `frontend/js/main.js` search flow to send `mode` and render guided cards/errors.
+  - Mode tabs are shown only when authenticated and hidden when signed out.
+- Added tests:
+  - `backend/tests/test_search_modes.py` (new)
+- Updated plan progress tracker:
+  - Completed 8 / Remaining 0.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_search_modes.py` (3 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_search_modes.py backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_guided_explore.py backend/tests/test_mvil_admin.py backend/tests/test_mvil_service.py backend/tests/test_mvil_models.py backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+- Frontend runtime smoke:
+  - `python3 -m http.server 8088` in `frontend/`
+  - `curl -s http://localhost:8088/index.html | grep -E "guidedModeWrap|guidedResultsGrid|data-guided-mode"`
+
+### Notes
+- MVIL plan scope is fully implemented (Tasks 1-8).
+- Backend app runtime validation with uvicorn was not possible in this environment because `uvicorn` is not installed in the available Python environments.
+
 ## 2026-02-15 (MVIL Task 6: Advance Mode API)
 
 Branch: `feat/T-740-scheduled-scrape-processing`
