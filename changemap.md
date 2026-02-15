@@ -99,6 +99,10 @@
   - [x] (T-435) Settings change audit history view (API + admin panel)
   - [x] (T-436) Settings edit guard + audit metadata (editor allowlist, IP/user-agent)
 
+## 4.3 Guided Search Modes (MVIL)
+- [/] (T-440) Role baselines & guided search modes
+  - [x] (T-441) MVIL database baseline models (`backend/app/db/models.py`, `backend/tests/test_mvil_models.py`)
+
 ## 5. Signals (planned)
 - [ ] (T-500) tender ingestion parser
 - [ ] (T-501) task→role mapping
@@ -289,6 +293,21 @@
 - Verification runs:
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_alert_settings or lmi_quality"` (13 passed)
   - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py` (11 passed)
+
+### 2026-02-15 (MVIL Task 1: Database Models)
+- Implemented four MVIL baseline models in `backend/app/db/models.py`:
+  - `RoleSkillBaseline` (`role_skill_baseline`)
+  - `RoleEducationBaseline` (`role_education_baseline`)
+  - `RoleExperienceBaseline` (`role_experience_baseline`)
+  - `RoleDemandSnapshot` (`role_demand_snapshot`)
+- Added tests in `backend/tests/test_mvil_models.py` for:
+  - table presence in SQLAlchemy metadata
+  - required evidence fields (`sample_job_ids`, `count_total_jobs_used`)
+- Updated active plan progress in `docs/plans/2026-02-14-role-baselines-guided-search.md`:
+  - Task 1 checked complete (Completed 1 / Remaining 7).
+- Verification runs:
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_models.py` (2 passed)
+  - `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py backend/tests/test_mvil_models.py` (11 passed)
 
 ### 2026-02-15 (LMI Monetization Build-out)
 - Delivered core LMI monetization milestones from `docs/LMI_IMPLEMENTATION_PLAN.md`:

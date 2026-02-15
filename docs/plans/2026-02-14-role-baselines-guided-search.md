@@ -93,7 +93,7 @@ Worktree: Yes
 
 **MANDATORY: Update this checklist as tasks complete. Change `[ ]` to `[x]`.**
 
-- [ ] Task 1: MVIL database models
+- [x] Task 1: MVIL database models
 - [ ] Task 2: MVIL aggregation service
 - [ ] Task 3: Admin aggregation endpoint + runner
 - [ ] Task 4: Explore mode API (Student career cards)
@@ -102,7 +102,7 @@ Worktree: Yes
 - [ ] Task 7: Search API mode routing
 - [ ] Task 8: Frontend mode selector + guided results UI
 
-**Total Tasks:** 8 | **Completed:** 0 | **Remaining:** 8
+**Total Tasks:** 8 | **Completed:** 1 | **Remaining:** 7
 
 ## Implementation Tasks
 

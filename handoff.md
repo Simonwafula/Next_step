@@ -1,5 +1,31 @@
 # Handoff
 
+## 2026-02-15 (MVIL Task 1: Database Models)
+
+Branch: `feat/T-740-scheduled-scrape-processing`
+
+Commit: `pending`
+
+### Summary
+- Completed Task 1 from `docs/plans/2026-02-14-role-baselines-guided-search.md`.
+- Added four new MVIL baseline models in `backend/app/db/models.py`:
+  - `RoleSkillBaseline`
+  - `RoleEducationBaseline`
+  - `RoleExperienceBaseline`
+  - `RoleDemandSnapshot`
+- Added dedicated tests in `backend/tests/test_mvil_models.py`:
+  - verifies all MVIL tables exist in SQLAlchemy metadata
+  - verifies required evidence fields are present and typed
+- Updated plan progress tracker:
+  - Completed 1 / Remaining 7.
+
+### Tests Run
+- `backend/venv3.11/bin/pytest -q backend/tests/test_mvil_models.py` (2 passed)
+- `backend/venv3.11/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality or overview" backend/tests/test_subscription_paywall.py backend/tests/test_payment_webhooks.py backend/tests/test_mvil_models.py` (11 passed)
+
+### Notes
+- Next step in this plan is Task 2 (MVIL aggregation service) using these tables.
+
 ## 2026-02-15 (Settings Edit Guard + Audit Metadata)
 
 Branch: `feat/T-740-scheduled-scrape-processing`

@@ -163,6 +163,69 @@ class RoleEvolution(Base):
     top_skills: Mapped[dict] = mapped_column(JSONB, default=dict)
 
 
+class RoleSkillBaseline(Base):
+    __tablename__ = "role_skill_baseline"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    role_family: Mapped[str] = mapped_column(String(120), index=True)
+    skill_name: Mapped[str] = mapped_column(String(120), index=True)
+    skill_share: Mapped[float] = mapped_column(Float, default=0.0)
+    low_confidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    sample_job_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    count_total_jobs_used: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        index=True,
+    )
+
+
+class RoleEducationBaseline(Base):
+    __tablename__ = "role_education_baseline"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    role_family: Mapped[str] = mapped_column(String(120), index=True)
+    education_level: Mapped[str] = mapped_column(String(120), index=True)
+    education_share: Mapped[float] = mapped_column(Float, default=0.0)
+    low_confidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    sample_job_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    count_total_jobs_used: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        index=True,
+    )
+
+
+class RoleExperienceBaseline(Base):
+    __tablename__ = "role_experience_baseline"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    role_family: Mapped[str] = mapped_column(String(120), index=True)
+    experience_band: Mapped[str] = mapped_column(String(120), index=True)
+    experience_share: Mapped[float] = mapped_column(Float, default=0.0)
+    low_confidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    sample_job_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    count_total_jobs_used: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        index=True,
+    )
+
+
+class RoleDemandSnapshot(Base):
+    __tablename__ = "role_demand_snapshot"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    role_family: Mapped[str] = mapped_column(String(120), index=True)
+    demand_count: Mapped[int] = mapped_column(Integer, default=0)
+    low_confidence: Mapped[bool] = mapped_column(Boolean, default=False)
+    sample_job_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    count_total_jobs_used: Mapped[int] = mapped_column(Integer, default=0)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        index=True,
+    )
+
+
 class TitleAdjacency(Base):
     __tablename__ = "title_adjacency"
     id: Mapped[int] = mapped_column(Integer, primary_key=True)
