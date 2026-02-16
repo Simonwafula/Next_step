@@ -53,16 +53,17 @@ def list_dedup_candidates(
     if status != "all":
         stmt = stmt.where(JobDedupeMap.status == status)
 
-    total = db.execute(
-        select(func.count(JobDedupeMap.job_id)).where(
-            JobDedupeMap.status == status if status != "all" else True
-        )
-    ).scalar() or 0
+    total = (
+        db.execute(
+            select(func.count(JobDedupeMap.job_id)).where(
+                JobDedupeMap.status == status if status != "all" else True
+            )
+        ).scalar()
+        or 0
+    )
 
     stmt = (
-        stmt.order_by(desc(JobDedupeMap.similarity_score))
-        .limit(limit)
-        .offset(offset)
+        stmt.order_by(desc(JobDedupeMap.similarity_score)).limit(limit).offset(offset)
     )
     rows = db.execute(stmt).all()
 
@@ -74,9 +75,7 @@ def list_dedup_candidates(
                 "canonical_job_id": row.canonical_job_id,
                 "similarity": row.similarity_score,
                 "status": row.status,
-                "reviewed_at": row.reviewed_at.isoformat()
-                if row.reviewed_at
-                else None,
+                "reviewed_at": row.reviewed_at.isoformat() if row.reviewed_at else None,
                 "title_a": row.title_a or "Untitled",
                 "source_a": row.source_a,
                 "company_a": row.company_a or "Unknown",
@@ -105,9 +104,7 @@ def merge_dedup_pair(
     if not entry:
         raise HTTPException(status_code=404, detail="Dedup entry not found")
     if entry.status != "pending":
-        raise HTTPException(
-            status_code=400, detail=f"Entry already {entry.status}"
-        )
+        raise HTTPException(status_code=400, detail=f"Entry already {entry.status}")
 
     entry.status = "merged"
     entry.reviewed_at = datetime.utcnow()
@@ -149,9 +146,7 @@ def dismiss_dedup_pair(
     if not entry:
         raise HTTPException(status_code=404, detail="Dedup entry not found")
     if entry.status != "pending":
-        raise HTTPException(
-            status_code=400, detail=f"Entry already {entry.status}"
-        )
+        raise HTTPException(status_code=400, detail=f"Entry already {entry.status}")
 
     entry.status = "dismissed"
     entry.reviewed_at = datetime.utcnow()

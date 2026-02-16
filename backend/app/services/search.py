@@ -418,7 +418,9 @@ def search_jobs(
             q, jp, title_norm, similarity_score, entities
         )
         top_skills = extract_entity_skill_values(entities.skills if entities else None)
-        quality_value = float(jp.quality_score) if jp.quality_score is not None else None
+        quality_value = (
+            float(jp.quality_score) if jp.quality_score is not None else None
+        )
         is_high_confidence = bool(quality_value is not None and quality_value >= 0.7)
         posted_at = (
             jp.first_seen.isoformat() if getattr(jp, "first_seen", None) else None

@@ -30,29 +30,29 @@ def moderation_queue(
     """List reviews awaiting moderation."""
     del current_user
 
-    stmt = (
-        select(
-            CompanyReview.id,
-            CompanyReview.title,
-            CompanyReview.review_text,
-            CompanyReview.overall_rating,
-            CompanyReview.moderation_status,
-            CompanyReview.moderation_notes,
-            CompanyReview.created_at,
-            CompanyReview.job_title,
-            Organization.name.label("company_name"),
-        )
-        .outerjoin(Organization, CompanyReview.organization_id == Organization.id)
-    )
+    stmt = select(
+        CompanyReview.id,
+        CompanyReview.title,
+        CompanyReview.review_text,
+        CompanyReview.overall_rating,
+        CompanyReview.moderation_status,
+        CompanyReview.moderation_notes,
+        CompanyReview.created_at,
+        CompanyReview.job_title,
+        Organization.name.label("company_name"),
+    ).outerjoin(Organization, CompanyReview.organization_id == Organization.id)
 
     if status != "all":
         stmt = stmt.where(CompanyReview.moderation_status == status)
 
-    total = db.execute(
-        select(func.count(CompanyReview.id)).where(
-            CompanyReview.moderation_status == status if status != "all" else True
-        )
-    ).scalar() or 0
+    total = (
+        db.execute(
+            select(func.count(CompanyReview.id)).where(
+                CompanyReview.moderation_status == status if status != "all" else True
+            )
+        ).scalar()
+        or 0
+    )
 
     stmt = stmt.order_by(desc(CompanyReview.created_at)).limit(limit).offset(offset)
     rows = db.execute(stmt).all()
@@ -68,9 +68,7 @@ def moderation_queue(
                 "reason": row.moderation_notes or "Pending review",
                 "company": row.company_name or "Unknown",
                 "job_title": row.job_title,
-                "created_at": row.created_at.isoformat()
-                if row.created_at
-                else None,
+                "created_at": row.created_at.isoformat() if row.created_at else None,
             }
             for row in rows
         ],

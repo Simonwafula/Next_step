@@ -686,47 +686,65 @@ async def get_activity_feed(
     """Recent user activity composed from searches, saves, and applications."""
     activities: list[dict] = []
 
-    searches = db.execute(
-        select(SearchHistory)
-        .where(SearchHistory.user_id == current_user.id)
-        .order_by(desc(SearchHistory.searched_at))
-        .limit(limit)
-    ).scalars().all()
+    searches = (
+        db.execute(
+            select(SearchHistory)
+            .where(SearchHistory.user_id == current_user.id)
+            .order_by(desc(SearchHistory.searched_at))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     for s in searches:
-        activities.append({
-            "icon": "🔍",
-            "text": f'Searched for "{s.query}"',
-            "time": s.searched_at.isoformat() if s.searched_at else None,
-            "type": "search",
-        })
+        activities.append(
+            {
+                "icon": "🔍",
+                "text": f'Searched for "{s.query}"',
+                "time": s.searched_at.isoformat() if s.searched_at else None,
+                "type": "search",
+            }
+        )
 
-    saves = db.execute(
-        select(SavedJob)
-        .where(SavedJob.user_id == current_user.id)
-        .order_by(desc(SavedJob.saved_at))
-        .limit(limit)
-    ).scalars().all()
+    saves = (
+        db.execute(
+            select(SavedJob)
+            .where(SavedJob.user_id == current_user.id)
+            .order_by(desc(SavedJob.saved_at))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     for sv in saves:
-        activities.append({
-            "icon": "\u2764\ufe0f",
-            "text": "Saved a role",
-            "time": sv.saved_at.isoformat() if sv.saved_at else None,
-            "type": "save",
-        })
+        activities.append(
+            {
+                "icon": "\u2764\ufe0f",
+                "text": "Saved a role",
+                "time": sv.saved_at.isoformat() if sv.saved_at else None,
+                "type": "save",
+            }
+        )
 
-    applications = db.execute(
-        select(JobApplication)
-        .where(JobApplication.user_id == current_user.id)
-        .order_by(desc(JobApplication.applied_at))
-        .limit(limit)
-    ).scalars().all()
+    applications = (
+        db.execute(
+            select(JobApplication)
+            .where(JobApplication.user_id == current_user.id)
+            .order_by(desc(JobApplication.applied_at))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
     for app in applications:
-        activities.append({
-            "icon": "📝",
-            "text": "Submitted application",
-            "time": app.applied_at.isoformat() if app.applied_at else None,
-            "type": "application",
-        })
+        activities.append(
+            {
+                "icon": "📝",
+                "text": "Submitted application",
+                "time": app.applied_at.isoformat() if app.applied_at else None,
+                "type": "application",
+            }
+        )
 
     # Sort combined activity by time descending, take top N
     activities.sort(key=lambda a: a["time"] or "", reverse=True)
@@ -751,33 +769,44 @@ async def get_momentum_data(
         )
         day_end = day_start + timedelta(days=1)
 
-        search_count = db.execute(
-            select(func.count(SearchHistory.id)).where(
-                SearchHistory.user_id == current_user.id,
-                SearchHistory.searched_at >= day_start,
-                SearchHistory.searched_at < day_end,
-            )
-        ).scalar() or 0
+        search_count = (
+            db.execute(
+                select(func.count(SearchHistory.id)).where(
+                    SearchHistory.user_id == current_user.id,
+                    SearchHistory.searched_at >= day_start,
+                    SearchHistory.searched_at < day_end,
+                )
+            ).scalar()
+            or 0
+        )
 
-        save_count = db.execute(
-            select(func.count(SavedJob.id)).where(
-                SavedJob.user_id == current_user.id,
-                SavedJob.saved_at >= day_start,
-                SavedJob.saved_at < day_end,
-            )
-        ).scalar() or 0
+        save_count = (
+            db.execute(
+                select(func.count(SavedJob.id)).where(
+                    SavedJob.user_id == current_user.id,
+                    SavedJob.saved_at >= day_start,
+                    SavedJob.saved_at < day_end,
+                )
+            ).scalar()
+            or 0
+        )
 
-        app_count = db.execute(
-            select(func.count(JobApplication.id)).where(
-                JobApplication.user_id == current_user.id,
-                JobApplication.applied_at >= day_start,
-                JobApplication.applied_at < day_end,
-            )
-        ).scalar() or 0
+        app_count = (
+            db.execute(
+                select(func.count(JobApplication.id)).where(
+                    JobApplication.user_id == current_user.id,
+                    JobApplication.applied_at >= day_start,
+                    JobApplication.applied_at < day_end,
+                )
+            ).scalar()
+            or 0
+        )
 
-        days.append({
-            "date": day_start.date().isoformat(),
-            "count": int(search_count) + int(save_count) + int(app_count),
-        })
+        days.append(
+            {
+                "date": day_start.date().isoformat(),
+                "count": int(search_count) + int(save_count) + int(app_count),
+            }
+        )
 
     return {"days": days}

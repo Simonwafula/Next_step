@@ -32,7 +32,9 @@ def upgrade() -> None:
     )
     op.add_column(
         "job_dedupe_map",
-        sa.Column("reviewed_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column(
+            "reviewed_by", sa.Integer(), sa.ForeignKey("users.id"), nullable=True
+        ),
     )
     op.create_index("ix_job_dedupe_map_status", "job_dedupe_map", ["status"])
 

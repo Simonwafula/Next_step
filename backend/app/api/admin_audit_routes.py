@@ -11,19 +11,23 @@ from ..services.auth_service import require_admin
 router = APIRouter(prefix="/api/admin", tags=["admin-audit"])
 
 # Process types that represent admin actions (vs. automated system events)
-ADMIN_ACTION_TYPES = frozenset({
-    "monitoring",
-    "admin_conversion_alert_settings",
-})
+ADMIN_ACTION_TYPES = frozenset(
+    {
+        "monitoring",
+        "admin_conversion_alert_settings",
+    }
+)
 
-SYSTEM_EVENT_TYPES = frozenset({
-    "post_processing",
-    "government_processing",
-    "ingestion",
-    "deduplication",
-    "embedding",
-    "normalization",
-})
+SYSTEM_EVENT_TYPES = frozenset(
+    {
+        "post_processing",
+        "government_processing",
+        "ingestion",
+        "deduplication",
+        "embedding",
+        "normalization",
+    }
+)
 
 
 @router.get("/audit-log")
@@ -44,19 +48,18 @@ def audit_log(
     if action_filter:
         stmt = stmt.where(ProcessingLog.process_type.ilike(f"%{action_filter}%"))
 
-    total = db.execute(
-        select(func.count(ProcessingLog.id)).where(
-            ProcessingLog.process_type.ilike(f"%{action_filter}%")
-            if action_filter
-            else True
-        )
-    ).scalar() or 0
-
-    stmt = (
-        stmt.order_by(desc(ProcessingLog.processed_at))
-        .limit(limit)
-        .offset(offset)
+    total = (
+        db.execute(
+            select(func.count(ProcessingLog.id)).where(
+                ProcessingLog.process_type.ilike(f"%{action_filter}%")
+                if action_filter
+                else True
+            )
+        ).scalar()
+        or 0
     )
+
+    stmt = stmt.order_by(desc(ProcessingLog.processed_at)).limit(limit).offset(offset)
     logs = db.execute(stmt).scalars().all()
 
     return {
@@ -84,9 +87,7 @@ def system_events(
 
     if level:
         # Filter by status stored inside results JSONB
-        stmt = stmt.where(
-            ProcessingLog.results["status"].as_string() == level
-        )
+        stmt = stmt.where(ProcessingLog.results["status"].as_string() == level)
 
     stmt = stmt.order_by(desc(ProcessingLog.processed_at)).limit(limit)
     logs = db.execute(stmt).scalars().all()
@@ -102,9 +103,7 @@ def _format_audit_entry(log: ProcessingLog) -> dict:
     results = log.results or {}
     details_data = results.get("details", {})
     admin_email = (
-        details_data.get("triggered_by")
-        if isinstance(details_data, dict)
-        else None
+        details_data.get("triggered_by") if isinstance(details_data, dict) else None
     )
 
     return {

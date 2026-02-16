@@ -826,6 +826,13 @@
   - `backend/venv3.11/bin/ruff format ...` (pass)
   - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
 
+### 2026-02-16 (OPS-DEPLOY: Ruff Format Consistency)
+- Applied `ruff format` to newly added admin routes + migration + search service to satisfy `ruff format --check .` under `ruff==0.14.14` (matches `backend/requirements-dev.txt`).
+- Verification:
+  - `backend/venv3.11/bin/ruff format --check .` (pass)
+  - `backend/venv3.11/bin/ruff check .` (pass)
+  - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
+
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
 - (local sqlite path) Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
