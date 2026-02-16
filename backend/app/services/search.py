@@ -193,6 +193,7 @@ def search_jobs(
             stmt_probe = (
                 select(JobPost.id)
                 .select_from(JobPost)
+                .join(Organization, Organization.id == JobPost.org_id, isouter=True)
                 .join(Location, Location.id == JobPost.location_id, isouter=True)
                 .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
                 .where(JobPost.is_active.is_(True))
@@ -212,30 +213,73 @@ def search_jobs(
                 ids_base = (
                     select(JobPost.id.label("job_id"))
                     .select_from(JobPost)
+                    .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+                    .join(Location, Location.id == JobPost.location_id, isouter=True)
                     .join(
-                        Location,
-                        Location.id == JobPost.location_id,
-                        isouter=True,
-                    )
-                    .join(
-                        TitleNorm,
-                        TitleNorm.id == JobPost.title_norm_id,
-                        isouter=True,
+                        TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True
                     )
                     .where(JobPost.is_active.is_(True))
                 )
                 if filters:
                     ids_base = ids_base.where(*filters)
 
+                # Broad terms like "remote" can match many descriptions. A direct
+                # trigram scan + heap fetch across the whole corpus can take
+                # multiple seconds. We only need the most-recent matches (we sort
+                # by first_seen DESC), so scan a bounded recent window and filter
+                # it instead. The window scales with candidate_limit but is
+                # capped to keep latency predictable.
+                text_scan_limit = min(max(candidate_limit * 100, 5000), 50000)
+                recent_desc_subq = (
+                    select(
+                        JobPost.id.label("job_id"),
+                        JobPost.description_raw.label("text_value"),
+                    )
+                    .select_from(JobPost)
+                    .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+                    .join(Location, Location.id == JobPost.location_id, isouter=True)
+                    .join(
+                        TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True
+                    )
+                    .where(JobPost.is_active.is_(True))
+                )
+                if filters:
+                    recent_desc_subq = recent_desc_subq.where(*filters)
+                recent_desc_subq = (
+                    recent_desc_subq.order_by(JobPost.first_seen.desc())
+                    .limit(text_scan_limit)
+                    .subquery()
+                )
+                recent_req_subq = (
+                    select(
+                        JobPost.id.label("job_id"),
+                        JobPost.requirements_raw.label("text_value"),
+                    )
+                    .select_from(JobPost)
+                    .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+                    .join(Location, Location.id == JobPost.location_id, isouter=True)
+                    .join(
+                        TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True
+                    )
+                    .where(JobPost.is_active.is_(True))
+                )
+                if filters:
+                    recent_req_subq = recent_req_subq.where(*filters)
+                recent_req_subq = (
+                    recent_req_subq.order_by(JobPost.first_seen.desc())
+                    .limit(text_scan_limit)
+                    .subquery()
+                )
+
                 branches = [
                     ids_base.where(JobPost.title_raw.ilike(like))
                     .order_by(JobPost.first_seen.desc())
                     .limit(candidate_limit),
-                    ids_base.where(JobPost.description_raw.ilike(like))
-                    .order_by(JobPost.first_seen.desc())
+                    select(recent_desc_subq.c.job_id)
+                    .where(recent_desc_subq.c.text_value.ilike(like))
                     .limit(candidate_limit),
-                    ids_base.where(JobPost.requirements_raw.ilike(like))
-                    .order_by(JobPost.first_seen.desc())
+                    select(recent_req_subq.c.job_id)
+                    .where(recent_req_subq.c.text_value.ilike(like))
                     .limit(candidate_limit),
                     ids_base.where(TitleNorm.canonical_title.ilike(like_norm))
                     .order_by(JobPost.first_seen.desc())

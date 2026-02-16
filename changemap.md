@@ -842,6 +842,15 @@
   - `backend/venv3.11/bin/ruff check .` (pass)
   - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
 
+### 2026-02-16 (OPS-DEPLOY: Postgres Search Broad-Term Hotfix)
+- Root cause: for broad terms like `remote`, the Postgres narrow-query path still included `description_raw ILIKE '%...%' ORDER BY first_seen DESC LIMIT ...`, which can devolve into multi-second trigram bitmap heap scans (high disk IO) even with `gin_trgm_ops` indexes.
+- Fix: in `backend/app/services/search.py`, the Postgres narrow-query description/requirements branches now scan a bounded recent window ordered by `first_seen DESC` and filter it, which avoids full-corpus heap fetches while preserving “most-recent matches first” semantics.
+- Also ensured Postgres probe + ID-collection queries include an `Organization` join so sector filters don’t create cartesian products.
+- Verification:
+  - `backend/venv3.11/bin/ruff format backend/app/services/search.py` (pass)
+  - `backend/venv3.11/bin/ruff check backend/app/services/search.py` (pass)
+  - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
+
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
 - (local sqlite path) Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
