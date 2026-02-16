@@ -1,18 +1,16 @@
 import os
-
-from sqlalchemy.orm import Session
-from sqlalchemy import select, or_, func, union
-from ..db.models import JobPost, Organization, Location, TitleNorm
-from ..ml.embeddings import embed_text
-from ..normalization.titles import (
-    normalize_title,
-    get_careers_for_degree,
-)
-from .ranking import rank_results
-from .salary_service import salary_service
-import numpy as np
 import re
 from collections import Counter
+
+import numpy as np
+from sqlalchemy import func, or_, select, union
+from sqlalchemy.orm import Session
+
+from ..db.models import JobPost, Organization, Location, TitleNorm
+from ..ml.embeddings import embed_text
+from ..normalization.titles import get_careers_for_degree, normalize_title
+from .ranking import rank_results
+from .salary_service import salary_service
 
 
 def cosine_similarity(a, b):
@@ -147,25 +145,43 @@ def search_jobs(
 
     normalized_family = None
     normalized_title = None
-    job_text = None
-    ids_subq = None
     like = None
     like_norm = None
+    title_norm_ids = None
+    job_text = None
+    ids_subq = None
 
     if q:
         normalized_family, normalized_title = normalize_title(q)
         like = f"%{q.lower()}%"
         like_norm = f"%{normalized_title.lower()}%"
 
-        clauses = [
-            JobPost.title_raw.ilike(like),
-            JobPost.description_raw.ilike(like),
-            JobPost.requirements_raw.ilike(like),
-            TitleNorm.canonical_title.ilike(like_norm),
-        ]
-        if normalized_family and normalized_family != "other":
-            clauses.append(TitleNorm.family.ilike(f"%{normalized_family}%"))
-        job_text = or_(*clauses)
+        # Postgres query planning for large ORs across multiple joined tables is
+        # extremely expensive (it can devolve into full table scans + hash joins).
+        # Prefer a title-focused predicate that keeps queries index-friendly.
+        if is_postgres:
+            title_norm_stmt = select(TitleNorm.id)
+            title_norm_clauses = [TitleNorm.canonical_title.ilike(like_norm)]
+            if normalized_family and normalized_family != "other":
+                title_norm_clauses.append(
+                    TitleNorm.family.ilike(f"%{normalized_family}%")
+                )
+            title_norm_ids = title_norm_stmt.where(or_(*title_norm_clauses)).limit(2000)
+
+            job_text = or_(
+                JobPost.title_raw.ilike(like),
+                JobPost.title_norm_id.in_(title_norm_ids),
+            )
+        else:
+            clauses = [
+                JobPost.title_raw.ilike(like),
+                JobPost.description_raw.ilike(like),
+                JobPost.requirements_raw.ilike(like),
+                TitleNorm.canonical_title.ilike(like_norm),
+            ]
+            if normalized_family and normalized_family != "other":
+                clauses.append(TitleNorm.family.ilike(f"%{normalized_family}%"))
+            job_text = or_(*clauses)
 
     if filters:
         stmt_jobs = stmt_jobs.where(*filters)
@@ -237,14 +253,21 @@ def search_jobs(
         else:
             stmt_jobs = stmt_jobs.where(job_text)
 
-    # Aggregate clusters and companies from the unselected result set
-    # so the UI can offer filters that refine to the job list.
+    # Aggregate facets from a bounded sample so the UI can offer filters without
+    # running multiple expensive GROUP BY queries over the full corpus.
     cluster_title_expr = func.coalesce(TitleNorm.canonical_title, JobPost.title_raw)
-    stmt_base = (
+    county_expr = func.coalesce(Location.region, Location.city, Location.raw)
+    facet_limit = 500 if is_postgres else 2000
+
+    stmt_facets = (
         select(
             JobPost.id.label("job_id"),
             cluster_title_expr.label("cluster_title"),
             Organization.name.label("org_name"),
+            TitleNorm.family.label("role_family"),
+            JobPost.seniority.label("seniority"),
+            county_expr.label("county"),
+            Organization.sector.label("sector"),
         )
         .select_from(JobPost)
         .join(Organization, Organization.id == JobPost.org_id, isouter=True)
@@ -253,92 +276,43 @@ def search_jobs(
         .where(JobPost.is_active.is_(True))
     )
     if filters:
-        stmt_base = stmt_base.where(*filters)
+        stmt_facets = stmt_facets.where(*filters)
     if q and job_text is not None:
         if ids_subq is not None:
-            stmt_base = stmt_base.where(JobPost.id.in_(select(ids_subq.c.job_id)))
+            stmt_facets = stmt_facets.where(JobPost.id.in_(select(ids_subq.c.job_id)))
         else:
-            stmt_base = stmt_base.where(job_text)
+            stmt_facets = stmt_facets.where(job_text)
+    stmt_facets = stmt_facets.order_by(JobPost.first_seen.desc()).limit(facet_limit)
 
-    # In Postgres on large datasets, bound facet aggregation to a recent sample
-    # so the planner can use the (is_active, first_seen) index scan and stop early.
-    if is_postgres:
-        facet_limit = 500
-        stmt_base = stmt_base.order_by(JobPost.first_seen.desc()).limit(facet_limit)
+    facet_rows = db.execute(stmt_facets).all()
+    clusters = Counter()
+    companies = Counter()
+    role_families = Counter()
+    seniority_buckets = Counter()
+    counties_hiring = Counter()
+    sectors_hiring = Counter()
 
-    base_subq = stmt_base.subquery()
-    clusters_rows = db.execute(
-        select(base_subq.c.cluster_title, func.count(base_subq.c.job_id))
-        .group_by(base_subq.c.cluster_title)
-        .order_by(func.count(base_subq.c.job_id).desc())
-        .limit(50)
-    ).all()
-
-    companies_rows = db.execute(
-        select(
-            base_subq.c.cluster_title,
-            base_subq.c.org_name,
-            func.count(base_subq.c.job_id),
-        )
-        .group_by(base_subq.c.cluster_title, base_subq.c.org_name)
-        .order_by(func.count(base_subq.c.job_id).desc())
-        .limit(200)
-    ).all()
-
-    role_family_rows = db.execute(
-        select(TitleNorm.family, func.count(JobPost.id))
-        .select_from(JobPost)
-        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
-        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
-        .join(Location, Location.id == JobPost.location_id, isouter=True)
-        .where(JobPost.is_active.is_(True))
-        .where(*filters)
-        .group_by(TitleNorm.family)
-        .order_by(func.count(JobPost.id).desc())
-        .limit(40)
-    ).all()
-
-    seniority_rows = db.execute(
-        select(JobPost.seniority, func.count(JobPost.id))
-        .select_from(JobPost)
-        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
-        .join(Location, Location.id == JobPost.location_id, isouter=True)
-        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
-        .where(JobPost.is_active.is_(True))
-        .where(*filters)
-        .group_by(JobPost.seniority)
-        .order_by(func.count(JobPost.id).desc())
-        .limit(20)
-    ).all()
-
-    county_rows = db.execute(
-        select(
-            func.coalesce(Location.region, Location.city, Location.raw),
-            func.count(JobPost.id),
-        )
-        .select_from(JobPost)
-        .join(Location, Location.id == JobPost.location_id, isouter=True)
-        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
-        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
-        .where(JobPost.is_active.is_(True))
-        .where(*filters)
-        .group_by(func.coalesce(Location.region, Location.city, Location.raw))
-        .order_by(func.count(JobPost.id).desc())
-        .limit(30)
-    ).all()
-
-    sector_rows = db.execute(
-        select(Organization.sector, func.count(JobPost.id))
-        .select_from(JobPost)
-        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
-        .join(Location, Location.id == JobPost.location_id, isouter=True)
-        .join(TitleNorm, TitleNorm.id == JobPost.title_norm_id, isouter=True)
-        .where(JobPost.is_active.is_(True))
-        .where(*filters)
-        .group_by(Organization.sector)
-        .order_by(func.count(JobPost.id).desc())
-        .limit(30)
-    ).all()
+    for (
+        _job_id,
+        cluster_title,
+        org_name,
+        role_family_value,
+        seniority_value,
+        county_value,
+        sector_value,
+    ) in facet_rows:
+        if cluster_title:
+            clusters[cluster_title] += 1
+        if cluster_title and org_name:
+            companies[(cluster_title, org_name)] += 1
+        if role_family_value:
+            role_families[role_family_value] += 1
+        if seniority_value:
+            seniority_buckets[seniority_value] += 1
+        if county_value:
+            counties_hiring[county_value] += 1
+        if sector_value:
+            sectors_hiring[sector_value] += 1
 
     # Apply selected refinements for the job list.
     if title:
@@ -376,23 +350,41 @@ def search_jobs(
     )
     embedding_model = os.getenv("EMBEDDING_MODEL_NAME", "e5-small-v2")
 
+    from ..db.models import JobEmbedding, JobEntities
+
+    job_ids = [jp.id for jp, _org, _loc, _title_norm in rows]
+    entities_by_job_id = {}
+    if job_ids:
+        entities_by_job_id = {
+            e.job_id: e
+            for e in db.execute(
+                select(JobEntities).where(JobEntities.job_id.in_(job_ids))
+            )
+            .scalars()
+            .all()
+        }
+
+    embeddings_by_job_id = {}
+    if job_ids and query_embedding is not None:
+        # Fetch embeddings in one query and keep the most recent per job_id.
+        emb_rows = (
+            db.execute(
+                select(JobEmbedding)
+                .where(JobEmbedding.job_id.in_(job_ids))
+                .where(JobEmbedding.model_name == embedding_model)
+                .order_by(JobEmbedding.job_id, JobEmbedding.id.desc())
+            )
+            .scalars()
+            .all()
+        )
+        for emb in emb_rows:
+            embeddings_by_job_id.setdefault(emb.job_id, emb)
+
     for jp, org, loc, title_norm in rows:
         # Calculate semantic similarity
         similarity_score = 0.0
 
-        # Get embedding from the specialized job_embeddings table
-        from ..db.models import JobEmbedding, JobEntities
-
-        emb_record = None
-        if query_embedding is not None:
-            emb_record = db.execute(
-                select(JobEmbedding)
-                .where(JobEmbedding.job_id == jp.id)
-                .where(JobEmbedding.model_name == embedding_model)
-                .order_by(JobEmbedding.id.desc())
-                .limit(1)
-            ).scalar_one_or_none()
-
+        emb_record = embeddings_by_job_id.get(jp.id)
         if query_embedding and emb_record and emb_record.vector_json:
             try:
                 # In Postgres this would be a real vector;
@@ -409,9 +401,7 @@ def search_jobs(
                 similarity_score = 0.0
 
         # Fetch entities for better explanation
-        entities = db.execute(
-            select(JobEntities).where(JobEntities.job_id == jp.id)
-        ).scalar_one_or_none()
+        entities = entities_by_job_id.get(jp.id)
 
         # Generate explanation
         why_match = generate_match_explanation(
@@ -483,18 +473,16 @@ def search_jobs(
         "offset": int(offset),
         "has_more": bool(has_more),
         "title_clusters": [
-            {"title": title_value, "count_ads": int(count or 0)}
-            for title_value, count in clusters_rows
-            if title_value
+            {"title": title_value, "count_ads": int(count)}
+            for title_value, count in clusters.most_common(50)
         ],
         "companies_hiring": [
             {
                 "title": title_value,
                 "company": company_name,
-                "count_ads": int(count or 0),
+                "count_ads": int(count),
             }
-            for title_value, company_name, count in companies_rows
-            if title_value and company_name
+            for (title_value, company_name), count in companies.most_common(200)
         ],
         "selected": {
             "title": title,
@@ -505,24 +493,20 @@ def search_jobs(
             "high_confidence_only": bool(high_confidence_only),
         },
         "role_families": [
-            {"role_family": value, "count_ads": int(count or 0)}
-            for value, count in role_family_rows
-            if value
+            {"role_family": value, "count_ads": int(count)}
+            for value, count in role_families.most_common(40)
         ],
         "seniority_buckets": [
-            {"seniority": value, "count_ads": int(count or 0)}
-            for value, count in seniority_rows
-            if value
+            {"seniority": value, "count_ads": int(count)}
+            for value, count in seniority_buckets.most_common(20)
         ],
         "counties_hiring": [
-            {"county": value, "count_ads": int(count or 0)}
-            for value, count in county_rows
-            if value
+            {"county": value, "count_ads": int(count)}
+            for value, count in counties_hiring.most_common(30)
         ],
         "sectors_hiring": [
-            {"sector": value, "count_ads": int(count or 0)}
-            for value, count in sector_rows
-            if value
+            {"sector": value, "count_ads": int(count)}
+            for value, count in sectors_hiring.most_common(30)
         ],
     }
 

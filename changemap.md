@@ -833,6 +833,15 @@
   - `backend/venv3.11/bin/ruff check .` (pass)
   - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
 
+### 2026-02-16 (OPS-DEPLOY: Postgres Search Performance Fix)
+- Root cause: `/api/search` Postgres queries were doing parallel seq scans + hash joins (slow 45-100s) due to broad `OR` predicates across `job_post` + `title_norm` columns.
+- Fix: `backend/app/services/search.py` now uses a Postgres-safe title-focused predicate (`job_post.title_raw ILIKE ... OR job_post.title_norm_id IN (SELECT title_norm.id ...)`) and computes all facets from a bounded sample (single query + Python `Counter`s) to avoid repeated expensive GROUP BY scans.
+- Also removed N+1 queries by prefetching `JobEntities` (and embeddings when enabled) with `IN (...)` queries per page.
+- Verification:
+  - `backend/venv3.11/bin/ruff format --check .` (pass)
+  - `backend/venv3.11/bin/ruff check .` (pass)
+  - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
+
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
 - (local sqlite path) Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
