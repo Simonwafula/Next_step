@@ -7,6 +7,7 @@ warnings.filterwarnings("ignore", category=NotOpenSSLWarning, module="urllib3")
 
 import argparse
 import logging
+import os
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from urllib.parse import urljoin
@@ -91,33 +92,14 @@ class SiteSpider:
         self.db.connect()
         logging.info("Starting scraper run until non-200 or empty page...")
 
+        # Keep memory stable even if a source returns an unexpectedly large page.
+        max_workers = int(os.getenv("SCRAPER_WORKERS", "5"))
+        insert_batch_size = max(int(os.getenv("SCRAPER_INSERT_BATCH_SIZE", "50")), 1)
+        content_max_chars = max(int(os.getenv("SCRAPER_CONTENT_MAX_CHARS", "50000")), 0)
+
         page = 1
-        jobs = []
-        while True:
-            if self.max_pages is not None and page > self.max_pages:
-                logging.info("Reached max_pages=%s, stopping.", self.max_pages)
-                break
-            url = self.base_url + self.list_path.format(page=page)
-            resp = self.fetch(url)
-            if not resp or resp.status_code != 200:
-                logging.info(
-                    f"Stopping at page {page} (HTTP {resp.status_code if resp else 'error'})"
-                )
-                break
-
-            html = resp.text
-            listings = list(self.parse_listings(html))
-            if not listings:
-                logging.info(f"No listings found on page {page}, stopping.")
-                break
-
-            logging.info(f"Page {page}: found {len(listings)} listings")
-            jobs.extend(listings)
-            page += 1
-
-        logging.info(
-            f"Total pages scraped: {page - 1}, total jobs collected: {len(jobs)}"
-        )
+        seen_links: set[str] = set()
+        inserted_total = 0
 
         def worker(item):
             title, link = item
@@ -127,15 +109,64 @@ class SiteSpider:
                 if resp and resp.status_code == 200
                 else ""
             )
+            if content_max_chars and len(content) > content_max_chars:
+                content = content[:content_max_chars]
             return (title, link, content)
 
-        with ThreadPoolExecutor(max_workers=5) as executor:
-            rows = list(executor.map(worker, jobs))
+        executor = ThreadPoolExecutor(max_workers=max_workers)
+        try:
+            while True:
+                if self.max_pages is not None and page > self.max_pages:
+                    logging.info("Reached max_pages=%s, stopping.", self.max_pages)
+                    break
 
-        inserted = self.db.batch_insert(rows)
+                url = self.base_url + self.list_path.format(page=page)
+                resp = self.fetch(url)
+                if not resp or resp.status_code != 200:
+                    logging.info(
+                        "Stopping at page %s (HTTP %s)",
+                        page,
+                        resp.status_code if resp else "error",
+                    )
+                    break
+
+                html = resp.text
+                listings = []
+                for title, link in self.parse_listings(html):
+                    if not link:
+                        continue
+                    if link in seen_links:
+                        continue
+                    seen_links.add(link)
+                    listings.append((title, link))
+
+                if not listings:
+                    logging.info("No listings found on page %s, stopping.", page)
+                    break
+
+                logging.info("Page %s: found %s listings", page, len(listings))
+
+                batch = []
+                for row in executor.map(worker, listings):
+                    batch.append(row)
+                    if len(batch) >= insert_batch_size:
+                        inserted_total += self.db.batch_insert(batch)
+                        batch.clear()
+                if batch:
+                    inserted_total += self.db.batch_insert(batch)
+
+                page += 1
+        finally:
+            executor.shutdown(wait=True)
+
+        logging.info(
+            "Total pages scraped: %s, unique listings: %s",
+            page - 1,
+            len(seen_links),
+        )
         self.db.close()
-        logging.info(f"Inserted {inserted} jobs into database. Scraper done.")
-        return int(inserted)
+        logging.info(f"Inserted {inserted_total} jobs into database. Scraper done.")
+        return int(inserted_total)
 
 
 def main():

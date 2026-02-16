@@ -119,8 +119,15 @@ class PostgresJobDatabase:
             raise RuntimeError("Database not connected. Call connect() first.")
 
         inserted = 0
+        seen_urls: set[str] = set()
         try:
             for title, link, content in rows:
+                link = (link or "").strip()
+                if not link:
+                    continue
+                if link in seen_urls:
+                    continue
+                seen_urls.add(link)
                 try:
                     # Check if job already exists
                     existing = (
@@ -146,7 +153,7 @@ class PostgresJobDatabase:
                     source = self.extract_domain_from_url(link)
 
                     # Create job post
-                    url = link or ""
+                    url = link
                     job_post = JobPost(
                         source=source,
                         url=url,
@@ -174,11 +181,17 @@ class PostgresJobDatabase:
 
             # Commit all changes
             self.session.commit()
+            # Avoid unbounded memory growth across many batches.
+            self.session.expunge_all()
             logging.info(f"Inserted {inserted} new jobs into PostgreSQL database.")
 
         except Exception as e:
             logging.error(f"Batch insert failed: {e}")
             self.session.rollback()
+            try:
+                self.session.expunge_all()
+            except Exception:
+                pass
             raise
 
         return inserted

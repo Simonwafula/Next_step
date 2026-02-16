@@ -851,6 +851,17 @@
   - `backend/venv3.11/bin/ruff check backend/app/services/search.py` (pass)
   - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
 
+### 2026-02-16 (OPS-DEPLOY: Scraper OOM Hardening)
+- Root cause: `nextstep-scrape.service` was OOM-killed (exit 137) when a scraper accumulated too much in-memory job content and then attempted large ORM flushes; the VPS only has ~4GB RAM.
+- Fix: `backend/app/scrapers/scraper.py` now processes listings per page and inserts results in small batches instead of materializing the full `(title, url, content)` list in memory. Added:
+  - `SCRAPER_WORKERS` (default 5), `SCRAPER_INSERT_BATCH_SIZE` (default 50), `SCRAPER_CONTENT_MAX_CHARS` (default 50000).
+  - Link de-duplication across a run to avoid duplicate URL flush failures.
+- Fix: `backend/app/scrapers/postgres_db.py` now de-dupes URLs within a batch and `expunge_all()` after commit/rollback to avoid unbounded session identity-map growth across many inserts.
+- Verification:
+  - `backend/venv3.11/bin/ruff format backend/app/scrapers/scraper.py backend/app/scrapers/postgres_db.py` (pass)
+  - `backend/venv3.11/bin/ruff check backend/app/scrapers/scraper.py backend/app/scrapers/postgres_db.py` (pass)
+  - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
+
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
 - (local sqlite path) Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
