@@ -28,6 +28,8 @@
             <nav class="nav-links">
                 <a href="index.html">Search</a>
                 <a href="dashboard.html" class="active">Dashboard</a>
+                <a href="skills-gap-scan.html">Skills gap scan</a>
+                <a href="career-pathways.html">Career pathways</a>
             </nav>
             <div class="header-actions">
                 <span class="user-chip" id="dashboardUserChip">Hello</span>
@@ -47,6 +49,30 @@
 
         <section class="dashboard" id="dashboardApp" hidden>
             <div class="container">
+
+                <!-- Dashboard Tab Navigation -->
+                <nav class="dashboard-tabs" id="dashboardTabs">
+                    <button class="dashboard-tab active" data-tab="market-fit">
+                        <span class="tab-icon">📊</span>
+                        <span class="tab-label">Market Fit</span>
+                    </button>
+                    <button class="dashboard-tab" data-tab="smart-feed">
+                        <span class="tab-icon">🎯</span>
+                        <span class="tab-label">Smart Feed</span>
+                    </button>
+                    <button class="dashboard-tab" data-tab="applications">
+                        <span class="tab-icon">📋</span>
+                        <span class="tab-label">Applications</span>
+                    </button>
+                    <button class="dashboard-tab" data-tab="plan">
+                        <span class="tab-icon">🗺️</span>
+                        <span class="tab-label">Plan & Pathways</span>
+                    </button>
+                    <button class="dashboard-tab" data-tab="profile">
+                        <span class="tab-icon">👤</span>
+                        <span class="tab-label">Profile</span>
+                    </button>
+                </nav>
 
                 <!-- Beta Program Progress (only for beta users) -->
                 <article class="panel beta-progress-panel" id="betaProgressPanel" hidden>
@@ -81,63 +107,123 @@
                     <p class="beta-reward">Your Reward: Lifetime premium access + priority support</p>
                 </article>
 
-                <!-- Quick Actions -->
-                <div class="quick-actions-grid">
-                    <button class="quick-action-card" onclick="window.location.href='index.html'">
-                        <span class="quick-action-icon">&#128269;</span>
-                        <span class="quick-action-title">Search Jobs</span>
-                        <span class="quick-action-desc">Find opportunities</span>
-                    </button>
-                    <button class="quick-action-card" onclick="window.location.href='skills-gap-scan.html'">
-                        <span class="quick-action-icon">&#129504;</span>
-                        <span class="quick-action-title">Skills Gap Scan</span>
-                        <span class="quick-action-desc">Get a 30/60/90-day plan</span>
-                    </button>
-                    <button class="quick-action-card" onclick="window.location.href='career-pathways.html'">
-                        <span class="quick-action-icon">&#128506;</span>
-                        <span class="quick-action-title">Career Pathways</span>
-                        <span class="quick-action-desc">View role roadmaps</span>
-                    </button>
-                    <button class="quick-action-card" onclick="editProfile()">
-                        <span class="quick-action-icon">&#128100;</span>
-                        <span class="quick-action-title">Edit Profile</span>
-                        <span class="quick-action-desc">Update your info</span>
-                    </button>
-                    <button class="quick-action-card" onclick="setupAlerts()">
-                        <span class="quick-action-icon">&#128276;</span>
-                        <span class="quick-action-title">Job Alerts</span>
-                        <span class="quick-action-desc">Get notified</span>
-                    </button>
-                    <button class="quick-action-card" onclick="viewActivity()">
-                        <span class="quick-action-icon">&#128200;</span>
-                        <span class="quick-action-title">My Activity</span>
-                        <span class="quick-action-desc">Track progress</span>
-                    </button>
+                <!-- ========== MARKET FIT TAB ========== -->
+                <div class="dashboard-tab-content" data-tab-content="market-fit">
+                    <h2 class="section-heading">Your Market Position</h2>
+                    <p class="section-subtitle">Understand your competitive standing and opportunities</p>
+
+                    <!-- Target Role Selector -->
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Target Roles</h3>
+                            <span class="panel-note">What are you looking for?</span>
+                        </div>
+                        <div class="panel-body" id="targetRolesSelector">
+                            <p class="panel-placeholder">Loading...</p>
+                        </div>
+                    </article>
+
+                    <!-- Match Distribution -->
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Match Distribution</h3>
+                            <span class="panel-note">How you stack up</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="match-distribution" id="matchDistribution">
+                                <div class="match-category">
+                                    <div class="match-category-header">
+                                        <span class="match-badge strong">Strong Match</span>
+                                        <span class="match-count" id="strongMatchCount">--</span>
+                                    </div>
+                                    <p class="match-category-desc">80%+ skill overlap</p>
+                                </div>
+                                <div class="match-category">
+                                    <div class="match-category-header">
+                                        <span class="match-badge close">Close Match</span>
+                                        <span class="match-count" id="closeMatchCount">--</span>
+                                    </div>
+                                    <p class="match-category-desc">60-79% skill overlap</p>
+                                </div>
+                                <div class="match-category">
+                                    <div class="match-category-header">
+                                        <span class="match-badge pivot">Pivot Role</span>
+                                        <span class="match-count" id="pivotMatchCount">--</span>
+                                    </div>
+                                    <p class="match-category-desc">40-59% skill overlap, growth opportunity</p>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Missing Skills (Ranked by Demand) -->
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Skills to Develop</h3>
+                            <span class="panel-note">Ranked by market demand</span>
+                        </div>
+                        <div class="data-list" id="missingSkillsList">
+                            <p class="panel-placeholder">Complete your profile to see personalized recommendations</p>
+                        </div>
+                    </article>
+
+                    <!-- Top Counties/Industries Hiring -->
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>Top Hiring Locations</h3>
+                                <span class="panel-note">For your target roles</span>
+                            </div>
+                            <div class="data-list" id="topCountiesList">
+                                <p class="panel-placeholder">Loading...</p>
+                            </div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>Top Hiring Industries</h3>
+                                <span class="panel-note">For your target roles</span>
+                            </div>
+                            <div class="data-list" id="topIndustriesList">
+                                <p class="panel-placeholder">Loading...</p>
+                            </div>
+                        </article>
+                    </div>
                 </div>
 
-                <div class="kpi-grid">
-                    <article class="kpi-card" data-kpi="profile">
-                        <p class="kpi-label">Profile completeness</p>
-                        <p class="kpi-value" id="profileCompleteness">--%</p>
-                        <p class="kpi-note" id="profileLocationHint">Location: --</p>
-                    </article>
-                    <article class="kpi-card" data-kpi="recommendations">
-                        <p class="kpi-label">Recommendations</p>
-                        <p class="kpi-value" id="recCount">--</p>
-                        <p class="kpi-note">Personalized matches</p>
-                    </article>
-                    <article class="kpi-card" data-kpi="saved">
-                        <p class="kpi-label">Saved roles</p>
-                        <p class="kpi-value" id="savedCount">--</p>
-                        <p class="kpi-note">Keep track of your favorites</p>
-                    </article>
-                    <article class="kpi-card" data-kpi="applications">
-                        <p class="kpi-label">Applications</p>
-                        <p class="kpi-value" id="applicationCount">--</p>
-                        <p class="kpi-note">Statuses across roles</p>
-                    </article>
-                </div>
+                <!-- ========== SMART FEED TAB ========== -->
+                <div class="dashboard-tab-content" data-tab-content="smart-feed" hidden>
+                    <h2 class="section-heading">Your Opportunities</h2>
+                    <p class="section-subtitle">Ranked by match quality and relevance</p>
 
+                    <!-- Quick Actions for this tab -->
+                    <div class="quick-actions-grid">
+                        <button class="quick-action-card" onclick="window.location.href='index.html'">
+                            <span class="quick-action-icon">&#128269;</span>
+                            <span class="quick-action-title">Search More</span>
+                            <span class="quick-action-desc">Find opportunities</span>
+                        </button>
+                        <button class="quick-action-card" onclick="refreshRecommendations()">
+                            <span class="quick-action-icon">🔄</span>
+                            <span class="quick-action-title">Refresh Feed</span>
+                            <span class="quick-action-desc">Get latest matches</span>
+                        </button>
+                    </div>
+
+                    <!-- Quick Stats -->
+                    <div class="kpi-grid">
+                        <article class="kpi-card">
+                            <p class="kpi-label">Recommendations</p>
+                            <p class="kpi-value" id="recCountFeed">--</p>
+                            <p class="kpi-note">Personalized matches</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Saved roles</p>
+                            <p class="kpi-value" id="savedCountFeed">--</p>
+                            <p class="kpi-note">Bookmarked opportunities</p>
+                        </article>
+                    </div>
+
+                    <!-- Recommendations & Saved Jobs (existing panels moved here) -->
                 <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
@@ -154,47 +240,101 @@
                         <div class="data-list" id="savedJobsList"></div>
                     </article>
                 </div>
+                </div>
 
-                <div class="dashboard-grid">
+                <!-- ========== APPLICATIONS TAB ========== -->
+                <div class="dashboard-tab-content" data-tab-content="applications" hidden>
+                    <h2 class="section-heading">Application Tracker</h2>
+                    <p class="section-subtitle">Track your job applications across stages</p>
+
+                    <!-- Application Stats -->
+                    <div class="kpi-grid">
+                        <article class="kpi-card">
+                            <p class="kpi-label">Applications</p>
+                            <p class="kpi-value" id="applicationCountApp">--</p>
+                            <p class="kpi-note">Total tracked</p>
+                        </article>
+                        <article class="kpi-card">
+                            <p class="kpi-label">Interview Rate</p>
+                            <p class="kpi-value" id="interviewRate">--%</p>
+                            <p class="kpi-note">vs market avg: --</p>
+                        </article>
+                    </div>
+
+                    <!-- Kanban Board (Placeholder for Phase 2 Task 5) -->
                     <article class="panel">
                         <div class="panel-header">
-                            <h3>Applications</h3>
-                            <span class="panel-note">Latest status updates</span>
+                            <h3>Application Stages</h3>
+                            <span class="panel-note">Drag to update status</span>
+                        </div>
+                        <div class="panel-body">
+                            <div class="kanban-board" id="applicationsKanban">
+                                <div class="kanban-column">
+                                    <h4 class="kanban-header">Saved <span class="kanban-count" id="savedStageCount">0</span></h4>
+                                    <div class="kanban-cards" data-stage="saved" id="savedStage"></div>
+                                </div>
+                                <div class="kanban-column">
+                                    <h4 class="kanban-header">Applied <span class="kanban-count" id="appliedStageCount">0</span></h4>
+                                    <div class="kanban-cards" data-stage="applied" id="appliedStage"></div>
+                                </div>
+                                <div class="kanban-column">
+                                    <h4 class="kanban-header">Interview <span class="kanban-count" id="interviewStageCount">0</span></h4>
+                                    <div class="kanban-cards" data-stage="interview" id="interviewStage"></div>
+                                </div>
+                                <div class="kanban-column">
+                                    <h4 class="kanban-header">Offer <span class="kanban-count" id="offerStageCount">0</span></h4>
+                                    <div class="kanban-cards" data-stage="offer" id="offerStage"></div>
+                                </div>
+                                <div class="kanban-column">
+                                    <h4 class="kanban-header">Rejected <span class="kanban-count" id="rejectedStageCount">0</span></h4>
+                                    <div class="kanban-cards" data-stage="rejected" id="rejectedStage"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Recent Applications List (fallback) -->
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Recent Applications</h3>
+                            <span class="panel-note">Latest updates</span>
                         </div>
                         <div class="data-list" id="applicationsList"></div>
                     </article>
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>Notifications</h3>
-                            <span class="panel-note">Recent updates</span>
-                        </div>
-                        <div class="data-list" id="notificationsList"></div>
-                    </article>
                 </div>
 
-                <!-- Profile Completion & Activity -->
+                <!-- ========== PLAN & PATHWAYS TAB ========== -->
+                <div class="dashboard-tab-content" data-tab-content="plan" hidden>
+                    <h2 class="section-heading">Career Development</h2>
+                    <p class="section-subtitle">Your roadmap to success</p>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions-grid">
+                        <button class="quick-action-card" onclick="window.location.href='skills-gap-scan.html'">
+                            <span class="quick-action-icon">&#129504;</span>
+                            <span class="quick-action-title">Skills Gap Scan</span>
+                            <span class="quick-action-desc">Get a 30/60/90-day plan</span>
+                        </button>
+                        <button class="quick-action-card" onclick="window.location.href='career-pathways.html'">
+                            <span class="quick-action-icon">&#128506;</span>
+                            <span class="quick-action-title">Career Pathways</span>
+                            <span class="quick-action-desc">View role roadmaps</span>
+                        </button>
+                    </div>
+
+                    <!-- Profile Completion Checklist (moved here) -->
                 <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
                             <h3>✅ Complete Your Profile</h3>
-                            <span class="panel-note" id="profileCompletionPct">--% complete</span>
+                            <span class="panel-note" id="profileCompletionPctPlan">--% complete</span>
                         </div>
                         <div class="data-list" id="profileChecklistList">
                             <div class="panel-placeholder">Loading checklist...</div>
                         </div>
                     </article>
-                    <article class="panel">
-                        <div class="panel-header">
-                            <h3>📈 Recent Activity</h3>
-                            <span class="panel-note">Last 7 days</span>
-                        </div>
-                        <div class="data-list" id="activityFeedList">
-                            <div class="panel-placeholder">No recent activity</div>
-                        </div>
-                    </article>
-                </div>
 
-                <!-- Career Momentum Tracker -->
+                    <!-- Career Momentum Tracker (moved here) -->
                 <article class="panel momentum-panel">
                     <div class="panel-header">
                         <h3>Career Momentum</h3>
@@ -227,7 +367,108 @@
                         <div class="data-list" id="roleEvolutionList"></div>
                     </article>
                 </div>
+                </div>
 
+                <!-- ========== PROFILE TAB ========== -->
+                <div class="dashboard-tab-content" data-tab-content="profile" hidden>
+                    <h2 class="section-heading">Your Profile</h2>
+                    <p class="section-subtitle">Manage your account and preferences</p>
+
+                    <!-- Profile Stats -->
+                    <div class="kpi-grid">
+                        <article class="kpi-card">
+                            <p class="kpi-label">Profile completeness</p>
+                            <p class="kpi-value" id="profileCompleteness">--%</p>
+                            <p class="kpi-note" id="profileLocationHint">Location: --</p>
+                        </article>
+                    </div>
+
+                    <!-- Inline Profile Edit Form -->
+                    <article class="panel" id="profileEditPanel">
+                        <div class="panel-header">
+                            <h3>Edit your profile</h3>
+                            <span class="panel-note" id="profileSaveStatus"></span>
+                        </div>
+                        <div class="panel-body">
+                            <form id="profileEditForm" class="auth-form">
+                                <label class="field-label" for="profileFullName">Full name</label>
+                                <input type="text" id="profileFullName" placeholder="Your full name">
+
+                                <label class="field-label" for="profileCurrentRole">Current or target role</label>
+                                <input type="text" id="profileCurrentRole" placeholder="e.g. Data Analyst">
+
+                                <label class="field-label" for="profileExperience">Experience level</label>
+                                <select id="profileExperience">
+                                    <option value="">Select level</option>
+                                    <option value="entry">Entry level</option>
+                                    <option value="mid">Mid-level</option>
+                                    <option value="senior">Senior</option>
+                                    <option value="executive">Executive</option>
+                                </select>
+
+                                <label class="field-label" for="profileEducation">Education</label>
+                                <input type="text" id="profileEducation" placeholder="e.g. BSc Computer Science">
+
+                                <label class="field-label" for="profileSkillsInput">Top skills (comma separated)</label>
+                                <input type="text" id="profileSkillsInput" placeholder="e.g. Python, Excel, Communication">
+
+                                <label class="field-label" for="profileLocation">Preferred location</label>
+                                <input type="text" id="profileLocation" list="profileLocationList" placeholder="e.g. Nairobi">
+                                <datalist id="profileLocationList">
+                                    <option value="Nairobi"></option>
+                                    <option value="Mombasa"></option>
+                                    <option value="Kisumu"></option>
+                                    <option value="Nakuru"></option>
+                                    <option value="Remote"></option>
+                                    <option value="Global"></option>
+                                </datalist>
+
+                                <label class="field-label" for="profileCareerGoals">Career goals</label>
+                                <input type="text" id="profileCareerGoals" placeholder="e.g. Move into management in 2 years">
+
+                                <label class="field-label" for="profileLinkedin">LinkedIn URL</label>
+                                <input type="url" id="profileLinkedin" placeholder="https://linkedin.com/in/yourname">
+
+                                <button class="solid-btn" type="submit" id="profileSaveBtn">Save profile</button>
+                            </form>
+                        </div>
+                    </article>
+
+                    <!-- Quick Actions -->
+                    <div class="quick-actions-grid">
+                        <button class="quick-action-card" onclick="setupAlerts()">
+                            <span class="quick-action-icon">&#128276;</span>
+                            <span class="quick-action-title">Job Alerts</span>
+                            <span class="quick-action-desc">Jump to notifications</span>
+                        </button>
+                        <button class="quick-action-card" onclick="viewActivity()">
+                            <span class="quick-action-icon">&#128200;</span>
+                            <span class="quick-action-title">My Activity</span>
+                            <span class="quick-action-desc">Track progress</span>
+                        </button>
+                    </div>
+
+                    <!-- Activity & Notifications -->
+                    <div class="dashboard-grid">
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>📈 Recent Activity</h3>
+                                <span class="panel-note">Last 7 days</span>
+                            </div>
+                            <div class="data-list" id="activityFeedList">
+                                <div class="panel-placeholder">No recent activity</div>
+                            </div>
+                        </article>
+                        <article class="panel">
+                            <div class="panel-header">
+                                <h3>Notifications</h3>
+                                <span class="panel-note">Recent updates</span>
+                            </div>
+                            <div class="data-list" id="notificationsList"></div>
+                        </article>
+                    </div>
+
+                    <!-- Career Advice (Pro Feature) -->
                 <div class="dashboard-grid">
                     <article class="panel" data-paid-only>
                         <div class="panel-header">
@@ -252,6 +493,9 @@
                         </div>
                     </article>
                 </div>
+                </div>
+                <!-- End Profile Tab -->
+
             </div>
         </section>
 

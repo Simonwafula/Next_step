@@ -132,9 +132,7 @@ const setAuthState = (user) => {
         if (adminMenuLink) adminMenuLink.hidden = !user.is_admin;
         if (guidedModeWrap) {
             guidedModeWrap.hidden = false;
-            if (currentGuidedMode === 'jobs') {
-                setGuidedMode('explore', { refresh: false });
-            }
+            // Keep the user's current mode — don't silently switch it on login
         }
     } else {
         authActions.hidden = false;
@@ -683,6 +681,79 @@ form.addEventListener('submit', (event) => {
 focusSearchBtn.addEventListener('click', () => {
     searchInput.focus();
 });
+
+// High-confidence toggle
+const highConfidenceToggle = document.getElementById('highConfidenceToggle');
+if (highConfidenceToggle) {
+    highConfidenceToggle.addEventListener('change', () => {
+        highConfidenceOnly = highConfidenceToggle.checked;
+        if (searchInput.value.trim()) {
+            fetchResults();
+        }
+    });
+}
+
+// Load trending chips
+const loadTrendingChips = async () => {
+    try {
+        const response = await fetch(`${apiBase}/trending`);
+        if (!response.ok) return;
+        const data = await response.json();
+
+        const trendingChipsContainer = document.getElementById('trendingChips');
+        if (!trendingChipsContainer) return;
+
+        trendingChipsContainer.innerHTML = '';
+
+        // Add top 3 roles
+        if (data.top_roles && data.top_roles.length > 0) {
+            data.top_roles.slice(0, 3).forEach(role => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'chip';
+                btn.dataset.query = role.name;
+                btn.textContent = `${role.name} (${role.count})`;
+                trendingChipsContainer.appendChild(btn);
+            });
+        }
+
+        // Add remote jobs if count > 0
+        if (data.remote_jobs && data.remote_jobs > 0) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.className = 'chip';
+            btn.dataset.query = 'Remote jobs';
+            btn.textContent = `Remote (${data.remote_jobs})`;
+            trendingChipsContainer.appendChild(btn);
+        }
+
+        // Add top 3 skills
+        if (data.top_skills && data.top_skills.length > 0) {
+            data.top_skills.slice(0, 3).forEach(skill => {
+                const btn = document.createElement('button');
+                btn.type = 'button';
+                btn.className = 'chip';
+                btn.dataset.query = skill.name;
+                btn.textContent = skill.name;
+                trendingChipsContainer.appendChild(btn);
+            });
+        }
+
+        // Re-attach click handlers to new chips
+        const newChips = trendingChipsContainer.querySelectorAll('.chip');
+        newChips.forEach((chip) => {
+            chip.addEventListener('click', () => {
+                searchInput.value = chip.dataset.query || '';
+                fetchResults();
+            });
+        });
+    } catch (error) {
+        console.error('Failed to load trending data:', error);
+    }
+};
+
+// Load trending chips on page load
+loadTrendingChips();
 
 const chips = document.querySelectorAll('.chips .chip');
 chips.forEach((chip) => {
