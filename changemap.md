@@ -229,11 +229,11 @@
   - [x] (T-DS-952) Build candidate-to-job scoring service (verified skills + evidence + fit) — `backend/app/services/prescreening.py`: weighted composite of `verified_skill_score` (0.55), `evidence_score` (0.30), `profile_score` (0.15)
   - [x] (T-DS-953) Build shortlist API + explanation bundles — `backend/app/api/employer_routes.py`: GET candidates, POST shortlist, GET/list shortlists with explanation bundles
   - [x] (T-DS-954) Attach intelligence sidecars to shortlists — `build_intelligence_sidecar()` pulls `RoleSkillBaseline`, `RoleDemandSnapshot`, `MetricsDaily` into every shortlist/candidate response
-- [ ] (T-DS-960) Phase 5: Feedback loops + outcome learning
-  - [ ] (T-DS-961) Add employer quick-rating taxonomy and capture flow
-  - [ ] (T-DS-962) Build candidate-facing rejection feedback generator
-  - [ ] (T-DS-963) Feed outcomes back into ranking / matching
-  - [ ] (T-DS-964) Feed outcomes back into intelligence products and reports
+- [x] (T-DS-960) Phase 5: Feedback loops + outcome learning
+  - [x] (T-DS-961) Add employer quick-rating taxonomy and capture flow — `EmployerCandidateRating` model + migration `e5f6a7b8c9d0` + POST/GET `/api/employer/ratings`
+  - [x] (T-DS-962) Build candidate-facing rejection feedback generator — `backend/app/services/feedback.py`: template-driven feedback + skills_to_develop from `RoleSkillBaseline`; exposed via GET `/api/users/applications/{id}/feedback`
+  - [x] (T-DS-963) Feed outcomes back into ranking / matching — `ranking_trainer.py` extended with `_collect_from_funnel_events()`: hired/offered → positive, employer-rejected → negative; employer ratings strong_yes/yes → positive, no/strong_no → negative
+  - [x] (T-DS-964) Feed outcomes back into intelligence products and reports — `backend/app/services/outcome_intelligence.py`: rejection patterns, hiring outcomes, rating sentiment by role family; exposed via GET `/api/admin/outcome-intelligence`
 - [ ] (T-DS-970) Phase 6: Production-grade intelligence products
   - [ ] (T-DS-971) Build confidence-aware analytics APIs and baseline refresh hardening
   - [ ] (T-DS-972) Build report-grade datasets/templates for universities, employers, counties, and training providers

@@ -987,6 +987,71 @@ class AssessmentSessionAnswer(Base):
 
 
 # ---------------------------------------------------------------------------
+# T-DS-961: Employer quick-rating taxonomy
+# ---------------------------------------------------------------------------
+
+# Quick sentiment ratings an employer can attach to a candidate review
+EMPLOYER_RATING_SENTIMENTS = ["strong_yes", "yes", "maybe", "no", "strong_no"]
+
+# Reasons an employer provides alongside a rating (overlaps rejection taxonomy)
+EMPLOYER_RATING_REASONS = [
+    "skills_mismatch",
+    "experience_insufficient",
+    "education_mismatch",
+    "location_mismatch",
+    "salary_mismatch",
+    "role_filled",
+    "over_qualified",
+    "culture_fit",
+    "strong_technical_fit",
+    "good_communication",
+    "relevant_experience",
+    "great_portfolio",
+    "other",
+]
+
+
+class EmployerCandidateRating(Base):
+    """Structured quick-rating an employer attaches to a candidate for a job.
+
+    Distinct from ApplicationFunnelEvent: ratings capture the employer's
+    subjective assessment after reviewing a shortlist entry. They feed back
+    into ranking (T-DS-963) and intelligence (T-DS-964).
+    """
+
+    __tablename__ = "employer_candidate_rating"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employer_account_id: Mapped[int] = mapped_column(
+        ForeignKey("employer_account.id"), index=True
+    )
+    rated_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    candidate_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), index=True)
+
+    # One of EMPLOYER_RATING_SENTIMENTS
+    sentiment: Mapped[str] = mapped_column(String(30), index=True)
+    # One of EMPLOYER_RATING_REASONS (nullable — sentiment-only ratings allowed)
+    reason: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    # Free-text comment
+    comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Funnel stage at the time of rating (e.g. "shortlisted", "interviewed")
+    stage_at_rating: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    rated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+
+    __table_args__ = (
+        Index(
+            "idx_ecr_employer_candidate_job",
+            "employer_account_id",
+            "candidate_user_id",
+            "job_post_id",
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
 # T-DS-951: Employer / recruiter account and permissions model
 # ---------------------------------------------------------------------------
 

@@ -1,4 +1,4 @@
-"""T-DS-953/954: Employer-side pre-screening API.
+"""T-DS-953/954/961: Employer-side pre-screening API.
 
 Endpoints
 ---------
@@ -14,6 +14,12 @@ GET  /api/employer/shortlists/{shortlist_id}
 
 GET  /api/employer/shortlists
     List all shortlists owned by the caller's employer account.
+
+POST /api/employer/ratings
+    Submit a quick-rating for a candidate on a job (T-DS-961).
+
+GET  /api/employer/ratings
+    List ratings submitted by this employer account (T-DS-961).
 """
 
 from __future__ import annotations
@@ -30,7 +36,10 @@ from ..db.models import (
     CandidateShortlist,
     CandidateShortlistEntry,
     EmployerAccount,
+    EmployerCandidateRating,
     EmployerUser,
+    EMPLOYER_RATING_SENTIMENTS,
+    EMPLOYER_RATING_REASONS,
     JobApplication,
     JobPost,
     TitleNorm,
@@ -314,5 +323,107 @@ def list_shortlists(
                 "created_at": s.created_at.isoformat(),
             }
             for s in rows
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# T-DS-961: Employer quick-rating capture
+# ---------------------------------------------------------------------------
+
+
+class RatingCreateRequest(BaseModel):
+    candidate_user_id: int
+    job_post_id: int
+    sentiment: str
+    reason: str | None = None
+    comment: str | None = None
+    stage_at_rating: str | None = None
+
+
+@router.post("/ratings", status_code=status.HTTP_201_CREATED)
+def submit_rating(
+    body: RatingCreateRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """Submit a quick employer rating for a candidate on a job.
+
+    sentiment must be one of: strong_yes, yes, maybe, no, strong_no.
+    reason (optional) must be one of EMPLOYER_RATING_REASONS.
+    """
+    employer = _get_employer_account(current_user, db)
+
+    if body.sentiment not in EMPLOYER_RATING_SENTIMENTS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid sentiment. Must be one of: {EMPLOYER_RATING_SENTIMENTS}",
+        )
+    if body.reason and body.reason not in EMPLOYER_RATING_REASONS:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"Invalid reason. Must be one of: {EMPLOYER_RATING_REASONS}",
+        )
+
+    rating = EmployerCandidateRating(
+        employer_account_id=employer.id,
+        rated_by_user_id=current_user.id,
+        candidate_user_id=body.candidate_user_id,
+        job_post_id=body.job_post_id,
+        sentiment=body.sentiment,
+        reason=body.reason,
+        comment=body.comment,
+        stage_at_rating=body.stage_at_rating,
+    )
+    db.add(rating)
+    db.commit()
+    db.refresh(rating)
+
+    return {
+        "id": rating.id,
+        "candidate_user_id": rating.candidate_user_id,
+        "job_post_id": rating.job_post_id,
+        "sentiment": rating.sentiment,
+        "reason": rating.reason,
+        "rated_at": rating.rated_at.isoformat(),
+    }
+
+
+@router.get("/ratings")
+def list_ratings(
+    job_post_id: int | None = Query(default=None),
+    candidate_user_id: int | None = Query(default=None),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+) -> dict:
+    """List ratings submitted by this employer account."""
+    employer = _get_employer_account(current_user, db)
+
+    stmt = select(EmployerCandidateRating).where(
+        EmployerCandidateRating.employer_account_id == employer.id
+    )
+    if job_post_id is not None:
+        stmt = stmt.where(EmployerCandidateRating.job_post_id == job_post_id)
+    if candidate_user_id is not None:
+        stmt = stmt.where(
+            EmployerCandidateRating.candidate_user_id == candidate_user_id
+        )
+    stmt = stmt.order_by(EmployerCandidateRating.rated_at.desc())
+
+    rows = db.execute(stmt).scalars().all()
+    return {
+        "employer_account_id": employer.id,
+        "ratings": [
+            {
+                "id": r.id,
+                "candidate_user_id": r.candidate_user_id,
+                "job_post_id": r.job_post_id,
+                "sentiment": r.sentiment,
+                "reason": r.reason,
+                "comment": r.comment,
+                "stage_at_rating": r.stage_at_rating,
+                "rated_at": r.rated_at.isoformat(),
+            }
+            for r in rows
         ],
     }
