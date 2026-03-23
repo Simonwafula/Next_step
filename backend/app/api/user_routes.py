@@ -14,6 +14,11 @@ from ..services.matching_service import (
 )
 from ..services.skills_gap_service import skills_gap_service
 from ..services.subscription_service import subscription_service
+from ..services.candidate_evidence_service import (
+    add_evidence,
+    ingest_cv_data,
+    get_evidence,
+)
 from ..db.models import (
     User,
     SavedJob,
@@ -812,3 +817,89 @@ async def get_momentum_data(
         )
 
     return {"days": days}
+
+
+# ---------------------------------------------------------------------------
+# T-DS-932: Candidate evidence endpoints
+# ---------------------------------------------------------------------------
+
+_VALID_EVIDENCE_TYPES = {
+    "portfolio_item",
+    "project",
+    "work_sample",
+    "gig",
+    "informal_work",
+    "certification",
+}
+
+
+class EvidenceSubmitRequest(BaseModel):
+    evidence_type: str
+    title: str
+    description: str | None = None
+    url: str | None = None
+    skills_demonstrated: list[str] = []
+    start_date: str | None = None
+    end_date: str | None = None
+
+
+@router.post("/evidence")
+async def submit_evidence(
+    request: EvidenceSubmitRequest,
+    current_user: User = Depends(require_subscription("professional")),
+    db: Session = Depends(get_db),
+):
+    """Submit a candidate evidence item (self-reported)."""
+    if request.evidence_type not in _VALID_EVIDENCE_TYPES:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f"evidence_type must be one of: {sorted(_VALID_EVIDENCE_TYPES)}",
+        )
+    item = add_evidence(
+        user_id=current_user.id,
+        evidence_type=request.evidence_type,
+        title=request.title,
+        description=request.description,
+        url=request.url,
+        skills_demonstrated=request.skills_demonstrated,
+        start_date=request.start_date,
+        end_date=request.end_date,
+        source="self_reported",
+        provenance_confidence=0.5,
+        db=db,
+    )
+    return {
+        "id": item.id,
+        "evidence_type": item.evidence_type,
+        "title": item.title,
+        "source": item.source,
+        "created_at": item.created_at.isoformat(),
+    }
+
+
+@router.get("/evidence")
+async def list_evidence(
+    current_user: User = Depends(require_subscription("professional")),
+    db: Session = Depends(get_db),
+):
+    """List all evidence items for the authenticated user."""
+    return {"evidence": get_evidence(current_user.id, db)}
+
+
+@router.post("/evidence/ingest-cv")
+async def ingest_cv_evidence(
+    current_user: User = Depends(require_subscription("professional")),
+    db: Session = Depends(get_db),
+):
+    """Extract evidence items from the user's stored cv_data.
+
+    Idempotent — safe to call multiple times; duplicate titles are skipped.
+    """
+    created = ingest_cv_data(current_user.id, db)
+    return {
+        "extracted": len(created),
+        "items": [
+            {"id": i.id, "evidence_type": i.evidence_type, "title": i.title}
+            for i in created
+        ],
+    }

@@ -787,3 +787,93 @@ class ApplicationFunnelEvent(Base):
     )
 
     __table_args__ = (Index("idx_funnel_event_app_stage", "application_id", "stage"),)
+
+
+# ---------------------------------------------------------------------------
+# T-DS-931: Candidate evidence schema
+# ---------------------------------------------------------------------------
+
+
+class CandidateEvidence(Base):
+    """Structured evidence items attached to a candidate's profile.
+
+    Covers portfolio items, projects, work samples, gig/informal work,
+    and certifications. Populated via CV ingestion (T-DS-932) or manual entry.
+    """
+
+    __tablename__ = "candidate_evidence"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+
+    # evidence_type: portfolio_item | project | work_sample | gig | informal_work | certification
+    evidence_type: Mapped[str] = mapped_column(String(60), index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    url: Mapped[str | None] = mapped_column(Text, nullable=True)
+
+    # Skills this evidence demonstrates, stored as list of skill name strings
+    skills_demonstrated: Mapped[list] = mapped_column(JSONB, default=list)
+
+    # Optional date range for the evidence (e.g. employment period, project dates)
+    start_date: Mapped[str | None] = mapped_column(String(20), nullable=True)  # YYYY-MM
+    end_date: Mapped[str | None] = mapped_column(
+        String(20), nullable=True
+    )  # YYYY-MM or "present"
+
+    # source tracks how this item entered the system
+    source: Mapped[str] = mapped_column(
+        String(60), default="self_reported", server_default="self_reported"
+    )
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    provenance: Mapped[List["VerificationProvenance"]] = relationship(
+        "VerificationProvenance",
+        back_populates="evidence",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index("idx_candidate_evidence_user_type", "user_id", "evidence_type"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-933: Verification provenance schema
+# ---------------------------------------------------------------------------
+
+
+class VerificationProvenance(Base):
+    """Tracks how an evidence item was verified and its confidence metadata.
+
+    Linked to CandidateEvidence. Supports multiple provenance records per
+    evidence item (e.g. self-reported then later assessment-verified).
+    """
+
+    __tablename__ = "verification_provenance"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    evidence_id: Mapped[int] = mapped_column(
+        ForeignKey("candidate_evidence.id"), index=True
+    )
+
+    # source: self_reported | cv_extracted | assessment_verified | employer_confirmed
+    evidence_source: Mapped[str] = mapped_column(String(60), index=True)
+
+    # Version of the assessment or extraction pipeline that produced this record
+    assessment_version: Mapped[str | None] = mapped_column(String(60), nullable=True)
+
+    confidence: Mapped[float] = mapped_column(Float, default=0.5)
+
+    # ISO date string (YYYY-MM-DD) after which this provenance record expires
+    expiry_date: Mapped[str | None] = mapped_column(String(20), nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    evidence: Mapped["CandidateEvidence"] = relationship(
+        "CandidateEvidence", back_populates="provenance"
+    )
