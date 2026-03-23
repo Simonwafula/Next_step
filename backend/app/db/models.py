@@ -984,3 +984,168 @@ class AssessmentSessionAnswer(Base):
     session: Mapped["AssessmentSession"] = relationship(
         "AssessmentSession", back_populates="answers"
     )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-951: Employer / recruiter account and permissions model
+# ---------------------------------------------------------------------------
+
+
+class EmployerAccount(Base):
+    """An employer or recruiting organisation registered on the platform.
+
+    Linked to an existing Organization record.  Holds the employer-side
+    subscription plan and verification status.
+    """
+
+    __tablename__ = "employer_account"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    org_id: Mapped[int] = mapped_column(
+        ForeignKey("organization.id"), unique=True, index=True
+    )
+
+    # plan: free | starter | growth | enterprise
+    plan: Mapped[str] = mapped_column(
+        String(30), default="free", server_default="free", index=True
+    )
+    is_verified: Mapped[bool] = mapped_column(Boolean, default=False)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, onupdate=datetime.utcnow
+    )
+
+    users: Mapped[List["EmployerUser"]] = relationship(
+        "EmployerUser", back_populates="employer_account", cascade="all, delete-orphan"
+    )
+    shortlists: Mapped[List["CandidateShortlist"]] = relationship(
+        "CandidateShortlist",
+        back_populates="employer_account",
+        cascade="all, delete-orphan",
+    )
+
+
+class EmployerUser(Base):
+    """Junction between a User and an EmployerAccount with a scoped role.
+
+    role: admin | recruiter | viewer
+    """
+
+    __tablename__ = "employer_user"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employer_account_id: Mapped[int] = mapped_column(
+        ForeignKey("employer_account.id"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+
+    # role: admin | recruiter | viewer
+    role: Mapped[str] = mapped_column(
+        String(30), default="recruiter", server_default="recruiter"
+    )
+    is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    employer_account: Mapped["EmployerAccount"] = relationship(
+        "EmployerAccount", back_populates="users"
+    )
+
+    __table_args__ = (
+        Index(
+            "idx_employer_user_account_user",
+            "employer_account_id",
+            "user_id",
+            unique=True,
+        ),
+    )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-953: Candidate shortlist (saved pre-screening results)
+# ---------------------------------------------------------------------------
+
+
+class CandidateShortlist(Base):
+    """A named shortlist of pre-screened candidates for a specific job.
+
+    Created by an employer user; stores the job context and metadata.
+    Entries are stored in CandidateShortlistEntry.
+    """
+
+    __tablename__ = "candidate_shortlist"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    employer_account_id: Mapped[int] = mapped_column(
+        ForeignKey("employer_account.id"), index=True
+    )
+    created_by_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), index=True)
+
+    name: Mapped[str] = mapped_column(String(255), default="Shortlist")
+    # status: draft | active | archived
+    status: Mapped[str] = mapped_column(
+        String(30), default="active", server_default="active", index=True
+    )
+
+    # Intelligence sidecar attached at creation time (T-DS-954)
+    intelligence_sidecar: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    employer_account: Mapped["EmployerAccount"] = relationship(
+        "EmployerAccount", back_populates="shortlists"
+    )
+    entries: Mapped[List["CandidateShortlistEntry"]] = relationship(
+        "CandidateShortlistEntry",
+        back_populates="shortlist",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (
+        Index("idx_shortlist_employer_job", "employer_account_id", "job_post_id"),
+    )
+
+
+class CandidateShortlistEntry(Base):
+    """One scored candidate within a CandidateShortlist.
+
+    Stores the full score breakdown and explanation bundle produced by the
+    prescreening service (T-DS-952).
+    """
+
+    __tablename__ = "candidate_shortlist_entry"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    shortlist_id: Mapped[int] = mapped_column(
+        ForeignKey("candidate_shortlist.id"), index=True
+    )
+    candidate_user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+
+    # Overall fit score [0, 1]
+    overall_score: Mapped[float] = mapped_column(Float, default=0.0)
+
+    # Component scores stored as JSON {skill_score, evidence_score, profile_score}
+    score_breakdown: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    # Human-readable explanation bundle
+    explanation: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    # rank within this shortlist (1 = best)
+    rank: Mapped[int | None] = mapped_column(Integer, nullable=True)
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    shortlist: Mapped["CandidateShortlist"] = relationship(
+        "CandidateShortlist", back_populates="entries"
+    )
+
+    __table_args__ = (
+        Index(
+            "idx_shortlist_entry_shortlist_candidate",
+            "shortlist_id",
+            "candidate_user_id",
+            unique=True,
+        ),
+    )

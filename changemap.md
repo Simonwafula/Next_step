@@ -224,11 +224,11 @@
   - [ ] (T-DS-943) Add percentile / calibration logic and assessment versioning
   - [ ] (T-DS-944) Build employer-visible verification summaries and evidence bundles
   - [ ] (T-DS-945) Add requirement-extraction QA for verification launch families
-- [ ] (T-DS-950) Phase 4: Employer-side pre-screening ("The 20")
-  - [ ] (T-DS-951) Add employer / recruiter account and permissions model
-  - [ ] (T-DS-952) Build candidate-to-job scoring service (verified skills + evidence + fit)
-  - [ ] (T-DS-953) Build shortlist API + explanation bundles
-  - [ ] (T-DS-954) Attach intelligence sidecars to shortlists (`required skills`, `demand`, `salary`, `confidence`)
+- [x] (T-DS-950) Phase 4: Employer-side pre-screening ("The 20")
+  - [x] (T-DS-951) Add employer / recruiter account and permissions model — `EmployerAccount`, `EmployerUser`, `CandidateShortlist`, `CandidateShortlistEntry` models + Alembic migration `d4e5f6a7b8c9`
+  - [x] (T-DS-952) Build candidate-to-job scoring service (verified skills + evidence + fit) — `backend/app/services/prescreening.py`: weighted composite of `verified_skill_score` (0.55), `evidence_score` (0.30), `profile_score` (0.15)
+  - [x] (T-DS-953) Build shortlist API + explanation bundles — `backend/app/api/employer_routes.py`: GET candidates, POST shortlist, GET/list shortlists with explanation bundles
+  - [x] (T-DS-954) Attach intelligence sidecars to shortlists — `build_intelligence_sidecar()` pulls `RoleSkillBaseline`, `RoleDemandSnapshot`, `MetricsDaily` into every shortlist/candidate response
 - [ ] (T-DS-960) Phase 5: Feedback loops + outcome learning
   - [ ] (T-DS-961) Add employer quick-rating taxonomy and capture flow
   - [ ] (T-DS-962) Build candidate-facing rejection feedback generator
