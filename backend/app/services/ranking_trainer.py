@@ -1,8 +1,17 @@
 """Training pipeline for learned ranking model.
 
 Trains a classification-based ranker on implicit feedback from user
-interactions (apply clicks). Positive labels from UserAnalytics events,
-negative labels from random sampling of non-clicked jobs.
+interactions (apply clicks from UserAnalytics) cross-joined with the
+serve-time context captured in SearchServingLog (T-DS-916).
+
+Positive examples: jobs that a user applied to, joined with the
+  SearchServingLog row from the session that surfaced the job.
+Negative examples: jobs that appeared in the same search session but
+  were *not* applied to (shown-but-not-clicked signals).
+
+Fallback: when no SearchServingLog rows exist (e.g. fresh deployment),
+  the trainer falls back to job attributes only — without synthetic
+  similarity placeholders.
 """
 
 import logging
@@ -13,7 +22,7 @@ import numpy as np
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import Session
 
-from ..db.models import UserAnalytics, JobPost
+from ..db.models import UserAnalytics, JobPost, SearchServingLog
 from .ranking import (
     RankingModel,
     extract_ranking_features,
@@ -23,22 +32,156 @@ from .ranking import (
 logger = logging.getLogger(__name__)
 
 
+def _build_result_dict(job: JobPost, score: float, query: str) -> dict[str, Any]:
+    """Build the result dict that extract_ranking_features expects."""
+    # Load skills from job attributes if available
+    skills: list = []
+    return {
+        "id": job.id,
+        "title": job.title_raw,
+        "description": job.description_clean or job.description_raw or "",
+        "similarity_score": score * 100.0,  # feature extractor normalises /100
+        "first_seen": job.first_seen,
+        "seniority": job.seniority or "",
+        "location": str(job.location_id or ""),
+        "salary_min": job.salary_min,
+        "salary_range": (
+            f"{job.salary_min}-{job.salary_max}" if job.salary_min else None
+        ),
+        "skills": skills,
+    }
+
+
+def _collect_from_serving_log(
+    db: Session,
+    apply_job_ids: set[int],
+    session_queries: dict[str, str],
+    cutoff: datetime,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Derive positive/negative examples from SearchServingLog.
+
+    Positive: (job_id, session) pair where job was applied to.
+    Negative: jobs shown in the same session that were NOT applied to.
+    """
+    stmt = (
+        select(SearchServingLog)
+        .where(SearchServingLog.served_at > cutoff)
+        .order_by(SearchServingLog.served_at.desc())
+        .limit(5000)
+    )
+    log_rows = db.execute(stmt).scalars().all()
+
+    if not log_rows:
+        return [], []
+
+    # Index serving log rows by session_id for fast lookup
+    session_logs: dict[str, list[SearchServingLog]] = {}
+    for row in log_rows:
+        sid = row.session_id or str(row.id)
+        session_logs.setdefault(sid, []).append(row)
+
+    positive_features: list[np.ndarray] = []
+    negative_features: list[np.ndarray] = []
+
+    for log_row in log_rows:
+        job_ids = log_row.result_job_ids or []
+        scores = log_row.result_scores or []
+        query = log_row.query or ""
+
+        # Build score lookup for this serving event
+        score_map: dict[int, float] = {}
+        for i, jid in enumerate(job_ids):
+            score_map[int(jid)] = float(scores[i]) if i < len(scores) else 0.0
+
+        # Pre-fetch jobs in this candidate set
+        if not job_ids:
+            continue
+        jobs_in_log = {
+            j.id: j
+            for j in db.execute(
+                select(JobPost).where(JobPost.id.in_([int(x) for x in job_ids]))
+            )
+            .scalars()
+            .all()
+        }
+
+        for jid_raw in job_ids:
+            jid = int(jid_raw)
+            job = jobs_in_log.get(jid)
+            if not job:
+                continue
+            score = score_map.get(jid, 0.0)
+            result = _build_result_dict(job, score, query)
+            feat = extract_ranking_features(result, query)
+            if jid in apply_job_ids:
+                positive_features.append(feat)
+            else:
+                negative_features.append(feat)
+
+    return positive_features, negative_features
+
+
+def _collect_fallback(
+    db: Session,
+    apply_events: list,
+    cutoff: datetime,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Fallback when no SearchServingLog data exists.
+
+    Uses job attributes only — no synthetic similarity placeholders.
+    """
+    positive_features: list[np.ndarray] = []
+    applied_job_ids: set[int] = set()
+
+    for event in apply_events:
+        job_id = event.event_data.get("job_id")
+        if not job_id:
+            continue
+        job = db.execute(
+            select(JobPost).where(JobPost.id == job_id)
+        ).scalar_one_or_none()
+        if not job:
+            continue
+        applied_job_ids.add(job_id)
+        # Use 0.0 similarity — no search context available; recency + salary
+        # + seniority features still carry signal.
+        result = _build_result_dict(job, score=0.0, query="")
+        positive_features.append(extract_ranking_features(result, ""))
+
+    # Negatives: random recent jobs not applied to
+    neg_stmt = (
+        select(JobPost)
+        .where(
+            and_(
+                JobPost.first_seen > cutoff,
+                JobPost.id.notin_(applied_job_ids) if applied_job_ids else True,
+            )
+        )
+        .order_by(func.random())
+        .limit(max(len(positive_features) * 2, 20))
+    )
+    neg_features: list[np.ndarray] = []
+    for job in db.execute(neg_stmt).scalars().all():
+        result = _build_result_dict(job, score=0.0, query="")
+        neg_features.append(extract_ranking_features(result, ""))
+
+    return positive_features, neg_features
+
+
 def collect_training_data(
     db: Session, days_back: int = 30, min_positives: int = 10
 ) -> tuple[np.ndarray, np.ndarray] | None:
-    """Collect training data from user interactions.
+    """Collect training data from user interactions and serve-time logs.
 
-    Args:
-        db: Database session
-        days_back: How many days of history to use
-        min_positives: Minimum positive examples required
+    Strategy:
+      1. Load apply events from UserAnalytics (positive signal source).
+      2. Try to join with SearchServingLog for real serve-time features.
+      3. Fall back to job-attributes-only features if no log data exists.
 
-    Returns:
-        (features, labels) tuple or None if insufficient data
+    Returns (features, labels) or None when data is insufficient.
     """
     cutoff = datetime.utcnow() - timedelta(days=days_back)
 
-    # Get apply events (positive signals)
     stmt_apply = (
         select(UserAnalytics)
         .where(
@@ -57,78 +200,39 @@ def collect_training_data(
         )
         return None
 
-    # Extract positive examples
-    positive_features = []
-    for event in apply_events:
-        job_id = event.event_data.get("job_id")
-        if not job_id:
-            continue
-
-        # Fetch job details
-        job = db.execute(
-            select(JobPost).where(JobPost.id == job_id)
-        ).scalar_one_or_none()
-        if not job:
-            continue
-
-        # Reconstruct search context (approximation)
-        # In production, you'd log search queries with results
-        query = ""  # Placeholder - would come from search log
-        user_context = {}
-
-        # Build result dict for feature extraction
-        result = {
-            "id": job.id,
-            "title": job.title_raw,
-            "similarity_score": 70.0,  # Placeholder
-            "seniority": job.seniority,
-            "location": job.location_id,  # Simplified
-            "salary_range": (
-                f"{job.salary_min}-{job.salary_max}" if job.salary_min else None
-            ),
-        }
-
-        features = extract_ranking_features(result, query, user_context)
-        positive_features.append(features)
-
-    # Sample negative examples (random jobs not applied to)
-    # Get IDs of applied jobs
-    applied_job_ids = {
-        e.event_data.get("job_id") for e in apply_events if e.event_data.get("job_id")
+    apply_job_ids: set[int] = {
+        int(e.event_data["job_id"]) for e in apply_events if e.event_data.get("job_id")
+    }
+    session_queries: dict[str, str] = {
+        e.session_id: e.event_data.get("query", "")
+        for e in apply_events
+        if e.session_id
     }
 
-    # Sample non-applied jobs from the same time period
-    neg_conditions = [JobPost.first_seen > cutoff]
-    if applied_job_ids:
-        neg_conditions.append(JobPost.id.notin_(applied_job_ids))
-
-    stmt_neg = (
-        select(JobPost)
-        .where(and_(*neg_conditions))
-        .order_by(func.random())
-        .limit(len(positive_features) * 2)
+    # Prefer serve-time log data
+    positive_features, negative_features = _collect_from_serving_log(
+        db, apply_job_ids, session_queries, cutoff
     )
-    neg_jobs = db.execute(stmt_neg).scalars().all()
 
-    negative_features = []
-    for job in neg_jobs:
-        result = {
-            "id": job.id,
-            "title": job.title_raw,
-            "similarity_score": 40.0,  # Lower baseline
-            "seniority": job.seniority,
-            "location": job.location_id,
-            "salary_range": (
-                f"{job.salary_min}-{job.salary_max}" if job.salary_min else None
-            ),
-        }
-        features = extract_ranking_features(result, "", {})
-        negative_features.append(features)
+    if len(positive_features) < min_positives:
+        logger.info(
+            "SearchServingLog has insufficient coverage — using job-attribute fallback"
+        )
+        positive_features, negative_features = _collect_fallback(
+            db, apply_events, cutoff
+        )
 
-    # Combine features and labels
+    if len(positive_features) < min_positives:
+        logger.warning("Still insufficient positives after fallback")
+        return None
+
     X_pos = np.array(positive_features, dtype=np.float32)
-    X_neg = np.array(negative_features, dtype=np.float32)
-    X = np.vstack([X_pos, X_neg])
+    X_neg = (
+        np.array(negative_features, dtype=np.float32)
+        if negative_features
+        else X_pos[:0]
+    )
+    X = np.vstack([X_pos, X_neg]) if len(X_neg) else X_pos
 
     y_pos = np.ones(len(positive_features), dtype=np.int32)
     y_neg = np.zeros(len(negative_features), dtype=np.int32)
@@ -139,18 +243,9 @@ def collect_training_data(
 
 
 def train_ranking_model(db: Session, days_back: int = 30) -> dict[str, Any]:
-    """Train the ranking model on recent interaction data.
-
-    Args:
-        db: Database session
-        days_back: Days of history to use for training
-
-    Returns:
-        Training metrics dict
-    """
+    """Train the ranking model on recent interaction data."""
     logger.info(f"Training ranking model on {days_back} days of data")
 
-    # Collect training data
     data = collect_training_data(db, days_back=days_back)
     if data is None:
         return {
@@ -161,14 +256,12 @@ def train_ranking_model(db: Session, days_back: int = 30) -> dict[str, Any]:
 
     X, y = data
 
-    # Train model
     model = RankingModel()
     try:
         model.train(X, y)
         logger.info(
             f"Model trained successfully: {len(y)} examples, {y.sum()} positive"
         )
-
         return {
             "success": True,
             "examples_total": int(len(y)),
@@ -187,11 +280,7 @@ def train_ranking_model(db: Session, days_back: int = 30) -> dict[str, Any]:
 
 
 def get_model_info() -> dict[str, Any]:
-    """Get information about the current ranking model.
-
-    Returns:
-        Model metadata dict
-    """
+    """Get information about the current ranking model."""
     if not MODEL_PATH.exists():
         return {
             "exists": False,

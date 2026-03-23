@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 from collections import Counter
@@ -6,11 +7,13 @@ import numpy as np
 from sqlalchemy import func, or_, select, union
 from sqlalchemy.orm import Session
 
-from ..db.models import JobPost, Organization, Location, TitleNorm
+from ..db.models import JobPost, Organization, Location, SearchServingLog, TitleNorm
 from ..ml.embeddings import embed_text
 from ..normalization.titles import get_careers_for_degree, normalize_title
 from .ranking import rank_results
 from .salary_service import salary_service
+
+logger = logging.getLogger(__name__)
 
 
 def cosine_similarity(a, b):
@@ -553,6 +556,44 @@ def search_jobs(
             for value, count in sectors_hiring.most_common(30)
         ],
     }
+
+
+def log_search_serving(
+    db: Session,
+    query: str,
+    filters: dict,
+    results: list[dict],
+    mode: str = "standard",
+    user_id: int | None = None,
+    session_id: str | None = None,
+) -> None:
+    """Persist a SearchServingLog row for this search request (T-DS-911).
+
+    Captures the candidate set, per-job scores, and context so the ranking
+    trainer can build real training examples instead of using placeholders.
+    """
+    try:
+        job_ids = [r["id"] for r in results if r.get("id")]
+        scores = [
+            float(r.get("similarity_score") or 0.0) / 100.0  # normalise to [0,1]
+            for r in results
+            if r.get("id")
+        ]
+        row = SearchServingLog(
+            user_id=user_id,
+            session_id=session_id,
+            query=query or "",
+            filters=filters,
+            result_job_ids=job_ids,
+            result_scores=scores,
+            result_features={},  # populated by offline feature extraction
+            mode=mode,
+        )
+        db.add(row)
+        db.commit()
+    except Exception as exc:
+        logger.warning("Failed to write SearchServingLog: %s", exc)
+        db.rollback()
 
 
 def search_by_degree(

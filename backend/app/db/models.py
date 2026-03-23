@@ -689,3 +689,101 @@ class BetaActivity(Base):
     timestamp: Mapped[datetime] = mapped_column(
         DateTime, default=datetime.utcnow, index=True
     )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-911: Serve-time search feature log
+# ---------------------------------------------------------------------------
+
+
+class SearchServingLog(Base):
+    """One row per search request — captures query, candidate set, and scores.
+
+    Used by the ranking trainer (T-DS-916) to replace synthetic similarity
+    placeholders with actual serve-time signals.
+    """
+
+    __tablename__ = "search_serving_log"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int | None] = mapped_column(
+        ForeignKey("users.id"), nullable=True, index=True
+    )
+    session_id: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    query: Mapped[str] = mapped_column(String(500), default="")
+    # Filters sent with the request (role_family, seniority, location, …)
+    filters: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Ordered list of job_ids returned (position == rank)
+    result_job_ids: Mapped[list] = mapped_column(JSONB, default=list)
+    # Per-job similarity / heuristic scores at serve time (parallel list)
+    result_scores: Mapped[list] = mapped_column(JSONB, default=list)
+    # Pre-ranking feature vectors keyed by job_id (for offline eval)
+    result_features: Mapped[dict] = mapped_column(JSONB, default=dict)
+    # Search mode (standard / guided)
+    mode: Mapped[str] = mapped_column(String(50), default="standard")
+    served_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-912/913: Application funnel events + structured rejection reasons
+# ---------------------------------------------------------------------------
+
+# Valid funnel stages in order
+APPLICATION_STAGES = [
+    "viewed",
+    "applied",
+    "shortlisted",
+    "interviewed",
+    "rejected",
+    "offered",
+    "hired",
+]
+
+# Structured rejection reason taxonomy
+REJECTION_REASONS = [
+    "skills_mismatch",
+    "experience_insufficient",
+    "education_mismatch",
+    "location_mismatch",
+    "salary_mismatch",
+    "role_filled",
+    "over_qualified",
+    "culture_fit",
+    "no_response",
+    "other",
+]
+
+
+class ApplicationFunnelEvent(Base):
+    """Immutable stage-transition record for a job application.
+
+    Each row records a *transition* into a funnel stage, with optional
+    actor (who triggered it) and structured reason.  This drives both
+    feedback loops (T-DS-961/962) and ranking outcome learning (T-DS-963).
+    """
+
+    __tablename__ = "application_funnel_events"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    application_id: Mapped[int] = mapped_column(
+        ForeignKey("job_applications.id"), index=True
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    job_post_id: Mapped[int] = mapped_column(ForeignKey("job_post.id"), index=True)
+
+    # One of APPLICATION_STAGES
+    stage: Mapped[str] = mapped_column(String(50), index=True)
+    # Who triggered this transition: "user", "employer", "system"
+    actor: Mapped[str] = mapped_column(String(50), default="system")
+    # Structured reason (from REJECTION_REASONS or free-form for other stages)
+    reason: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    # Employer-facing details / candidate-facing feedback message
+    details: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Extra data (assessment scores, interview round, …)
+    meta: Mapped[dict] = mapped_column(JSONB, default=dict)
+
+    event_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
+
+    __table_args__ = (Index("idx_funnel_event_app_stage", "application_id", "stage"),)

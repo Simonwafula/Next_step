@@ -7,6 +7,7 @@ when the learned model or training dependencies are unavailable.
 from __future__ import annotations
 
 import pickle
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -82,6 +83,28 @@ class RankingModel:
         return self.model.predict_proba(features)[:, 1]
 
 
+def _token_overlap(text_a: str, text_b: str) -> float:
+    """Jaccard token overlap between two strings, clamped to [0, 1]."""
+    tokens_a = set(text_a.lower().split())
+    tokens_b = set(text_b.lower().split())
+    if not tokens_a or not tokens_b:
+        return 0.0
+    return len(tokens_a & tokens_b) / len(tokens_a | tokens_b)
+
+
+def _recency_score(first_seen: Any) -> float:
+    """Normalised recency in [0, 1] — 1.0 = today, 0.0 = 180+ days old."""
+    if first_seen is None:
+        return 0.5  # Unknown: neutral
+    if isinstance(first_seen, str):
+        try:
+            first_seen = datetime.fromisoformat(first_seen)
+        except ValueError:
+            return 0.5
+    age_days = max(0, (datetime.utcnow() - first_seen).days)
+    return max(0.0, 1.0 - age_days / 180.0)
+
+
 def extract_ranking_features(
     result: dict[str, Any],
     query: str,
@@ -90,46 +113,64 @@ def extract_ranking_features(
     """Extract feature vector for a single search result.
 
     Features (8-dim):
-    - semantic_similarity (from result)
-    - title_keyword_match (binary)
-    - desc_keyword_match (binary, not available here - placeholder)
-    - recency_days (normalized)
-    - seniority_match (binary)
-    - location_match (binary)
-    - has_salary (binary)
-    - skill_overlap_count (placeholder for future entity match)
+    0. semantic_similarity  — normalised similarity_score from retrieval
+    1. title_keyword_match  — Jaccard overlap between query tokens and title
+    2. desc_keyword_match   — Jaccard overlap between query tokens and description
+    3. recency_score        — normalised posting age (1.0 = today, 0.0 = 180d+)
+    4. seniority_match      — 1 if user seniority matches job seniority band
+    5. location_match       — 1 if user preferred location appears in job location
+    6. has_salary           — 1 if salary information is present
+    7. skill_overlap        — Jaccard overlap between user skills and job skills
     """
+    ctx = user_context or {}
     q_lower = (query or "").lower()
-    title_lower = (result.get("title") or "").lower()
+    title = (result.get("title") or "").lower()
+    description = (result.get("description") or "").lower()
     seniority = (result.get("seniority") or "").lower()
     location = (result.get("location") or "").lower()
 
-    # Feature 0: semantic similarity
+    # Feature 0: semantic similarity normalised to [0, 1]
     sim_raw = result.get("similarity_score") or 0.0
-    sim = float(sim_raw) / 100.0  # Normalize to [0,1]
+    sim = min(1.0, float(sim_raw) / 100.0)
 
-    # Feature 1: title keyword match
-    title_match = 1.0 if q_lower and q_lower in title_lower else 0.0
+    # Feature 1: title keyword match (Jaccard)
+    title_match = _token_overlap(q_lower, title) if q_lower else 0.0
 
-    # Feature 2: description match (placeholder - not in result dict)
-    desc_match = 0.0
+    # Feature 2: description keyword match (Jaccard)
+    desc_match = (
+        _token_overlap(q_lower, description) if q_lower and description else 0.0
+    )
 
-    # Feature 3: recency (placeholder - first_seen not in result)
-    recency = 0.5  # Neutral value
+    # Feature 3: recency
+    recency = _recency_score(result.get("first_seen"))
 
     # Feature 4: seniority match
-    user_seniority = user_context.get("seniority", "").lower() if user_context else ""
+    user_seniority = ctx.get("seniority", "").lower()
     seniority_match = 1.0 if user_seniority and user_seniority in seniority else 0.0
 
     # Feature 5: location match
-    user_location = user_context.get("location", "").lower() if user_context else ""
+    user_location = ctx.get("location", "").lower()
     location_match = 1.0 if user_location and user_location in location else 0.0
 
     # Feature 6: has salary
-    has_salary = 1.0 if result.get("salary_range") else 0.0
+    has_salary = (
+        1.0 if (result.get("salary_range") or result.get("salary_min")) else 0.0
+    )
 
-    # Feature 7: skill overlap (placeholder)
-    skill_overlap = 0.0
+    # Feature 7: skill overlap (Jaccard between user skill set and job skill list)
+    user_skills: set[str] = {s.lower() for s in ctx.get("skills", []) if s}
+    job_skills_raw = result.get("skills") or []
+    job_skills: set[str] = set()
+    for sk in job_skills_raw:
+        if isinstance(sk, dict):
+            v = sk.get("value") or sk.get("name") or ""
+            job_skills.add(str(v).lower())
+        elif sk:
+            job_skills.add(str(sk).lower())
+    if user_skills and job_skills:
+        skill_overlap = len(user_skills & job_skills) / len(user_skills | job_skills)
+    else:
+        skill_overlap = 0.0
 
     return np.array(
         [
