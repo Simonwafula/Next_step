@@ -234,11 +234,11 @@
   - [x] (T-DS-962) Build candidate-facing rejection feedback generator — `backend/app/services/feedback.py`: template-driven feedback + skills_to_develop from `RoleSkillBaseline`; exposed via GET `/api/users/applications/{id}/feedback`
   - [x] (T-DS-963) Feed outcomes back into ranking / matching — `ranking_trainer.py` extended with `_collect_from_funnel_events()`: hired/offered → positive, employer-rejected → negative; employer ratings strong_yes/yes → positive, no/strong_no → negative
   - [x] (T-DS-964) Feed outcomes back into intelligence products and reports — `backend/app/services/outcome_intelligence.py`: rejection patterns, hiring outcomes, rating sentiment by role family; exposed via GET `/api/admin/outcome-intelligence`
-- [ ] (T-DS-970) Phase 6: Production-grade intelligence products
-  - [ ] (T-DS-971) Build confidence-aware analytics APIs and baseline refresh hardening
-  - [ ] (T-DS-972) Build report-grade datasets/templates for universities, employers, counties, and training providers
-  - [ ] (T-DS-973) Add salary intelligence confidence and error tracking
-  - [ ] (T-DS-974) Build intelligence export / report endpoints
+- [x] (T-DS-970) Phase 6: Production-grade intelligence products
+  - [x] (T-DS-971) Build confidence-aware analytics APIs and baseline refresh hardening — `backend/app/services/intelligence_products.py`: `get_baseline_health()` checks staleness of all 4 baseline tables (age_days, stale, low_confidence_pct); `get_confidence_aware_skill_baseline()` adds tier/sample_size/note metadata; `GET /api/intelligence/baseline-health`, `GET /api/intelligence/skill-baseline/{role}`
+  - [x] (T-DS-972) Build report-grade datasets/templates for universities, employers, counties, and training providers — `build_university_report()`, `build_employer_report()`, `build_county_report()`, `build_training_provider_report()` in intelligence_products.py; exposed via `GET /api/intelligence/reports/{type}`
+  - [x] (T-DS-973) Add salary intelligence confidence and error tracking — `get_salary_with_market_context()`: market-backed (job postings + MetricsDaily) vs. heuristic fallback, confidence tier (high/medium/low), low-confidence call audit log; `get_salary_confidence_summary()` by role family; `GET /api/intelligence/salary/{role_family}`, `GET /api/intelligence/salary/confidence-summary`, `GET /api/intelligence/salary/low-confidence-log`
+  - [x] (T-DS-974) Build intelligence export / report endpoints — `backend/app/api/intelligence_routes.py`: 11 endpoints covering baseline health, all 4 report types, salary intelligence, CSV+JSON exports for skills-gap and market-snapshot; registered in main.py; 25 tests in `backend/tests/test_intelligence_products.py`
 - [ ] (T-DS-980) Phase 7: Model stack consolidation
   - [ ] (T-DS-981) Standardize embedding model and dimension across services
   - [ ] (T-DS-982) Define canonical feature contract for ranking / matching
@@ -264,6 +264,14 @@
   - `T-DS-974`
 
 ## Logs
+
+### 2026-03-23 (T-DS-970: Production-grade intelligence products)
+- T-DS-971: `get_baseline_health()` + `get_confidence_aware_skill_baseline()` in `intelligence_products.py`; staleness checks on all 4 baseline tables; `GET /api/intelligence/baseline-health` + `GET /api/intelligence/skill-baseline/{role}`
+- T-DS-972: `build_university_report()`, `build_employer_report()`, `build_county_report()`, `build_training_provider_report()` — 4 report templates; `GET /api/intelligence/reports/{university|employer|county|training-provider}`
+- T-DS-973: `get_salary_with_market_context()` — market-backed vs. heuristic, confidence tier, low-confidence audit log; `get_salary_confidence_summary()`; 3 salary endpoints
+- T-DS-974: `backend/app/api/intelligence_routes.py` — 11 endpoints; CSV + JSON exports for skills-gap and market-snapshot; registered in `main.py`
+- Tests: `backend/tests/test_intelligence_products.py` — 25 tests, all passing (51 total with feedback/prescreening, no regressions)
+- Verification: `backend/venv3.11_new/bin/pytest backend/tests/test_intelligence_products.py backend/tests/test_feedback_loops.py backend/tests/test_prescreening.py -q` → 51 passed
 
 ### 2026-03-23 (T-DS-900 Planning Backlog Translation)
 - Translated `DS_ML.md` into an execution backlog section in `changemap.md` with dedicated `T-DS-*` task IDs.
