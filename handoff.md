@@ -1,5 +1,40 @@
 # Handoff
 
+## 2026-03-23 (T-DS-900: DS Contract + Backlog Reconciliation)
+
+Branch: `feat/T-DS-940-945-skill-verification`
+
+Commit: `pending`
+
+### Summary
+
+**T-DS-900 — DS product contract + track selection**
+- Added `docs/ds-product-contract.md` as the canonical DS control-plane contract.
+- Chose `Trust-Layer First` as the primary execution track for the next 6 months.
+- Set `LMI / Intelligence` as the mandatory supporting workstream.
+- Published the frozen score glossary:
+  - retrieval score
+  - heuristic score
+  - verification score
+  - shortlist score
+  - feedback score
+- Published the mission metric tree and the intelligence metric tree.
+- Published the two-track roadmap, with the trust-layer sequence as primary.
+
+**Backlog reconciliation**
+- Reconciled stale DS task statuses in `changemap.md` against existing branch commits:
+  - `T-DS-920` now marked complete, including `T-DS-923/924`
+  - `T-DS-930` now marked complete from already-landed candidate evidence/provenance work
+  - `T-DS-940` now marked complete from already-landed assessment/verification work
+- Result: `changemap.md` no longer contains open `T-DS-*` items on this branch.
+
+### Verification
+- `backend/venv3.11/bin/ruff check backend/app/api/intelligence_routes.py backend/app/services/evaluation_service.py backend/tests/test_evaluation_service.py` (pass)
+
+### Notes
+- This pass was docs/control-plane reconciliation only.
+- Local `pytest` remains blocked in this checkout because the checked-in venv path only contains `ruff`.
+
 ## 2026-03-23 (T-DS-914/915/918: Evaluation Harness + Quality Dashboard)
 
 Branch: `feat/T-DS-940-945-skill-verification`

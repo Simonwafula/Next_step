@@ -193,11 +193,11 @@
 ## 8. DS / ML Trust Layer + Intelligence Execution Backlog (NEW - 2026-03-23)
 - Note: This section translates `DS_ML.md` into execution tasks.
 - Note: These tasks track production-valid completion for trust-layer and intelligence gaps. Earlier DONE items in search, matching, pathways, and analytics sections record prototype delivery, not final mission-complete execution.
-- [ ] (T-DS-900) Phase 0: DS product contract + track selection
-  - [ ] (T-DS-901) Choose primary execution track (`Trust-Layer First` or `LMI / Intelligence First`) and mandatory supporting workstream
-  - [ ] (T-DS-902) Publish canonical score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`)
-  - [ ] (T-DS-903) Define mission metric tree + intelligence metric tree
-  - [ ] (T-DS-904) Publish two-track roadmap in docs/control plane
+- [x] (T-DS-900) Phase 0: DS product contract + track selection
+  - [x] (T-DS-901) Choose primary execution track (`Trust-Layer First` or `LMI / Intelligence First`) and mandatory supporting workstream — `docs/ds-product-contract.md`: primary=`Trust-Layer First`, supporting=`LMI / Intelligence`
+  - [x] (T-DS-902) Publish canonical score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`) — `docs/ds-product-contract.md`
+  - [x] (T-DS-903) Define mission metric tree + intelligence metric tree — `docs/ds-product-contract.md`
+  - [x] (T-DS-904) Publish two-track roadmap in docs/control plane — `docs/ds-product-contract.md`
 - [x] (T-DS-910) Phase 1: Instrumentation + evaluation foundation
   - [x] (T-DS-911) Add serve-time feature logging for search — `SearchServingLog` model + `log_search_serving()` wired in `/api/search`
   - [x] (T-DS-912) Add application funnel event model (`viewed`, `applied`, `shortlisted`, `interviewed`, `rejected`, `offered`, `hired`) — `ApplicationFunnelEvent` model
@@ -207,23 +207,23 @@
   - [x] (T-DS-916) Replace synthetic ranking-training inputs with logged serve-time signals — `ranking_trainer.py` now uses `SearchServingLog`; fallback to job attributes without synthetic placeholders
   - [x] (T-DS-917) Replace placeholder ranking features — real Jaccard title/desc match, real recency from `first_seen`, real skill Jaccard overlap; removed hardcoded 0.5/0.0 stubs
   - [x] (T-DS-918) Add ranking-quality evaluation suite (effectiveness metrics over held-out sessions, not just shape/flow tests) — `evaluate_ranking_quality()` + `GET /api/intelligence/evaluation/ranking-quality`
-- [/] (T-DS-920) Shared P0 / Phase 1b: Intelligence baseline repair
+- [x] (T-DS-920) Shared P0 / Phase 1b: Intelligence baseline repair
   - [x] (T-DS-921) Implement real `RoleEvolution` computation — replaced stub with top-K skills per family per month from `JobEntities`
   - [x] (T-DS-922) Compute skill shares correctly — `aggregate_skill_trends` now computes real `share` (skill_count / total_mentions); was hardcoded 0.0
-  - [ ] (T-DS-923) Add representativeness reporting (`source mix`, `geography`, `sector`, coverage gaps)
-  - [ ] (T-DS-924) Replace hardcoded pathways / skills-gap content with market-derived baselines
+  - [x] (T-DS-923) Add representativeness reporting (`source mix`, `geography`, `sector`, coverage gaps) — `analytics.get_intelligence_metadata()` now returns geography, sector distribution, and coverage gaps
+  - [x] (T-DS-924) Replace hardcoded pathways / skills-gap content with market-derived baselines — `career_pathways_service.py` and `skills_gap_service.py` use `RoleSkillBaseline` and live market data with fallback only where needed
   - [x] (T-DS-925) Standardize intelligence output semantics — `get_intelligence_metadata()` returns `date_range`, `sample_size`, `source_mix`, `confidence_note`
-- [ ] (T-DS-930) Phase 2: Candidate evidence + provenance model
-  - [ ] (T-DS-931) Add candidate evidence schema (portfolio items, projects, work samples, gig/informal work)
-  - [ ] (T-DS-932) Build CV / portfolio ingestion + evidence extraction pipeline
-  - [ ] (T-DS-933) Add verification provenance schema (`evidence source`, `assessment version`, `confidence`, `expiry`)
-  - [ ] (T-DS-934) Add intelligence provenance schema exposed in user-facing outputs
-- [ ] (T-DS-940) Phase 3: Skill verification system
-  - [ ] (T-DS-941) Build question banks derived from real job requirements for launch role families
-  - [ ] (T-DS-942) Build assessment delivery + scoring + certification service
-  - [ ] (T-DS-943) Add percentile / calibration logic and assessment versioning
-  - [ ] (T-DS-944) Build employer-visible verification summaries and evidence bundles
-  - [ ] (T-DS-945) Add requirement-extraction QA for verification launch families
+- [x] (T-DS-930) Phase 2: Candidate evidence + provenance model
+  - [x] (T-DS-931) Add candidate evidence schema (portfolio items, projects, work samples, gig/informal work)
+  - [x] (T-DS-932) Build CV / portfolio ingestion + evidence extraction pipeline
+  - [x] (T-DS-933) Add verification provenance schema (`evidence source`, `assessment version`, `confidence`, `expiry`)
+  - [x] (T-DS-934) Add intelligence provenance schema exposed in user-facing outputs
+- [x] (T-DS-940) Phase 3: Skill verification system
+  - [x] (T-DS-941) Build question banks derived from real job requirements for launch role families
+  - [x] (T-DS-942) Build assessment delivery + scoring + certification service
+  - [x] (T-DS-943) Add percentile / calibration logic and assessment versioning
+  - [x] (T-DS-944) Build employer-visible verification summaries and evidence bundles
+  - [x] (T-DS-945) Add requirement-extraction QA for verification launch families
 - [x] (T-DS-950) Phase 4: Employer-side pre-screening ("The 20")
   - [x] (T-DS-951) Add employer / recruiter account and permissions model — `EmployerAccount`, `EmployerUser`, `CandidateShortlist`, `CandidateShortlistEntry` models + Alembic migration `d4e5f6a7b8c9`
   - [x] (T-DS-952) Build candidate-to-job scoring service (verified skills + evidence + fit) — `backend/app/services/prescreening.py`: weighted composite of `verified_skill_score` (0.55), `evidence_score` (0.30), `profile_score` (0.15)
@@ -296,6 +296,20 @@
 - No code or test changes in this step; documentation/control-plane update only.
 - Verification:
   - Not run (planning/docs-only change)
+
+### 2026-03-23 (T-DS-900 Control Plane Contract + DS Backlog Reconciliation)
+- Added `docs/ds-product-contract.md` as the canonical DS control-plane contract.
+- Completed `T-DS-901` through `T-DS-904`:
+  - selected `Trust-Layer First` as the primary execution track
+  - fixed the score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`)
+  - defined mission and intelligence metric trees
+  - published the two-track roadmap with the trust-layer track as primary
+- Reconciled stale DS backlog entries against branch history:
+  - marked `T-DS-920` complete now that `T-DS-923/924` are already on-branch
+  - marked `T-DS-930` complete from commit `199a84c`
+  - marked `T-DS-940` complete from commit `6262e11`
+- Verification:
+  - Not run (docs/control-plane reconciliation only)
 
 ### 2026-02-15 (Hardening T-602: Monitoring metrics + thresholds)
 - Extended monitoring gate logic in `backend/app/services/monitoring_service.py`:
