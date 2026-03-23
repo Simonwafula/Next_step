@@ -1,5 +1,52 @@
 # Handoff
 
+## 2026-03-23 (T-DS-914/915/918: Evaluation Harness + Quality Dashboard)
+
+Branch: `feat/T-DS-940-945-skill-verification`
+
+Commit: `pending`
+
+### Summary
+
+**T-DS-914 — Offline evaluation harness for search + recommendations**
+- Added `backend/app/services/evaluation_service.py`.
+- Implemented `evaluate_search_offline()` using `SearchServingLog` joined to same-session `UserAnalytics` apply events.
+- Implemented `evaluate_recommendations_offline()` using `UserJobRecommendation` rows plus clicked / saved / applied outcomes.
+- Added endpoints in `backend/app/api/intelligence_routes.py`:
+  - `GET /api/intelligence/evaluation/search`
+  - `GET /api/intelligence/evaluation/recommendations`
+
+**T-DS-915 — Intelligence quality dashboard**
+- Added `build_intelligence_quality_dashboard()` to compose:
+  - baseline freshness / low-confidence stats from `get_baseline_health()`
+  - source mix / sample size / coverage gaps from `get_intelligence_metadata()`
+  - top role-family quality summary from `RoleDemandSnapshot` + `RoleSkillBaseline`
+- Added endpoint:
+  - `GET /api/intelligence/quality-dashboard`
+
+**T-DS-918 — Ranking quality over held-out sessions**
+- Added `evaluate_ranking_quality()` using held-out logged search sessions.
+- Reports `precision@k`, `hit_rate@k`, `MRR@k`, and `nDCG@k` for overall and holdout sets.
+- Added endpoint:
+  - `GET /api/intelligence/evaluation/ranking-quality`
+
+### Tests Written
+- Added `backend/tests/test_evaluation_service.py` with focused coverage for:
+  - search evaluation metrics
+  - recommendation outcome metrics
+  - held-out ranking split behavior
+  - intelligence quality dashboard payload
+  - new HTTP endpoints
+
+### Verification
+- `backend/venv3.11/bin/ruff check backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+- `backend/venv3.11/bin/ruff format --check backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+- `python3 -m py_compile backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+
+### Notes
+- `pytest` is still not runnable in this checkout: the checked-in venv path only contains `ruff`, and the available system Python lacks both `pytest` and `sqlalchemy`.
+- Next step is to run `pytest backend/tests/test_evaluation_service.py -q` in CI/VPS or a provisioned local venv, then commit/push this cycle.
+
 ## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
 
 Branch: `feat/T-DS-910-920-instrumentation-intelligence`

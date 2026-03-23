@@ -198,15 +198,15 @@
   - [ ] (T-DS-902) Publish canonical score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`)
   - [ ] (T-DS-903) Define mission metric tree + intelligence metric tree
   - [ ] (T-DS-904) Publish two-track roadmap in docs/control plane
-- [/] (T-DS-910) Phase 1: Instrumentation + evaluation foundation
+- [x] (T-DS-910) Phase 1: Instrumentation + evaluation foundation
   - [x] (T-DS-911) Add serve-time feature logging for search — `SearchServingLog` model + `log_search_serving()` wired in `/api/search`
   - [x] (T-DS-912) Add application funnel event model (`viewed`, `applied`, `shortlisted`, `interviewed`, `rejected`, `offered`, `hired`) — `ApplicationFunnelEvent` model
   - [x] (T-DS-913) Add structured rejection / decision reasons schema — `reason` + `details` fields on `ApplicationFunnelEvent`
-  - [ ] (T-DS-914) Build offline evaluation harness for search + recommendations
-  - [ ] (T-DS-915) Build intelligence quality dashboard (baseline stability, source mix, sample size, confidence)
+  - [x] (T-DS-914) Build offline evaluation harness for search + recommendations — `backend/app/services/evaluation_service.py`: `evaluate_search_offline()`, `evaluate_recommendations_offline()`; endpoints `GET /api/intelligence/evaluation/search`, `GET /api/intelligence/evaluation/recommendations`
+  - [x] (T-DS-915) Build intelligence quality dashboard (baseline stability, source mix, sample size, confidence) — `build_intelligence_quality_dashboard()` + `GET /api/intelligence/quality-dashboard`
   - [x] (T-DS-916) Replace synthetic ranking-training inputs with logged serve-time signals — `ranking_trainer.py` now uses `SearchServingLog`; fallback to job attributes without synthetic placeholders
   - [x] (T-DS-917) Replace placeholder ranking features — real Jaccard title/desc match, real recency from `first_seen`, real skill Jaccard overlap; removed hardcoded 0.5/0.0 stubs
-  - [ ] (T-DS-918) Add ranking-quality evaluation suite (effectiveness metrics over held-out sessions, not just shape/flow tests)
+  - [x] (T-DS-918) Add ranking-quality evaluation suite (effectiveness metrics over held-out sessions, not just shape/flow tests) — `evaluate_ranking_quality()` + `GET /api/intelligence/evaluation/ranking-quality`
 - [/] (T-DS-920) Shared P0 / Phase 1b: Intelligence baseline repair
   - [x] (T-DS-921) Implement real `RoleEvolution` computation — replaced stub with top-K skills per family per month from `JobEntities`
   - [x] (T-DS-922) Compute skill shares correctly — `aggregate_skill_trends` now computes real `share` (skill_count / total_mentions); was hardcoded 0.0
@@ -966,6 +966,24 @@
   - `backend/venv3.11/bin/ruff format backend/app/scrapers/scraper.py backend/app/scrapers/postgres_db.py` (pass)
   - `backend/venv3.11/bin/ruff check backend/app/scrapers/scraper.py backend/app/scrapers/postgres_db.py` (pass)
   - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
+
+### 2026-03-23 (T-DS-914/915/918: Evaluation Harness + Quality Dashboard)
+- Added `backend/app/services/evaluation_service.py` to compute:
+  - offline search effectiveness metrics from `SearchServingLog` + `UserAnalytics` apply outcomes
+  - offline recommendation metrics from `UserJobRecommendation` + clicked/saved/applied outcomes
+  - held-out ranking quality metrics over logged sessions
+  - intelligence quality dashboard payload combining baseline health and market metadata
+- Added new intelligence endpoints:
+  - `GET /api/intelligence/evaluation/search`
+  - `GET /api/intelligence/evaluation/recommendations`
+  - `GET /api/intelligence/evaluation/ranking-quality`
+  - `GET /api/intelligence/quality-dashboard`
+- Added focused coverage in `backend/tests/test_evaluation_service.py`.
+- Verification:
+  - `backend/venv3.11/bin/ruff check backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+  - `backend/venv3.11/bin/ruff format --check backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+  - `python3 -m py_compile backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+  - `(BLOCKED) pytest not runnable locally: only `backend/venv3.11/bin/ruff` exists in the checked-in tool path, and system Python lacks both `pytest` and `sqlalchemy`; next: run `pytest` in CI/VPS or provision a full local venv.`
 
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.

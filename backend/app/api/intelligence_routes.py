@@ -39,6 +39,12 @@ from ..services.intelligence_products import (
     get_salary_low_confidence_log,
     get_salary_with_market_context,
 )
+from ..services.evaluation_service import (
+    build_intelligence_quality_dashboard,
+    evaluate_ranking_quality,
+    evaluate_recommendations_offline,
+    evaluate_search_offline,
+)
 
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
 
@@ -90,6 +96,20 @@ def embedding_mode_status():
 def baseline_health(db: Session = Depends(get_db)):
     """Return health report for all intelligence baseline tables (T-DS-971)."""
     return get_baseline_health(db)
+
+
+@router.get("/quality-dashboard")
+def intelligence_quality_dashboard(
+    window_days: int = Query(180, ge=30, le=365),
+    top_role_families: int = Query(10, ge=3, le=25),
+    db: Session = Depends(get_db),
+):
+    """T-DS-915: Intelligence quality dashboard for stability and coverage."""
+    return build_intelligence_quality_dashboard(
+        db,
+        window_days=window_days,
+        top_role_families=top_role_families,
+    )
 
 
 @router.get("/skill-baseline/{role_family}")
@@ -197,6 +217,47 @@ def salary_intelligence(
         seniority=seniority,
         currency=currency,
         window_days=window_days,
+    )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-914 / T-DS-918: Offline evaluation harness + ranking quality
+# ---------------------------------------------------------------------------
+
+
+@router.get("/evaluation/search")
+def search_offline_evaluation(
+    days_back: int = Query(30, ge=7, le=365),
+    k: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """T-DS-914: Offline search evaluation from logged serving events."""
+    return evaluate_search_offline(db, days_back=days_back, k=k)
+
+
+@router.get("/evaluation/recommendations")
+def recommendation_offline_evaluation(
+    days_back: int = Query(30, ge=7, le=365),
+    k: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+):
+    """T-DS-914: Offline recommendation evaluation from stored outcomes."""
+    return evaluate_recommendations_offline(db, days_back=days_back, k=k)
+
+
+@router.get("/evaluation/ranking-quality")
+def ranking_quality_evaluation(
+    days_back: int = Query(30, ge=7, le=365),
+    k: int = Query(10, ge=1, le=50),
+    holdout_fraction: float = Query(0.2, ge=0.1, le=0.5),
+    db: Session = Depends(get_db),
+):
+    """T-DS-918: Held-out ranking-quality metrics over logged search sessions."""
+    return evaluate_ranking_quality(
+        db,
+        days_back=days_back,
+        k=k,
+        holdout_fraction=holdout_fraction,
     )
 
 
