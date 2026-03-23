@@ -1,5 +1,69 @@
 # Handoff
 
+## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
+
+Branch: `feat/T-DS-910-920-instrumentation-intelligence`
+
+Commit: `323814a` `[T-DS-911/912/917/921/922/925] Instrumentation + intelligence baseline repair`
+
+### Summary
+
+**T-DS-911 — Serve-time feature logging (`SearchServingLog`)**
+- New model in `backend/app/db/models.py`: `SearchServingLog` captures query, filters, result_job_ids, result_scores, mode per search request.
+- New helper `log_search_serving()` in `backend/app/services/search.py`.
+- Wired into `GET /api/search` in `backend/app/api/routes.py` — every search request now logs a serving event.
+
+**T-DS-912/913 — Application funnel events + structured rejection reasons**
+- New model `ApplicationFunnelEvent` in `backend/app/db/models.py`.
+- Stages: `viewed`, `applied`, `shortlisted`, `interviewed`, `rejected`, `offered`, `hired`.
+- Fields: `stage`, `actor` (user/employer/system), `reason` (from `REJECTION_REASONS` taxonomy), `details`, `meta`.
+- Constants `APPLICATION_STAGES` and `REJECTION_REASONS` exported from models.
+
+**T-DS-916 — Real serve-time training signals in ranking trainer**
+- Rewrote `backend/app/services/ranking_trainer.py`:
+  - `_collect_from_serving_log()`: builds training examples from `SearchServingLog` rows — real queries, real candidate sets, real scores.
+  - `_collect_fallback()`: job-attribute-only features when no log data; no more synthetic `70.0`/`40.0` similarity placeholders.
+  - `collect_training_data()`: tries serve-time log first, falls back gracefully.
+
+**T-DS-917 — Real ranking features (no more stubs)**
+- `backend/app/services/ranking.py`:
+  - Added `_token_overlap()` (Jaccard token overlap) and `_recency_score()` helpers.
+  - Feature[1] title_match: Jaccard overlap (was binary substring check).
+  - Feature[2] desc_match: Jaccard over description (was hardcoded 0.0).
+  - Feature[3] recency: from `first_seen` date (was hardcoded 0.5).
+  - Feature[7] skill_overlap: Jaccard user_skills ∩ job_skills (was hardcoded 0.0).
+
+**T-DS-921 — Real `RoleEvolution` computation**
+- `generate_role_evolution()` in `backend/app/services/analytics.py` was a stub (deleted table, returned success with no data).
+- Now computes top-K skills per role family per month from `JobEntities`, skips inactive jobs, handles dict/str skill shapes.
+
+**T-DS-922 — Real skill share computation**
+- `aggregate_skill_trends()` now computes `share = skill_count / total_skill_mentions_in_bucket`. Was hardcoded `0.0`.
+
+**T-DS-925 — Standardised intelligence provenance**
+- New `get_intelligence_metadata(db, role_family, window_days)` in `analytics.py`.
+- Returns: `sample_size`, `date_range` (from/to/window_days), `source_mix` (top 5 sources), `confidence_note` (high/medium/low).
+
+### Tests Written
+- `backend/tests/test_ds910_920.py` — 38 new tests covering all of the above.
+- `backend/tests/test_ranking.py` — updated title_match assertion to reflect Jaccard (was `== 1.0`, now `> 0.0`).
+- `ruff check` and `ruff format --check` pass on all changed files.
+- Note: `pytest` binary not available in local venv (only `ruff` is installed). Tests are syntactically valid and should pass on VPS/CI where pytest is present.
+
+### Remaining T-DS-910/920 Tasks
+- `T-DS-914`: Offline evaluation harness for search/recommendations
+- `T-DS-915`: Intelligence quality dashboard
+- `T-DS-918`: Ranking-quality evaluation suite (effectiveness metrics)
+- `T-DS-923`: Representativeness reporting (geography, sector, coverage gaps)
+- `T-DS-924`: Replace hardcoded pathways/skills-gap with market-derived baselines
+
+### Next Steps (recommended)
+1. Push branch and run pytest on VPS to verify 38 new tests pass.
+2. Create Alembic migration for `search_serving_log` and `application_funnel_events` tables.
+3. Start `T-DS-914` (offline evaluation harness) or `T-DS-923` (representativeness reporting).
+
+
+
 ## 2026-02-15 (T-602 monitoring hardening + signals/admin compatibility)
 
 Branch: `feat/T-741-telegram-opportunity-ingest`
@@ -935,3 +999,48 @@ Branch: `main`
   - `/home/nextstep.co.ke/.venv/bin/ruff check backend/app/services/search.py backend/tests/test_search_match_explanation_skills_shape.py` (pass)
   - `/home/nextstep.co.ke/.venv/bin/ruff format --check backend/app/services/search.py backend/tests/test_search_match_explanation_skills_shape.py` (pass)
   - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_match_explanation_skills_shape.py` (pass; 2 passed)
+
+---
+
+## 2026-03-23 (DS / ML Deep Audit -> Execution Backlog)
+
+Branch: `main`
+
+### Summary
+- Expanded `DS_ML.md` from a component audit into a problem-first DS/ML audit tied to `PROBLEM.md`.
+- Added dual execution tracks in `DS_ML.md`:
+  - `Trust-Layer First`
+  - `LMI / Intelligence First`
+- Converted the plan into a concrete execution backlog in `changemap.md` using `T-DS-*` task IDs.
+- Marked intelligence work as mandatory regardless of which primary track is chosen.
+
+### New Control-Plane Tasks
+- `T-DS-900` — DS product contract + track selection
+- `T-DS-910` — instrumentation + evaluation foundation
+- `T-DS-920` — intelligence baseline repair
+- `T-DS-930` — candidate evidence + provenance model
+- `T-DS-940` — skill verification system
+- `T-DS-950` — employer-side pre-screening / "The 20"
+- `T-DS-960` — feedback loops + outcome learning
+- `T-DS-970` — production-grade intelligence products
+- `T-DS-980` — model stack consolidation
+
+### Recommended Implementation Order
+1. `T-DS-900` → `T-DS-910` → `T-DS-920`
+2. `T-DS-930` → `T-DS-940` → `T-DS-950` → `T-DS-960`
+3. `T-DS-970`
+4. `T-DS-980`
+
+### Key Decision Still Needed
+- Confirm whether `PROBLEM.md` remains the product source of truth.
+- If yes, keep `Trust-Layer First` as primary and `LMI / Intelligence` as the mandatory supporting workstream.
+
+### Tests Run
+- None; docs/control-plane only change
+
+### Follow-up Clarification Added
+- Explicitly mapped production-site ranking gaps into `changemap.md`:
+  - `T-DS-916` replace synthetic ranking-training inputs with logged serve-time signals
+  - `T-DS-917` replace placeholder ranking features (`description match`, `recency`, `skill overlap`) and remove hard-coded similarity values
+  - `T-DS-918` add ranking-quality evaluation beyond structural tests
+  - `T-DS-985` remove or hard-gate non-semantic hash-vector fallback from semantic ranking/search paths
