@@ -38,6 +38,7 @@ from ..services.career_pathways_service import (
     career_pathways_service,
 )
 from .analytics_routes import router as analytics_router
+from .assessment_routes import router as assessment_router
 from .auth_routes import router as auth_router
 from .payment_routes import router as payment_router
 from .user_routes import router as user_router
@@ -48,6 +49,7 @@ api_router.include_router(auth_router, prefix="/auth", tags=["authentication"])
 api_router.include_router(user_router, prefix="/users", tags=["user-management"])
 api_router.include_router(payment_router, prefix="/payments", tags=["payments"])
 api_router.include_router(analytics_router, tags=["analytics"])
+api_router.include_router(assessment_router, tags=["assessments"])
 
 
 @api_router.get("/search")

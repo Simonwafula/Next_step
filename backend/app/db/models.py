@@ -877,3 +877,110 @@ class VerificationProvenance(Base):
     evidence: Mapped["CandidateEvidence"] = relationship(
         "CandidateEvidence", back_populates="provenance"
     )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-941: Assessment question bank
+# ---------------------------------------------------------------------------
+
+
+class AssessmentQuestion(Base):
+    """MCQ question derived from real job market requirements for a role family.
+
+    Seeded by the question bank seeder from RoleSkillBaseline data.
+    """
+
+    __tablename__ = "assessment_question"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    skill_name: Mapped[str] = mapped_column(String(120), index=True)
+    role_family: Mapped[str] = mapped_column(String(120), index=True)
+
+    question_text: Mapped[str] = mapped_column(Text)
+    # JSON list of 4 answer strings
+    options: Mapped[list] = mapped_column(JSONB, default=list)
+    # 0-based index into options that is correct
+    correct_index: Mapped[int] = mapped_column(Integer)
+
+    # difficulty: 1=awareness, 2=application, 3=expert
+    difficulty: Mapped[int] = mapped_column(Integer, default=1)
+
+    # Version of the question bank this row belongs to
+    question_bank_version: Mapped[str] = mapped_column(
+        String(30), default="v1", server_default="v1", index=True
+    )
+
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    __table_args__ = (
+        Index("idx_aq_role_skill", "role_family", "skill_name"),
+        Index("idx_aq_role_version", "role_family", "question_bank_version"),
+    )
+
+
+# ---------------------------------------------------------------------------
+# T-DS-942: Assessment session + answers
+# ---------------------------------------------------------------------------
+
+
+class AssessmentSession(Base):
+    """Tracks one assessment attempt by a user for a role family."""
+
+    __tablename__ = "assessment_session"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    role_family: Mapped[str] = mapped_column(String(120), index=True)
+
+    # status: in_progress | completed | abandoned
+    status: Mapped[str] = mapped_column(
+        String(20), default="in_progress", server_default="in_progress", index=True
+    )
+
+    # Ordered list of question IDs assigned to this session
+    question_ids: Mapped[list] = mapped_column(JSONB, default=list)
+
+    # T-DS-943: version of question bank used for this session
+    question_bank_version: Mapped[str] = mapped_column(
+        String(30), default="v1", server_default="v1"
+    )
+
+    score: Mapped[float | None] = mapped_column(Float, nullable=True)
+    questions_total: Mapped[int] = mapped_column(Integer, default=0)
+    questions_correct: Mapped[int] = mapped_column(Integer, default=0)
+
+    # T-DS-943: percentile among all completed sessions for same role_family
+    percentile: Mapped[float | None] = mapped_column(Float, nullable=True)
+    level: Mapped[str | None] = mapped_column(String(30), nullable=True)
+
+    started_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+    answers: Mapped[List["AssessmentSessionAnswer"]] = relationship(
+        "AssessmentSessionAnswer",
+        back_populates="session",
+        cascade="all, delete-orphan",
+    )
+
+    __table_args__ = (Index("idx_as_user_role", "user_id", "role_family"),)
+
+
+class AssessmentSessionAnswer(Base):
+    """One question-answer pair within an assessment session."""
+
+    __tablename__ = "assessment_session_answer"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    session_id: Mapped[int] = mapped_column(
+        ForeignKey("assessment_session.id"), index=True
+    )
+    question_id: Mapped[int] = mapped_column(
+        ForeignKey("assessment_question.id"), index=True
+    )
+    selected_index: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    is_correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    answered_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    session: Mapped["AssessmentSession"] = relationship(
+        "AssessmentSession", back_populates="answers"
+    )
