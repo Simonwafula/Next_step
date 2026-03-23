@@ -47,10 +47,17 @@ def aggregate_skill_trends(db: Session):
     # 2. Group and count
     counts = df.groupby(["month", "family", "skill"]).size().reset_index(name="count")
 
-    # 3. Save to SkillTrendsMonthly
-    db.execute(
-        text("DELETE FROM skill_trends_monthly")
-    )  # Reset baseline for simplicity
+    # 3. Compute share = skill_count / total_skill_mentions_in_family_month
+    # Each row in `counts` is one (month, family, skill) triple.
+    # Share = this skill's count / sum of all skill counts in that bucket.
+    family_month_totals = (
+        counts.groupby(["month", "family"])["count"].sum().rename("total")
+    )
+    counts = counts.join(family_month_totals, on=["month", "family"])
+    counts["share"] = (counts["count"] / counts["total"]).round(4)
+
+    # 4. Save to SkillTrendsMonthly
+    db.execute(text("DELETE FROM skill_trends_monthly"))
 
     for _, row in counts.iterrows():
         trend = SkillTrendsMonthly(
@@ -58,7 +65,7 @@ def aggregate_skill_trends(db: Session):
             title_norm=row["family"],
             month=row["month"],
             count=int(row["count"]),
-            share=0.0,  # Could calculate relative share here
+            share=float(row["share"]),
         )
         db.add(trend)
 
@@ -66,13 +73,50 @@ def aggregate_skill_trends(db: Session):
     return {"status": "success", "count": len(counts)}
 
 
-def generate_role_evolution(db: Session):
-    """Identify top skills per role family to track evolution."""
-    # Similar logic to skill trends but focusing on top-K per month
+def generate_role_evolution(db: Session, top_k: int = 10):
+    """Compute top-K skills per role family per month from JobEntities.
+
+    Replaces the previous stub that deleted the table and returned no data.
+    """
+    stmt = (
+        select(JobPost.first_seen, TitleNorm.family, JobEntities.skills)
+        .join(TitleNorm, JobPost.title_norm_id == TitleNorm.id)
+        .join(JobEntities, JobPost.id == JobEntities.job_id)
+        .where(JobPost.is_active.is_(True))
+    )
+    rows = db.execute(stmt).all()
+    if not rows:
+        return {"status": "warning", "message": "No entity data for role evolution"}
+
+    # Group skills by (month, family)
+    bucket: dict[tuple, Counter] = {}
+    for dt, family, skills in rows:
+        if not family or not skills:
+            continue
+        month = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        key = (month, family)
+        if key not in bucket:
+            bucket[key] = Counter()
+        for s in skills or []:
+            name = s.get("value", s) if isinstance(s, dict) else s
+            if name:
+                bucket[key][str(name)] += 1
+
     db.execute(text("DELETE FROM role_evolution"))
-    # ... logic to find top skills ...
+
+    inserted = 0
+    for (month, family), counts in bucket.items():
+        top_skills = dict(counts.most_common(top_k))
+        row = RoleEvolution(
+            title_norm=family,
+            month=month,
+            top_skills=top_skills,
+        )
+        db.add(row)
+        inserted += 1
+
     db.commit()
-    return {"status": "success"}
+    return {"status": "success", "rows_inserted": inserted}
 
 
 def refresh_analytics_baseline(db: Session):
@@ -243,6 +287,73 @@ def _median(values: list[float]) -> float | None:
     if len(values) % 2 == 1:
         return float(values[mid])
     return (values[mid - 1] + values[mid]) / 2.0
+
+
+def get_intelligence_metadata(
+    db: Session,
+    role_family: str | None = None,
+    window_days: int = 180,
+) -> dict:
+    """Return standardised intelligence provenance metadata (T-DS-925).
+
+    Every intelligence API response should include this block so consumers
+    can understand the date range, sample size, source mix, and confidence.
+    """
+    since = datetime.utcnow() - timedelta(days=window_days)
+
+    stmt = (
+        select(
+            func.count(JobPost.id),
+            func.min(JobPost.first_seen),
+            func.max(JobPost.first_seen),
+        )
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+    )
+    if role_family:
+        stmt = stmt.join(TitleNorm, JobPost.title_norm_id == TitleNorm.id).where(
+            TitleNorm.family == role_family
+        )
+
+    total, oldest, newest = db.execute(stmt).one()
+    total = total or 0
+
+    # Source mix: top 5 sources by count
+    src_stmt = (
+        select(JobPost.source, func.count(JobPost.id))
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+        .group_by(JobPost.source)
+        .order_by(desc(func.count(JobPost.id)))
+        .limit(5)
+    )
+    if role_family:
+        src_stmt = src_stmt.join(
+            TitleNorm, JobPost.title_norm_id == TitleNorm.id
+        ).where(TitleNorm.family == role_family)
+    source_mix = [
+        {"source": src, "count": cnt} for src, cnt in db.execute(src_stmt).all()
+    ]
+
+    # Confidence note
+    if total >= 100:
+        confidence_note = "high"
+    elif total >= 30:
+        confidence_note = "medium"
+    else:
+        confidence_note = "low — interpret with caution"
+
+    return {
+        "sample_size": total,
+        "date_range": {
+            "from": oldest.date().isoformat() if oldest else None,
+            "to": newest.date().isoformat() if newest else None,
+            "window_days": window_days,
+        },
+        "source_mix": source_mix,
+        "confidence_note": confidence_note,
+        "role_family": role_family,
+    }
 
 
 def run_drift_checks(

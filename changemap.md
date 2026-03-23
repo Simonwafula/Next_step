@@ -190,7 +190,95 @@
   - [x] (T-731) Systemd service/timer templates (`deploy/systemd/`)
   - [x] (T-732) Incremental update upsert patterns (`backend/app/db/upsert.py` — 11 tests)
 
+## 8. DS / ML Trust Layer + Intelligence Execution Backlog (NEW - 2026-03-23)
+- Note: This section translates `DS_ML.md` into execution tasks.
+- Note: These tasks track production-valid completion for trust-layer and intelligence gaps. Earlier DONE items in search, matching, pathways, and analytics sections record prototype delivery, not final mission-complete execution.
+- [ ] (T-DS-900) Phase 0: DS product contract + track selection
+  - [ ] (T-DS-901) Choose primary execution track (`Trust-Layer First` or `LMI / Intelligence First`) and mandatory supporting workstream
+  - [ ] (T-DS-902) Publish canonical score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`)
+  - [ ] (T-DS-903) Define mission metric tree + intelligence metric tree
+  - [ ] (T-DS-904) Publish two-track roadmap in docs/control plane
+- [/] (T-DS-910) Phase 1: Instrumentation + evaluation foundation
+  - [x] (T-DS-911) Add serve-time feature logging for search — `SearchServingLog` model + `log_search_serving()` wired in `/api/search`
+  - [x] (T-DS-912) Add application funnel event model (`viewed`, `applied`, `shortlisted`, `interviewed`, `rejected`, `offered`, `hired`) — `ApplicationFunnelEvent` model
+  - [x] (T-DS-913) Add structured rejection / decision reasons schema — `reason` + `details` fields on `ApplicationFunnelEvent`
+  - [ ] (T-DS-914) Build offline evaluation harness for search + recommendations
+  - [ ] (T-DS-915) Build intelligence quality dashboard (baseline stability, source mix, sample size, confidence)
+  - [x] (T-DS-916) Replace synthetic ranking-training inputs with logged serve-time signals — `ranking_trainer.py` now uses `SearchServingLog`; fallback to job attributes without synthetic placeholders
+  - [x] (T-DS-917) Replace placeholder ranking features — real Jaccard title/desc match, real recency from `first_seen`, real skill Jaccard overlap; removed hardcoded 0.5/0.0 stubs
+  - [ ] (T-DS-918) Add ranking-quality evaluation suite (effectiveness metrics over held-out sessions, not just shape/flow tests)
+- [/] (T-DS-920) Shared P0 / Phase 1b: Intelligence baseline repair
+  - [x] (T-DS-921) Implement real `RoleEvolution` computation — replaced stub with top-K skills per family per month from `JobEntities`
+  - [x] (T-DS-922) Compute skill shares correctly — `aggregate_skill_trends` now computes real `share` (skill_count / total_mentions); was hardcoded 0.0
+  - [ ] (T-DS-923) Add representativeness reporting (`source mix`, `geography`, `sector`, coverage gaps)
+  - [ ] (T-DS-924) Replace hardcoded pathways / skills-gap content with market-derived baselines
+  - [x] (T-DS-925) Standardize intelligence output semantics — `get_intelligence_metadata()` returns `date_range`, `sample_size`, `source_mix`, `confidence_note`
+- [ ] (T-DS-930) Phase 2: Candidate evidence + provenance model
+  - [ ] (T-DS-931) Add candidate evidence schema (portfolio items, projects, work samples, gig/informal work)
+  - [ ] (T-DS-932) Build CV / portfolio ingestion + evidence extraction pipeline
+  - [ ] (T-DS-933) Add verification provenance schema (`evidence source`, `assessment version`, `confidence`, `expiry`)
+  - [ ] (T-DS-934) Add intelligence provenance schema exposed in user-facing outputs
+- [ ] (T-DS-940) Phase 3: Skill verification system
+  - [ ] (T-DS-941) Build question banks derived from real job requirements for launch role families
+  - [ ] (T-DS-942) Build assessment delivery + scoring + certification service
+  - [ ] (T-DS-943) Add percentile / calibration logic and assessment versioning
+  - [ ] (T-DS-944) Build employer-visible verification summaries and evidence bundles
+  - [ ] (T-DS-945) Add requirement-extraction QA for verification launch families
+- [ ] (T-DS-950) Phase 4: Employer-side pre-screening ("The 20")
+  - [ ] (T-DS-951) Add employer / recruiter account and permissions model
+  - [ ] (T-DS-952) Build candidate-to-job scoring service (verified skills + evidence + fit)
+  - [ ] (T-DS-953) Build shortlist API + explanation bundles
+  - [ ] (T-DS-954) Attach intelligence sidecars to shortlists (`required skills`, `demand`, `salary`, `confidence`)
+- [ ] (T-DS-960) Phase 5: Feedback loops + outcome learning
+  - [ ] (T-DS-961) Add employer quick-rating taxonomy and capture flow
+  - [ ] (T-DS-962) Build candidate-facing rejection feedback generator
+  - [ ] (T-DS-963) Feed outcomes back into ranking / matching
+  - [ ] (T-DS-964) Feed outcomes back into intelligence products and reports
+- [ ] (T-DS-970) Phase 6: Production-grade intelligence products
+  - [ ] (T-DS-971) Build confidence-aware analytics APIs and baseline refresh hardening
+  - [ ] (T-DS-972) Build report-grade datasets/templates for universities, employers, counties, and training providers
+  - [ ] (T-DS-973) Add salary intelligence confidence and error tracking
+  - [ ] (T-DS-974) Build intelligence export / report endpoints
+- [ ] (T-DS-980) Phase 7: Model stack consolidation
+  - [ ] (T-DS-981) Standardize embedding model and dimension across services
+  - [ ] (T-DS-982) Define canonical feature contract for ranking / matching
+  - [ ] (T-DS-983) Add algorithm registry + evaluation-linked versioning
+  - [ ] (T-DS-984) Add intelligence metric registry
+  - [ ] (T-DS-985) Remove or hard-gate non-semantic hash-vector fallback from semantic ranking/search paths; expose degraded mode explicitly in health/monitoring
+- Execution order (recommended, if `PROBLEM.md` remains source of truth):
+  1. `T-DS-900` → `T-DS-910` → `T-DS-920`
+  2. `T-DS-930` → `T-DS-940` → `T-DS-950` → `T-DS-960`
+  3. `T-DS-970`
+  4. `T-DS-980`
+- Execution order (alternative, if LMI / Intelligence becomes primary):
+  1. `T-DS-900` → `T-DS-910` → `T-DS-920`
+  2. `T-DS-970`
+  3. `T-DS-930` → `T-DS-960`
+  4. `T-DS-940` → `T-DS-950`
+  5. `T-DS-980`
+- Mandatory intelligence workstream regardless of primary track:
+  - `T-DS-920`
+  - `T-DS-971`
+  - `T-DS-972`
+  - `T-DS-973`
+  - `T-DS-974`
+
 ## Logs
+
+### 2026-03-23 (T-DS-900 Planning Backlog Translation)
+- Translated `DS_ML.md` into an execution backlog section in `changemap.md` with dedicated `T-DS-*` task IDs.
+- Added implementation ordering for both:
+  - `Trust-Layer First` primary track
+  - `LMI / Intelligence First` primary track
+- Explicitly marked intelligence work as a mandatory supporting workstream so labor market intelligence remains part of the execution plan in either strategy.
+- Added explicit ranking-validity backlog items to cover production-site audit gaps:
+  - replacement of synthetic training signals
+  - replacement of placeholder ranking features
+  - model-quality evaluation beyond structural tests
+  - removal / hard-gating of hash-vector fallback from semantic paths
+- No code or test changes in this step; documentation/control-plane update only.
+- Verification:
+  - Not run (planning/docs-only change)
 
 ### 2026-02-15 (Hardening T-602: Monitoring metrics + thresholds)
 - Extended monitoring gate logic in `backend/app/services/monitoring_service.py`:

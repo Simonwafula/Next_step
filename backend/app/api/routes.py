@@ -32,7 +32,7 @@ from ..services.recommend import (
     transitions_for,
 )
 from ..services.scraper_service import scraper_service
-from ..services.search import search_jobs
+from ..services.search import log_search_serving, search_jobs
 from ..services.career_pathways_service import (
     CareerPathwayNotFoundError,
     career_pathways_service,
@@ -100,6 +100,25 @@ def search(
     )
 
     response_payload = payload if isinstance(payload, dict) else {"results": payload}
+
+    # T-DS-911: log serve-time features for ranking trainer
+    log_search_serving(
+        db,
+        query=q,
+        filters={
+            "location": location,
+            "seniority": seniority,
+            "title": title,
+            "company": company,
+            "role_family": role_family,
+            "county": county,
+            "sector": sector,
+        },
+        results=response_payload.get("results") or [],
+        mode=mode or "standard",
+        user_id=current_user.id if current_user else None,
+        session_id=None,  # populated by session middleware when available
+    )
 
     if current_user and personalized:
         response_payload = {
