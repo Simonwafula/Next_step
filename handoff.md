@@ -4,7 +4,7 @@
 
 Branch: `feat/T-DS-940-945-skill-verification`
 
-Commit: `pending`
+Commit: `a713a11` `[T-DS-900] Publish DS product contract`
 
 ### Summary
 
