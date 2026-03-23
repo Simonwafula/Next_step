@@ -1,5 +1,4 @@
 import logging
-import os
 import re
 from collections import Counter
 
@@ -9,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from ..db.models import JobPost, Organization, Location, SearchServingLog, TitleNorm
 from ..ml.embeddings import embed_text
+from ..ml.model_registry import is_hash_fallback_active
 from ..normalization.titles import get_careers_for_degree, normalize_title
 from .ranking import rank_results
 from .salary_service import salary_service
@@ -388,14 +388,15 @@ def search_jobs(
 
     # Process results with explanations
     results = []
-    # If transformers are disabled (common in multi-worker API deployments),
-    # `embed_text()` falls back to hash vectors which are not semantically meaningful.
-    # In that mode, disable semantic scoring to avoid randomizing ranking.
-    transformers_enabled = os.getenv("NEXTSTEP_DISABLE_TRANSFORMERS") != "1"
-    query_embedding = (
-        embed_text(f"query: {q}") if (q and transformers_enabled) else None
-    )
-    embedding_model = os.getenv("EMBEDDING_MODEL_NAME", "e5-small-v2")
+    # T-DS-985: hard-gate hash-vector fallback from semantic path.
+    # Hash vectors are not semantically meaningful; using them for cosine similarity
+    # would randomise ranking. Only embed when the real model is active.
+    _degraded = is_hash_fallback_active()
+    query_embedding = embed_text(f"query: {q}") if (q and not _degraded) else None
+    # T-DS-981: canonical model name from registry
+    from ..ml.model_registry import CANONICAL_EMBEDDING_MODEL_SHORT
+
+    embedding_model = CANONICAL_EMBEDDING_MODEL_SHORT
 
     from ..db.models import JobEmbedding, JobEntities
 
@@ -519,6 +520,7 @@ def search_jobs(
         "limit": int(limit),
         "offset": int(offset),
         "has_more": bool(has_more),
+        "degraded_mode": bool(_degraded),
         "title_clusters": [
             {"title": title_value, "count_ads": int(count)}
             for title_value, count in clusters.most_common(50)

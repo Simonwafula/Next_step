@@ -22,6 +22,12 @@ from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from ..db.database import get_db
+from ..ml.model_registry import (
+    get_feature_contract_dict,
+    get_metric_registry,
+    is_hash_fallback_active,
+    load_algorithm_registry,
+)
 from ..services.intelligence_products import (
     build_county_report,
     build_employer_report,
@@ -35,6 +41,44 @@ from ..services.intelligence_products import (
 )
 
 router = APIRouter(prefix="/api/intelligence", tags=["intelligence"])
+
+
+# ---------------------------------------------------------------------------
+# T-DS-983/984/985: Algorithm registry, metric registry, embedding mode
+# ---------------------------------------------------------------------------
+
+
+@router.get("/algorithm-registry")
+def algorithm_registry():
+    """T-DS-983: Algorithm registry with versioning and eval metadata."""
+    return load_algorithm_registry()
+
+
+@router.get("/feature-contract")
+def feature_contract():
+    """T-DS-982: Canonical feature contract for the ranking model."""
+    return get_feature_contract_dict()
+
+
+@router.get("/metric-registry")
+def metric_registry(db: Session = Depends(get_db)):
+    """T-DS-984: Live intelligence metric registry snapshot."""
+    return get_metric_registry(db)
+
+
+@router.get("/embedding-mode")
+def embedding_mode_status():
+    """T-DS-985: Current embedding mode — semantic or hash_fallback (degraded)."""
+    degraded = is_hash_fallback_active()
+    return {
+        "mode": "hash_fallback" if degraded else "semantic",
+        "degraded": degraded,
+        "warning": (
+            "Hash-vector fallback is active. Semantic search is disabled."
+            if degraded
+            else None
+        ),
+    }
 
 
 # ---------------------------------------------------------------------------

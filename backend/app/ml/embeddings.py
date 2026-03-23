@@ -1,10 +1,15 @@
 import hashlib
 import logging
 import os
+from functools import lru_cache
 
 import numpy as np
-from functools import lru_cache
-from ..core.config import settings
+
+from .model_registry import (
+    CANONICAL_EMBEDDING_DIM,
+    CANONICAL_EMBEDDING_MODEL_HF,
+    set_hash_fallback_active,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -19,20 +24,25 @@ def _get_model():
     global _tokenizer, _transformer_model, _use_transformers
     if _use_transformers and os.getenv("NEXTSTEP_DISABLE_TRANSFORMERS") == "1":
         _use_transformers = False
+        set_hash_fallback_active(True)
     if _tokenizer is None and _use_transformers:
         try:
             from transformers import AutoTokenizer, AutoModel
 
-            model_name = "intfloat/e5-small-v2"
+            # T-DS-981: use canonical model name from registry
+            model_name = CANONICAL_EMBEDDING_MODEL_HF
             _tokenizer = AutoTokenizer.from_pretrained(model_name)
             _transformer_model = AutoModel.from_pretrained(model_name)
-            _transformer_model.eval()  # Set to evaluation mode
-            logger.info(f"Loaded transformer model: {model_name}")
+            _transformer_model.eval()
+            set_hash_fallback_active(False)
+            logger.info("Loaded transformer model: %s", model_name)
         except Exception as e:
             logger.warning(
-                f"Failed to load transformer model: {e}. Falling back to hash-based embeddings."
+                "Failed to load transformer model: %s. Falling back to hash-based embeddings.",
+                e,
             )
             _use_transformers = False
+            set_hash_fallback_active(True)
     return _tokenizer, _transformer_model
 
 
@@ -87,8 +97,8 @@ def embed_text(text: str) -> list[float]:
         except Exception as e:
             logger.warning(f"Transformer encoding failed: {e}")
 
-    # Fallback to hash-based
-    dim = settings.EMBEDDING_DIM
+    # Fallback to hash-based (T-DS-985: degraded mode, not semantically meaningful)
+    dim = CANONICAL_EMBEDDING_DIM
     vec = _hash_to_vec(text, dim)
     return vec.tolist()
 
@@ -137,7 +147,7 @@ def update_embeddings_model(db=None) -> dict:
 # Incremental embedding refresh (T-601c)
 # ---------------------------------------------------------------------------
 
-_DEFAULT_MODEL_NAME = "e5-small-v2"
+from .model_registry import CANONICAL_EMBEDDING_MODEL_SHORT as _DEFAULT_MODEL_NAME  # noqa: E402
 
 
 def run_incremental_embeddings(

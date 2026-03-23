@@ -239,12 +239,12 @@
   - [x] (T-DS-972) Build report-grade datasets/templates for universities, employers, counties, and training providers — `build_university_report()`, `build_employer_report()`, `build_county_report()`, `build_training_provider_report()` in intelligence_products.py; exposed via `GET /api/intelligence/reports/{type}`
   - [x] (T-DS-973) Add salary intelligence confidence and error tracking — `get_salary_with_market_context()`: market-backed (job postings + MetricsDaily) vs. heuristic fallback, confidence tier (high/medium/low), low-confidence call audit log; `get_salary_confidence_summary()` by role family; `GET /api/intelligence/salary/{role_family}`, `GET /api/intelligence/salary/confidence-summary`, `GET /api/intelligence/salary/low-confidence-log`
   - [x] (T-DS-974) Build intelligence export / report endpoints — `backend/app/api/intelligence_routes.py`: 11 endpoints covering baseline health, all 4 report types, salary intelligence, CSV+JSON exports for skills-gap and market-snapshot; registered in main.py; 25 tests in `backend/tests/test_intelligence_products.py`
-- [ ] (T-DS-980) Phase 7: Model stack consolidation
-  - [ ] (T-DS-981) Standardize embedding model and dimension across services
-  - [ ] (T-DS-982) Define canonical feature contract for ranking / matching
-  - [ ] (T-DS-983) Add algorithm registry + evaluation-linked versioning
-  - [ ] (T-DS-984) Add intelligence metric registry
-  - [ ] (T-DS-985) Remove or hard-gate non-semantic hash-vector fallback from semantic ranking/search paths; expose degraded mode explicitly in health/monitoring
+- [x] (T-DS-980) Phase 7: Model stack consolidation
+  - [x] (T-DS-981) Standardize embedding model and dimension — `backend/app/ml/model_registry.py`: `CANONICAL_EMBEDDING_MODEL_SHORT/HF/DIM`; `embeddings.py` and `search.py` now source from registry instead of inline strings/env vars
+  - [x] (T-DS-982) Define canonical feature contract — `FEATURE_CONTRACT` (8 FeatureSpec entries) + `FEATURE_DIM` in `model_registry.py`; `RankingModel.features_dim` derives from `FEATURE_DIM`; `GET /api/intelligence/feature-contract`
+  - [x] (T-DS-983) Algorithm registry + eval versioning — JSON-persisted `algorithm_registry.json` in `backend/var/`; `load/update_algorithm_registry()`, `record_ranking_train()`; `GET /api/intelligence/algorithm-registry`
+  - [x] (T-DS-984) Intelligence metric registry — `IntelligenceMetricSnapshot` dataclass + `get_metric_registry()`; aggregates embedding mode, feature contract, algorithm registry, baseline health; `GET /api/intelligence/metric-registry`
+  - [x] (T-DS-985) Hard-gate hash-vector fallback — `set/is_hash_fallback_active()` in registry; `embeddings.py` calls `set_hash_fallback_active(True)` on failure; `search.py` uses `is_hash_fallback_active()` instead of raw env check; `degraded_mode` field in search response; `GET /api/intelligence/embedding-mode`
 - Execution order (recommended, if `PROBLEM.md` remains source of truth):
   1. `T-DS-900` → `T-DS-910` → `T-DS-920`
   2. `T-DS-930` → `T-DS-940` → `T-DS-950` → `T-DS-960`
@@ -264,6 +264,15 @@
   - `T-DS-974`
 
 ## Logs
+
+### 2026-03-23 (T-DS-980: Model stack consolidation)
+- T-DS-981: `CANONICAL_EMBEDDING_MODEL_SHORT/HF/DIM` in `model_registry.py`; `embeddings.py` + `search.py` unified
+- T-DS-982: `FEATURE_CONTRACT` (8-dim) + `FEATURE_DIM` in registry; `RankingModel.features_dim` uses it; feature-contract endpoint
+- T-DS-983: JSON algorithm registry (`backend/var/algorithm_registry.json`); `load/update_algorithm_registry()`; algorithm-registry endpoint
+- T-DS-984: `IntelligenceMetricSnapshot` + `get_metric_registry()`; metric-registry endpoint
+- T-DS-985: `set/is_hash_fallback_active()` in registry; `search.py` hard-gates hash path; `degraded_mode` in search response; embedding-mode endpoint
+- Tests: `backend/tests/test_model_stack.py` — 18 tests, all passing
+- Verification: `backend/venv3.11_new/bin/pytest backend/tests/test_model_stack.py -q` → 18 passed
 
 ### 2026-03-23 (T-DS-970: Production-grade intelligence products)
 - T-DS-971: `get_baseline_health()` + `get_confidence_aware_skill_baseline()` in `intelligence_products.py`; staleness checks on all 4 baseline tables; `GET /api/intelligence/baseline-health` + `GET /api/intelligence/skill-baseline/{role}`
