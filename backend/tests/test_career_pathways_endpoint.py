@@ -7,7 +7,7 @@ from sqlalchemy.orm import joinedload
 
 from app.api.routes import api_router
 from app.db.database import get_db
-from app.db.models import User
+from app.db.models import User, RoleSkillBaseline, TitleNorm
 from app.services.auth_service import get_current_user
 
 
@@ -63,9 +63,34 @@ def _create_user(db_session_factory, email: str, tier: str) -> int:
     return user_id
 
 
+def _seed_data_analyst_baseline(db_session_factory) -> None:
+    db = db_session_factory()
+    # Seed TitleNorm so the role is resolvable
+    db.add(TitleNorm(family="data analyst", canonical_title="Data Analyst", aliases={}))
+    # Seed RoleSkillBaseline so required_skills are market-derived
+    for skill, share in [
+        ("SQL", 0.85),
+        ("Python", 0.72),
+        ("Excel", 0.68),
+        ("Power BI", 0.55),
+    ]:
+        db.add(
+            RoleSkillBaseline(
+                role_family="data analyst",
+                skill_name=skill,
+                skill_share=share,
+                low_confidence=False,
+                count_total_jobs_used=50,
+            )
+        )
+    db.commit()
+    db.close()
+
+
 def test_career_pathway_returns_role_specific_roadmap_for_professional_user(
     db_session_factory,
 ):
+    _seed_data_analyst_baseline(db_session_factory)
     user_id = _create_user(
         db_session_factory,
         email="pathways.professional@example.com",
@@ -83,6 +108,8 @@ def test_career_pathway_returns_role_specific_roadmap_for_professional_user(
     assert payload["title"]
     assert isinstance(payload["required_skills"], list)
     assert len(payload["required_skills"]) > 0
+    assert "SQL" in payload["required_skills"]
+    assert payload["market_data"] is True
     assert isinstance(payload["experience_ladder"], list)
     assert len(payload["experience_ladder"]) >= 3
     assert isinstance(payload["learning_resources"], list)

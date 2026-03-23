@@ -305,10 +305,11 @@ def recommend(
 def get_career_pathway(
     role_slug: str,
     _current_user=Depends(require_subscription("professional")),
+    db: Session = Depends(get_db),
 ):
     """Get a career roadmap for a supported role slug."""
     try:
-        return career_pathways_service.get_pathway(role_slug)
+        return career_pathways_service.get_pathway(role_slug, db)
     except CareerPathwayNotFoundError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 

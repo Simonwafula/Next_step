@@ -1,79 +1,38 @@
-from dataclasses import dataclass
+from sqlalchemy import func, desc, select
+from sqlalchemy.orm import Session
 
+from ..db.models import RoleSkillBaseline
 from .salary_service import salary_service
 
 
-@dataclass(frozen=True)
-class RoleSkillProfile:
-    role: str
-    core_skills: tuple[str, ...]
-    recommended_projects: tuple[str, ...]
+# Fallback project suggestions when no DB data is available for a role
+_FALLBACK_PROJECTS: tuple[str, ...] = (
+    "Complete one role-relevant portfolio project.",
+    "Document measurable outcomes from recent work.",
+    "Collect feedback and iterate on your project.",
+)
 
 
 class SkillsGapService:
-    def __init__(self) -> None:
-        self._role_profiles = {
-            "data scientist": RoleSkillProfile(
-                role="Data Scientist",
-                core_skills=(
-                    "python",
-                    "sql",
-                    "machine learning",
-                    "statistics",
-                    "data visualization",
-                ),
-                recommended_projects=(
-                    "Build a churn prediction model with clear business metrics.",
-                    "Create an end-to-end analytics dashboard using SQL and Python.",
-                    "Publish a portfolio case study explaining model decisions.",
-                ),
-            ),
-            "data analyst": RoleSkillProfile(
-                role="Data Analyst",
-                core_skills=("excel", "sql", "python", "power bi", "reporting"),
-                recommended_projects=(
-                    "Design a KPI dashboard for a growth or operations team.",
-                    "Analyze conversion funnel performance and propose optimizations.",
-                    "Automate monthly reporting with Python and SQL.",
-                ),
-            ),
-            "software engineer": RoleSkillProfile(
-                role="Software Engineer",
-                core_skills=(
-                    "python",
-                    "javascript",
-                    "apis",
-                    "testing",
-                    "system design",
-                ),
-                recommended_projects=(
-                    "Ship a production-ready API with tests and observability.",
-                    "Build a full-stack app with authentication and role access.",
-                    "Document architecture tradeoffs for a scalable feature.",
-                ),
-            ),
-        }
-
     def scan_profile(
         self,
         profile_skills: dict,
         target_role: str,
         experience_level: str | None,
         preferred_location: str | None,
+        db: Session,
     ) -> dict:
-        normalized_target = (target_role or "").strip().lower()
-        role_profile = self._role_profiles.get(
-            normalized_target,
-            RoleSkillProfile(
-                role=target_role.strip() if target_role else "General Role",
-                core_skills=("communication", "problem solving", "excel"),
-                recommended_projects=(
-                    "Complete one role-relevant portfolio project.",
-                    "Document measurable outcomes from recent work.",
-                    "Collect feedback and iterate on your project.",
-                ),
-            ),
-        )
+        family = (target_role or "").strip().lower()
+
+        # T-DS-924: market-derived core skills from RoleSkillBaseline
+        skill_rows = db.execute(
+            select(RoleSkillBaseline.skill_name)
+            .where(func.lower(RoleSkillBaseline.role_family) == family)
+            .where(RoleSkillBaseline.low_confidence.is_(False))
+            .order_by(desc(RoleSkillBaseline.skill_share))
+            .limit(8)
+        ).all()
+        required_skills = [row.skill_name for row in skill_rows]
 
         candidate_skills = {
             str(skill).strip().lower()
@@ -81,34 +40,36 @@ class SkillsGapService:
             if str(skill).strip()
         }
 
-        required_skills = list(role_profile.core_skills)
-        matching_skills = [
-            skill for skill in required_skills if skill in candidate_skills
-        ]
-        missing_skills = [
-            skill for skill in required_skills if skill not in candidate_skills
-        ]
-
         if required_skills:
+            matching_skills = [
+                s for s in required_skills if s.lower() in candidate_skills
+            ]
+            missing_skills = [
+                s for s in required_skills if s.lower() not in candidate_skills
+            ]
             match_percentage = round(
                 (len(matching_skills) / len(required_skills)) * 100
             )
         else:
+            matching_skills = []
+            missing_skills = []
             match_percentage = 0
 
         salary_estimate = salary_service.estimate_salary_range(
-            title=role_profile.role,
+            title=target_role,
             seniority=experience_level,
             location_text=preferred_location,
         )
 
         return {
-            "target_role": role_profile.role,
+            "target_role": target_role.strip().title()
+            if target_role
+            else "General Role",
             "match_percentage": max(0, min(match_percentage, 100)),
             "matching_skills": matching_skills,
             "missing_skills": missing_skills,
-            "recommended_projects": list(role_profile.recommended_projects),
-            "best_fit_roles": self._best_fit_roles(candidate_skills),
+            "recommended_projects": list(_FALLBACK_PROJECTS),
+            "best_fit_roles": self._best_fit_roles(candidate_skills, db),
             "expected_pay_range": salary_service.format_salary_range(
                 salary_estimate["min"],
                 salary_estimate["max"],
@@ -121,17 +82,24 @@ class SkillsGapService:
             },
         }
 
-    def _best_fit_roles(self, candidate_skills: set[str]) -> list[str]:
-        role_scores: list[tuple[int, str]] = []
-        for profile in self._role_profiles.values():
-            score = len(set(profile.core_skills) & candidate_skills)
-            role_scores.append((score, profile.role))
+    def _best_fit_roles(self, candidate_skills: set[str], db: Session) -> list[str]:
+        if not candidate_skills:
+            return []
 
-        role_scores.sort(key=lambda item: item[0], reverse=True)
-        return [role for score, role in role_scores if score > 0][:3] or [
-            "Operations Analyst",
-            "Customer Success Associate",
-        ]
+        # T-DS-924: find role families where the most candidate skills appear in market baselines
+        rows = db.execute(
+            select(
+                RoleSkillBaseline.role_family,
+                func.count(RoleSkillBaseline.skill_name).label("matches"),
+            )
+            .where(func.lower(RoleSkillBaseline.skill_name).in_(candidate_skills))
+            .where(RoleSkillBaseline.low_confidence.is_(False))
+            .group_by(RoleSkillBaseline.role_family)
+            .order_by(desc(func.count(RoleSkillBaseline.skill_name)))
+            .limit(3)
+        ).all()
+
+        return [row.role_family.title() for row in rows if row.matches > 0]
 
 
 skills_gap_service = SkillsGapService()
