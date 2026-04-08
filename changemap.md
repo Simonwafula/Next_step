@@ -1083,8 +1083,9 @@ Added to `main.css`:
   - Added a real `/api/users/market-fit` response in `backend/app/api/user_routes.py` using the authenticated profile plus recent active jobs, with deterministic skill-gap aggregation that prefers normalized `job_skill` rows and falls back to text extraction.
 - [x] (T-UX-311) Implement `GET /api/users/applications/by-stage` and align application update semantics
   - Added `/api/users/applications/by-stage` for the dashboard kanban and updated `PUT /api/users/applications/{id}` so dashboard `stage` payloads map cleanly onto stored `status` values without breaking existing callers.
-- [ ] (T-UX-312) Add dashboard boot-path integration tests
-  - Cover `market-fit`, `applications/by-stage`, and the dashboard tab boot sequence as shipped.
+- [x] (T-UX-312) Add dashboard boot-path integration tests
+  - Added shipped-contract coverage in `backend/tests/test_dashboard_boot_integration.py` for the dashboard HTML/JS tab boot sequence plus the real route shapes used by `/api/auth/me`, `/api/auth/profile`, `/api/users/recommendations`, `/api/users/saved-jobs`, `/api/users/applications`, `/api/users/notifications`, `/api/users/market-fit`, and `/api/users/applications/by-stage`.
+  - Fixed `/api/auth/me` so `last_login` is truly nullable in the response model, which the new boot-path test surfaced for first-session users.
 - [ ] (T-UX-320) Wire logged-in homepage search results to real seeker actions
   - Enable save/apply/track flows directly from the main search results cards.
 - [ ] (T-UX-321) Add end-to-end job-alerts UI or remove the implied promise from seeker-facing surfaces until it exists
@@ -1099,7 +1100,9 @@ Added to `main.css`:
 - Log 2026-04-08: `.pilot/tasks/` does not currently exist in this checkout, so the prioritized backlog was recorded in `changemap.md`, which is the repo's active task ledger in practice.
 - Log 2026-04-08: completed `T-UX-300` by hardening `/api/search` so serve-time logging tolerates optional or partial authenticated-user objects and logs the actual search result list whether the payload uses `results` or `jobs`.
 - Log 2026-04-08: completed `T-UX-310` and `T-UX-311` by adding the missing dashboard-facing `/api/users/market-fit` and `/api/users/applications/by-stage` endpoints, grouping application statuses into the shipped kanban stages, and accepting dashboard `stage` updates on the existing application update route.
+- Log 2026-04-08: completed `T-UX-312` by adding boot-path integration coverage against the shipped dashboard HTML/JS contract and the real backend route shapes it consumes; this also surfaced and fixed a nullable `last_login` response-model bug in `/api/auth/me`.
 - Tests 2026-04-08: `backend/venv3.11/bin/ruff format backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`; `backend/venv3.11/bin/ruff check backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_user_activity.py backend/tests/test_dashboard_endpoints.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_subscription_paywall.py backend/tests/test_user_job_match_endpoint.py backend/tests/test_skills_gap_scan_endpoint.py`
+- Tests 2026-04-08: `backend/venv3.11/bin/ruff format backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`; `backend/venv3.11/bin/ruff check backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_boot_integration.py backend/tests/test_dashboard_user_routes.py` -> `6 passed`
 
 ### Representative Validation
 - Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_skills_gap_scan_endpoint.py backend/tests/test_user_activity.py backend/tests/test_admin_processing_endpoints.py -q` -> `18 passed`

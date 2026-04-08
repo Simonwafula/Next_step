@@ -1,5 +1,30 @@
 # Handoff
 
+## 2026-04-08 (T-UX-312: Dashboard Boot-Path Integration Coverage)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-312` by adding [test_dashboard_boot_integration.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_boot_integration.py):
+  - locks the shipped tab order and boot sequence in [dashboard.html](/home/nextstep.co.ke/public_html/frontend/dashboard.html) and [dashboard-ui.js](/home/nextstep.co.ke/public_html/frontend/js/dashboard-ui.js)
+  - verifies the real route contracts used during dashboard boot for `/api/auth/me`, `/api/auth/profile`, `/api/users/recommendations`, `/api/users/saved-jobs`, `/api/users/applications`, `/api/users/notifications`, `/api/users/market-fit`, and `/api/users/applications/by-stage`
+- Fixed a boot-path defect in [auth_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/auth_routes.py):
+  - `UserResponse.last_login` is now nullable, matching the route behavior for users who have not logged in before
+  - this prevents `/api/auth/me` from failing validation during dashboard boot for first-session users
+- Reviewed and kept the existing local edits in [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js) and [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) as separate in-flight work.
+- Dropped the duplicate untracked backfill pair because [backfill_normalized_entities.py](/home/nextstep.co.ke/public_html/backend/scripts/backfill_normalized_entities.py) and [test_normalized_backfill.py](/home/nextstep.co.ke/public_html/backend/tests/test_normalized_backfill.py) already cover that normalization/backfill lane.
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`
+- `backend/venv3.11/bin/ruff check backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_boot_integration.py backend/tests/test_dashboard_user_routes.py` -> `6 passed`
+
+### Remaining Next Step
+1. Return to `T-UX-301` if search payload normalization is still the next highest-priority user-path gap on this branch.
+2. Keep the current docs/artifact deletions as separate cleanup; they were not included in `T-UX-312`.
+
 ## 2026-04-08 (T-UX-310/T-UX-311: Dashboard API Contract Alignment)
 
 Branch: `feat/T-1A4-1A6-search-quality-signals`
