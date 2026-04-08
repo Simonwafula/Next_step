@@ -1,5 +1,45 @@
 # Handoff
 
+## 2026-04-08 (Persona Coverage Audit + Prioritized Gap Backlog)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Audited the current shipped implementation against the repo's actual user journeys and product surfaces:
+  - Visitor / Guest: `80%`
+  - Registered Job Seeker: `68%`
+  - Returning User: `55%`
+  - Premium Career Planner / Career Switcher: `60%`
+  - Admin / Operator: `85%`
+  - Employer / Recruiter: `10%`
+  - Overall against the current implemented user journeys: `71%`
+- Added a prioritized follow-up backlog to [changemap.md](/home/nextstep.co.ke/public_html/changemap.md) under `8.1 Persona Coverage Audit & Prioritized Gap Backlog (2026-04-08)`.
+- Highest-priority follow-ups added:
+  - `T-UX-300` fix guided-search auth/logging regression in `/api/search`
+  - `T-UX-301` align `/api/search` payload semantics
+  - `T-UX-310` implement or remove the dashboard's `market-fit` dependency
+  - `T-UX-311` implement `applications/by-stage` and reconcile `stage` vs `status`
+  - `T-UX-320` wire real seeker actions from homepage search results
+  - `T-UX-340` explicitly decide employer/recruiter scope
+- `.pilot/tasks/` does not exist in this checkout, so the backlog was recorded in `changemap.md`, which is the repo's active task ledger in practice.
+
+### Tests Run
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_skills_gap_scan_endpoint.py backend/tests/test_user_activity.py backend/tests/test_admin_processing_endpoints.py -q` -> `18 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_data_quality.py backend/tests/test_skill_filtering.py backend/tests/test_search_match_explanation_skills_shape.py backend/tests/test_user_job_match_endpoint.py -q` -> `11 passed, 1 warning`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `2 failed, 69 passed`
+
+### Open Regression Found
+- Guided search mode currently has a real regression in [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py): serve-time logging assumes `current_user.id` exists.
+- Failing suite: [test_search_modes.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_modes.py)
+- Exact error:
+  - `AttributeError: '_UserStub' object has no attribute 'id'`
+
+### Remaining Next Step
+1. Fix `T-UX-300` first so guided search is stable again.
+2. Then do `T-UX-310` and `T-UX-311` to bring the shipped dashboard UI back into sync with real backend routes.
+
 ## 2026-04-08 (T-1A4/T-1A5/T-1A6: Search Quality Signals)
 
 Branch: `main`
