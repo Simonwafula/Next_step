@@ -64,6 +64,7 @@
   - [x] (T-1A3) Add reproducible analysis materialized view script for cleaned job-post exploration
   - [x] (T-1A8) Add safe backfill helper for existing organization/location normalization and `job_post` reference repointing
   - [x] (T-1A9) Add materialized-view refresh helper and validate refresh against Postgres
+  - [x] (T-1A10) Add one-step CLI cleanup cycle for normalized-entity backfill plus analysis-view create/refresh
   - [ ] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
   - [ ] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
   - [ ] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
@@ -787,7 +788,7 @@
   - `integration_models.py` (copied) - DB models for above features (still in schema but unused)
 - Commented out integration routes in `main.py` and `routes.py` - app no longer exposes these endpoints
 - Created `later_features/README.md` documenting restoration criteria and process
-- Created `SCOPE_CLEANUP.md` with impact analysis and recommendations
+- Created `docs/archive/root/SCOPE_CLEANUP.md` with impact analysis and recommendations
 - **Recommendation**: Run tests to verify no breakage, consider DB migration to drop unused tables
 - **Next**: Focus on MVP per `OUTCOMES_PLAN.md` phases 1-3 (public search, student/early-career/professional outcomes)
 
@@ -963,7 +964,7 @@
   - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
 
 ### 2026-01-25 (Prior Context)
-- (agent instruction audit) Added compatibility instruction files and flagged `agent-work.md` as an archived snapshot.
+- (agent instruction audit) Added compatibility instruction files and flagged `docs/archive/root/agent-work.md` as an archived snapshot.
 - (local sqlite path) Switched local SQLite storage to `backend/var/nextstep.sqlite` and ensured the dev script prepares the directory; updated local env and docs to match.
 - (env quoting) Quoted `.env` values that contain spaces so the dev script can `source` the file safely.
 

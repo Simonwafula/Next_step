@@ -15,6 +15,15 @@ from app.ingestion.runner import (  # noqa: E402
 from app.ml.embeddings import run_incremental_embeddings  # noqa: E402
 from app.normalization.dedupe import run_incremental_dedup  # noqa: E402
 from app.scrapers.main import scrape_all_sites  # noqa: E402
+from scripts.backfill_normalized_entities import (  # noqa: E402
+    backfill_normalized_entities,
+)
+from scripts.create_job_post_analysis_view import (  # noqa: E402
+    create_job_post_analysis_view,
+)
+from scripts.refresh_job_post_analysis_view import (  # noqa: E402
+    refresh_job_post_analysis_view,
+)
 from app.services.analytics import (  # noqa: E402
     refresh_analytics_baseline,
     run_drift_checks,
@@ -212,6 +221,51 @@ def analytics():
     try:
         results = refresh_analytics_baseline(db)
         typer.echo(results["message"])
+    finally:
+        db.close()
+
+
+@app.command()
+def data_quality_cycle(
+    dry_run: bool = typer.Option(
+        False,
+        help="Run the normalized-entity backfill in dry-run mode before view work.",
+    ),
+    limit: int = typer.Option(
+        None,
+        help="Optional limit for the normalized-entity backfill scan.",
+    ),
+    orgs_only: bool = typer.Option(False, help="Backfill organizations only."),
+    locations_only: bool = typer.Option(False, help="Backfill locations only."),
+    create_view: bool = typer.Option(
+        True,
+        help="Create or recreate analysis.job_post_cleaned_mv before refresh.",
+    ),
+    refresh_view: bool = typer.Option(
+        True,
+        help="Refresh analysis.job_post_cleaned_mv after the backfill step.",
+    ),
+):
+    """Run the assignment-driven cleanup cycle in one command."""
+    typer.echo("Starting data-quality cleanup cycle...")
+    db = SessionLocal()
+    try:
+        backfill_result = backfill_normalized_entities(
+            db,
+            dry_run=dry_run,
+            limit=limit,
+            orgs_only=orgs_only,
+            locations_only=locations_only,
+        )
+        typer.echo(f"Backfill result: {backfill_result}")
+
+        if create_view:
+            create_job_post_analysis_view()
+            typer.echo("Created analysis.job_post_cleaned_mv")
+
+        if refresh_view:
+            refresh_job_post_analysis_view()
+            typer.echo("Refreshed analysis.job_post_cleaned_mv")
     finally:
         db.close()
 

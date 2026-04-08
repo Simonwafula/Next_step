@@ -90,10 +90,14 @@ ON analysis.job_post_cleaned_mv (source);
 """
 
 
-def main() -> None:
+def create_job_post_analysis_view() -> None:
     engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
     with engine.begin() as conn:
         conn.execute(text(SQL))
+
+
+def main() -> None:
+    create_job_post_analysis_view()
     print("Created analysis.job_post_cleaned_mv")
 
 

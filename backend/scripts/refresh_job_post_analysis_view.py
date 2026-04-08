@@ -14,7 +14,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from app.core.config import settings
 
 
-def main() -> None:
+def refresh_job_post_analysis_view() -> None:
     engine = create_engine(settings.DATABASE_URL, pool_pre_ping=True)
     with engine.begin() as conn:
         exists = conn.execute(
@@ -32,6 +32,10 @@ def main() -> None:
                 "analysis.job_post_cleaned_mv does not exist. Run create_job_post_analysis_view.py first."
             )
         conn.execute(text("REFRESH MATERIALIZED VIEW analysis.job_post_cleaned_mv"))
+
+
+def main() -> None:
+    refresh_job_post_analysis_view()
     print("Refreshed analysis.job_post_cleaned_mv")
 
 
