@@ -5,8 +5,8 @@ Wants=postgresql.service redis.service
 
 [Service]
 Type=exec
-User=nexts7595
-Group=nexts7595
+User=nexts9742
+Group=nexts9742
 WorkingDirectory=/home/nextstep.co.ke/public_html/backend
 EnvironmentFile=/home/nextstep.co.ke/.env
 ExecStart=/home/nextstep.co.ke/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --workers 4

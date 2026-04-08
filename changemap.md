@@ -1014,3 +1014,26 @@ Added to `main.css`:
 - `pytest backend/tests/ -q --tb=short` → **209 passed, 8 warnings** (60s).
 - Zero inline `style=` remaining in dashboard.html.
 - All new admin sections render with proper CSS classes.
+
+## T-OPS-DEPLOY NextStep VPS user + public routing fix — DONE
+
+### What changed
+- Updated committed deployment defaults and committed systemd unit templates to use `nexts9742` for both user and group.
+- Rebuilt the production Python environment at `/home/nextstep.co.ke/.venv` on the VPS.
+- Repaired live Next Step systemd services to run as `nexts9742` and bind the backend to `127.0.0.1:8010`.
+- Updated the Next Step OpenLiteSpeed vhost so:
+  - `docRoot` points to `/home/nextstep.co.ke/public_html/frontend`
+  - `/api/`, `/r/`, `/health`, and `/health/detailed` proxy to `127.0.0.1:8010`
+
+### Verification
+- `systemctl status nextstep-backend.service` → active
+- `systemctl status nextstep-celery.service` → active
+- `systemctl status nextstep-celery-beat.service` → active
+- `curl http://127.0.0.1:8010/health` → `200`
+- `curl http://127.0.0.1:8010/api/search?limit=1` → `200`
+- `curl https://nextstep.co.ke/health` via local resolve → `200`
+- `curl https://nextstep.co.ke/api/search?limit=1` via local resolve → `200`
+- `curl https://nextstep.co.ke/` via local resolve → `200`
+
+### Known follow-up
+- Alembic has multiple heads and one pending branch currently fails with `DuplicateTable` for `search_serving_log`; deployment was left running because the app and existing schema objects are healthy.

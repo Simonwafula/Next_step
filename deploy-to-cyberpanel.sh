@@ -5,7 +5,7 @@
 # 
 # CyberPanel Configuration Notes:
 # - Uses /home/domain-name/public_html instead of /var/www/html
-# - Services run under domain user (nextstep.co.ke) instead of www-data
+# - Services run under domain user (nexts9742) instead of www-data
 # - Assumes domain user exists and has proper permissions
 
 set -e  # Exit on any error
@@ -13,7 +13,7 @@ set -e  # Exit on any error
 echo "🚀 Starting NextStep Career Platform deployment to CyberPanel..."
 
 # Default domain user (can be overridden)
-DEFAULT_DOMAIN_USER="nextstep.co.ke"
+DEFAULT_DOMAIN_USER="nexts9742"
 
 # Colors for output
 RED='\033[0;31m'
@@ -276,6 +276,7 @@ After=network.target
 [Service]
 Type=simple
 User=$DOMAIN_USER
+Group=$DOMAIN_USER
 WorkingDirectory=$BACKEND_DIR
 Environment="PATH=$BACKEND_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=$BACKEND_DIR/venv/bin/python -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
@@ -295,6 +296,7 @@ After=network.target redis.service
 [Service]
 Type=simple
 User=$DOMAIN_USER
+Group=$DOMAIN_USER
 WorkingDirectory=$BACKEND_DIR
 Environment="PATH=$BACKEND_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=$BACKEND_DIR/venv/bin/python -m celery -A app.core.celery_app worker --loglevel=info
@@ -314,6 +316,7 @@ After=network.target redis.service
 [Service]
 Type=simple
 User=$DOMAIN_USER
+Group=$DOMAIN_USER
 WorkingDirectory=$BACKEND_DIR
 Environment="PATH=$BACKEND_DIR/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
 ExecStart=$BACKEND_DIR/venv/bin/python -m celery -A app.core.celery_app beat --loglevel=info

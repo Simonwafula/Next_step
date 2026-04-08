@@ -1044,3 +1044,40 @@ Branch: `main`
   - `T-DS-917` replace placeholder ranking features (`description match`, `recency`, `skill overlap`) and remove hard-coded similarity values
   - `T-DS-918` add ranking-quality evaluation beyond structural tests
   - `T-DS-985` remove or hard-gate non-semantic hash-vector fallback from semantic ranking/search paths
+
+---
+
+## 2026-04-08 (T-OPS-DEPLOY user/group + public site recovery)
+
+Branch: `main`
+
+### Summary
+- Updated committed deployment defaults and committed systemd unit templates from the old runtime account to `nexts9742`.
+- Built the production runtime at `/home/nextstep.co.ke/.venv` and repaired the live Next Step services to run as `nexts9742`.
+- Kept the Next Step backend isolated on `127.0.0.1:8010` to avoid conflicts with other apps already listening on `8000`, `8001`, `8002`, `8007`, `3001`, and `3010`.
+- Fixed public routing by updating the Next Step OpenLiteSpeed vhost:
+  - `docRoot` now points at `/home/nextstep.co.ke/public_html/frontend`
+  - `/api/`, `/r/`, `/health`, and `/health/detailed` proxy to `127.0.0.1:8010`
+
+### Ops / Deployment Notes (VPS)
+- Active backend unit: `nextstep-backend.service`
+- Active worker units: `nextstep-celery.service`, `nextstep-celery-beat.service`
+- Active internal backend port: `127.0.0.1:8010`
+- Live files changed on server:
+  - `/etc/systemd/system/nextstep-backend.service`
+  - `/etc/systemd/system/nextstep-celery.service`
+  - `/etc/systemd/system/nextstep-celery-beat.service`
+  - `/usr/local/lsws/conf/vhosts/nextstep.co.ke/vhost.conf`
+
+### Smoke Checks
+- `http://127.0.0.1:8010/health` -> `200`
+- `http://127.0.0.1:8010/api/search?limit=1` -> `200`
+- `https://nextstep.co.ke/health` -> `200`
+- `https://nextstep.co.ke/api/search?limit=1` -> `200`
+- `https://nextstep.co.ke/` -> `200` and serves frontend HTML
+
+### Known Issue
+- Alembic `upgrade heads` is blocked by an existing migration/state mismatch: revision `a1b2c3d4e5f6` attempts to create `search_serving_log`, but that table already exists in Postgres.
+
+### Tests Run
+- Live deployment smoke checks only; no `ruff` or `pytest` run during this session
