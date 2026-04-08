@@ -1098,3 +1098,13 @@ Branch: `main`
 
 ### Next Step
 - Finish the remaining assignment-driven hardening items above after validating the newly added normalization, dedupe, and analysis-view changes in a staging-like database.
+
+### Follow-up Implemented
+- Added `backend/scripts/backfill_normalized_entities.py` to safely normalize existing `Organization` and `Location` rows and repoint `job_post` foreign keys without deleting source rows.
+- Added `backend/scripts/refresh_job_post_analysis_view.py` to refresh `analysis.job_post_cleaned_mv`.
+- Validated focused regressions:
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_normalized_backfill.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_deduplication_url_normalization.py`
+  - `9 passed in 8.48s`
+- Validated Postgres refresh:
+  - `REFRESH MATERIALIZED VIEW analysis.job_post_cleaned_mv;`
+  - row count after refresh: `110781`

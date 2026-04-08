@@ -62,6 +62,8 @@
   - [x] (T-1A1) Extend normalization rules for obvious company/title/location artifacts affecting search and analytics
   - [x] (T-1A2) Extend deduplication to support `title + company + first_seen_date` composite matching in addition to URL/content checks
   - [x] (T-1A3) Add reproducible analysis materialized view script for cleaned job-post exploration
+  - [x] (T-1A8) Add safe backfill helper for existing organization/location normalization and `job_post` reference repointing
+  - [x] (T-1A9) Add materialized-view refresh helper and validate refresh against Postgres
   - [ ] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
   - [ ] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
   - [ ] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
