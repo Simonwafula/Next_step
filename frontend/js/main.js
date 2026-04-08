@@ -87,6 +87,8 @@ let selectedSector = null;
 let highConfidenceOnly = false;
 let currentGuidedMode = 'jobs';
 let currentUserProfile = null;
+let savedJobIds = new Set();
+let trackedJobIds = new Set();
 
 const saveAuth = (payload) => {
     localStorage.setItem(authStorageKey, JSON.stringify(payload));
@@ -143,6 +145,8 @@ const setAuthState = (user) => {
         if (dashboardMenuLink) dashboardMenuLink.hidden = true;
         if (adminMenuLink) adminMenuLink.hidden = true;
         currentUserProfile = null;
+        savedJobIds = new Set();
+        trackedJobIds = new Set();
         if (guidedModeWrap) {
             guidedModeWrap.hidden = true;
             setGuidedMode('jobs', { refresh: false });
@@ -311,6 +315,173 @@ const renderSavedJobs = (items) => {
     });
 };
 
+const syncUserActionState = async (token, options = {}) => {
+    const { renderSaved = false } = options;
+
+    const [savedPayload, applicationsPayload] = await Promise.all([
+        requestJson(`${apiBase}/users/saved-jobs?limit=100`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => ({ saved_jobs: [] })),
+        requestJson(`${apiBase}/users/applications?limit=100`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => ({ applications: [] })),
+    ]);
+
+    const savedItems = Array.isArray(savedPayload.saved_jobs)
+        ? savedPayload.saved_jobs
+        : [];
+    const trackedItems = Array.isArray(applicationsPayload.applications)
+        ? applicationsPayload.applications
+        : [];
+
+    savedJobIds = new Set(
+        savedItems
+            .map((item) => item.job_id)
+            .filter((value) => Number.isInteger(value))
+    );
+    trackedJobIds = new Set(
+        trackedItems
+            .map((item) => item.job_id)
+            .filter((value) => Number.isInteger(value))
+    );
+
+    if (renderSaved) {
+        renderSavedJobs(savedItems);
+    }
+};
+
+const showHomepageActionAuthPrompt = () => {
+    openAuthModal('signin');
+    setAuthError(signinError, 'Sign in to save jobs and track applications.');
+};
+
+const setResultActionMessage = (container, message, isError = false) => {
+    if (!container) return;
+    container.textContent = message || '';
+    container.classList.toggle('error', Boolean(isError));
+};
+
+const saveJobFromResults = async ({ token, jobId, button, statusEl }) => {
+    if (!token) {
+        showHomepageActionAuthPrompt();
+        return;
+    }
+
+    if (!jobId || savedJobIds.has(jobId)) {
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Saved';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Already saved to your account.');
+        return;
+    }
+
+    const originalLabel = button?.textContent || 'Save';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Saving...';
+    }
+
+    try {
+        await requestJson(`${apiBase}/users/saved-jobs`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ job_id: jobId }),
+        });
+        savedJobIds.add(jobId);
+        if (button) {
+            button.textContent = 'Saved';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Saved to your account.');
+        await syncUserActionState(token, { renderSaved: true });
+    } catch (error) {
+        const alreadySaved = error.message?.toLowerCase().includes('already saved');
+        if (alreadySaved) {
+            savedJobIds.add(jobId);
+            if (button) {
+                button.textContent = 'Saved';
+                button.classList.add('btn-saved');
+                button.disabled = true;
+            }
+            setResultActionMessage(statusEl, 'Already saved to your account.');
+            await syncUserActionState(token, { renderSaved: true });
+            return;
+        }
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+        setResultActionMessage(statusEl, error.message || 'Could not save this job.', true);
+    }
+};
+
+const trackApplicationFromResults = async ({ token, jobId, button, statusEl }) => {
+    if (!token) {
+        showHomepageActionAuthPrompt();
+        return;
+    }
+
+    if (!jobId || trackedJobIds.has(jobId)) {
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Tracked';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Already in your applications tracker.');
+        return;
+    }
+
+    const originalLabel = button?.textContent || 'Track';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Tracking...';
+    }
+
+    try {
+        await requestJson(`${apiBase}/users/applications`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                job_id: jobId,
+                application_source: 'homepage_search',
+            }),
+        });
+        trackedJobIds.add(jobId);
+        if (button) {
+            button.textContent = 'Tracked';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Added to your applications tracker.');
+    } catch (error) {
+        const alreadyTracked = error.message?.toLowerCase().includes('already applied');
+        if (alreadyTracked) {
+            trackedJobIds.add(jobId);
+            if (button) {
+                button.textContent = 'Tracked';
+                button.classList.add('btn-saved');
+                button.disabled = true;
+            }
+            setResultActionMessage(statusEl, 'Already in your applications tracker.');
+            return;
+        }
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+        setResultActionMessage(statusEl, error.message || 'Could not track this application.', true);
+    }
+};
+
 const loadAccountData = async (token) => {
     try {
         const me = await requestJson(`${apiBase}/auth/me`, {
@@ -342,14 +513,11 @@ const loadAccountData = async (token) => {
         renderSkills({});
     }
 
-    try {
-        const saved = await requestJson(`${apiBase}/users/saved-jobs`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        renderSavedJobs(saved.saved_jobs || []);
-    } catch (error) {
+    await syncUserActionState(token, { renderSaved: true }).catch(() => {
+        savedJobIds = new Set();
+        trackedJobIds = new Set();
         renderSavedJobs([]);
-    }
+    });
 };
 
 const renderGuidedResults = (payload, mode) => {
@@ -483,7 +651,10 @@ const renderResults = async (items) => {
                 matchByJobId.set(jobId, matchData);
             }
         });
-        await Promise.all(matchRequests);
+        await Promise.all([
+            syncUserActionState(token),
+            Promise.all(matchRequests),
+        ]);
     }
 
     items.forEach((item) => {
@@ -499,6 +670,7 @@ const renderResults = async (items) => {
             ? `${item.salary_estimated ? 'Estimated: ' : ''}${item.salary_range}`
             : 'Salary not provided';
         const applyLink = escapeHtml(safeUrl(item.apply_url || item.url));
+        const hasApplyLink = Boolean(item.apply_url || item.url);
         const matchLabel = matchData
             ? `${matchData.match_percentage}% match`
             : '';
@@ -540,6 +712,20 @@ const renderResults = async (items) => {
             ? escapeHtml(item.role_family)
             : '';
         const metaExtra = [contractLabel, roleFamilyLabel, postedLabel].filter(Boolean).join(' · ');
+        const canPersist = Boolean(token && Number.isInteger(jobId) && jobId > 0);
+        const isSaved = canPersist && savedJobIds.has(jobId);
+        const isTracked = canPersist && trackedJobIds.has(jobId);
+        const actionsHtml = [
+            hasApplyLink
+                ? `<a class="solid-btn btn-sm" href="${applyLink}" target="_blank" rel="noopener">Apply</a>`
+                : '',
+            canPersist
+                ? `<button type="button" class="ghost-btn btn-sm js-save-job ${isSaved ? 'btn-saved' : ''}" ${isSaved ? 'disabled' : ''}>${isSaved ? 'Saved' : 'Save'}</button>`
+                : '',
+            canPersist
+                ? `<button type="button" class="ghost-btn btn-sm js-track-job ${isTracked ? 'btn-saved' : ''}" ${isTracked ? 'disabled' : ''}>${isTracked ? 'Tracked' : 'Track'}</button>`
+                : '',
+        ].filter(Boolean).join('');
 
         card.innerHTML = `
             <div class="result-card-header">
@@ -554,8 +740,27 @@ const renderResults = async (items) => {
             ${matchLabel
                 ? `<div class="result-match">${escapeHtml(`${matchLabel}${missingLabel}`)}</div>`
                 : ''}
-            <a class="result-link" href="${applyLink}" target="_blank" rel="noopener">Apply</a>
+            ${actionsHtml ? `<div class="result-actions">${actionsHtml}</div>` : ''}
+            ${canPersist ? '<p class="result-action-status"></p>' : ''}
         `;
+
+        if (canPersist) {
+            const statusEl = card.querySelector('.result-action-status');
+            const saveBtn = card.querySelector('.js-save-job');
+            const trackBtn = card.querySelector('.js-track-job');
+
+            saveBtn?.addEventListener('click', () => {
+                saveJobFromResults({ token, jobId, button: saveBtn, statusEl }).catch((error) => {
+                    setResultActionMessage(statusEl, error.message || 'Could not save this job.', true);
+                });
+            });
+            trackBtn?.addEventListener('click', () => {
+                trackApplicationFromResults({ token, jobId, button: trackBtn, statusEl }).catch((error) => {
+                    setResultActionMessage(statusEl, error.message || 'Could not track this application.', true);
+                });
+            });
+        }
+
         resultsGrid.appendChild(card);
     });
 };

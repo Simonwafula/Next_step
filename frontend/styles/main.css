@@ -457,6 +457,23 @@ a {
     font-weight: 600;
 }
 
+.result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-top: 0.9rem;
+}
+
+.result-action-status {
+    margin: 0.7rem 0 0;
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+
+.result-action-status.error {
+    color: #b91c1c;
+}
+
 .user-menu {
     position: relative;
 }

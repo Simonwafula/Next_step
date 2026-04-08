@@ -13,6 +13,7 @@ from app.db.models import (
     JobSkill,
     Location,
     Organization,
+    SavedJob,
     Skill,
     User,
     UserProfile,
@@ -360,4 +361,83 @@ def test_application_update_accepts_dashboard_stage_payload(db_session_factory):
     ).scalar_one()
     assert updated.status == "offer"
     assert updated.notes == "Awaiting signature"
+    db.close()
+
+
+def test_save_job_creates_saved_job_record(db_session_factory):
+    user_id = _create_user(db_session_factory, with_profile=True)
+    app = _create_test_app(db_session_factory, user_id)
+
+    db = db_session_factory()
+    job = JobPost(
+        source="test",
+        url="https://example.com/jobs/save-1",
+        url_hash="save-1",
+        title_raw="Save Role",
+        description_raw="Save role description",
+        is_active=True,
+    )
+    db.add(job)
+    db.commit()
+    job_id = job.id
+    db.close()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/users/saved-jobs",
+            json={"job_id": job_id, "notes": "Homepage save"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Job saved successfully"
+
+    db = db_session_factory()
+    saved = db.execute(
+        select(SavedJob).where(
+            SavedJob.user_id == user_id,
+            SavedJob.job_post_id == job_id,
+        )
+    ).scalar_one()
+    assert saved.notes == "Homepage save"
+    db.close()
+
+
+def test_create_job_application_records_tracking_source(db_session_factory):
+    user_id = _create_user(db_session_factory, with_profile=True)
+    app = _create_test_app(db_session_factory, user_id)
+
+    db = db_session_factory()
+    job = JobPost(
+        source="test",
+        url="https://example.com/jobs/track-1",
+        url_hash="track-1",
+        title_raw="Track Role",
+        description_raw="Track role description",
+        is_active=True,
+    )
+    db.add(job)
+    db.commit()
+    job_id = job.id
+    db.close()
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/users/applications",
+            json={"job_id": job_id, "application_source": "homepage_search"},
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Application recorded successfully"
+
+    db = db_session_factory()
+    application = db.execute(
+        select(JobApplication).where(
+            JobApplication.user_id == user_id,
+            JobApplication.job_post_id == job_id,
+        )
+    ).scalar_one()
+    assert application.status == "applied"
+    assert application.application_source == "homepage_search"
     db.close()

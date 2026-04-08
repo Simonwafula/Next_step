@@ -1,5 +1,34 @@
 # Handoff
 
+## 2026-04-08 (T-UX-320: Homepage Search Actions)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-320` in [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js):
+  - homepage search cards now wire authenticated `Save` to `/api/users/saved-jobs`
+  - homepage search cards now wire authenticated `Track` to `/api/users/applications`
+  - `Apply` remains the direct external action, while save/track are kept as explicit seeker actions rather than being inferred from link clicks
+  - saved/tracked state is preloaded so logged-in users see the right button state immediately
+  - successful saves refresh the saved-jobs account panel on the homepage
+- Added small supporting styles in [main.css](/home/nextstep.co.ke/public_html/frontend/styles/main.css) for card action rows and inline feedback.
+- Added route coverage in [test_dashboard_user_routes.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_user_routes.py) for:
+  - creating a saved job record
+  - creating an application record with the homepage tracking source
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/tests/test_dashboard_user_routes.py`
+- `backend/venv3.11/bin/ruff check backend/tests/test_dashboard_user_routes.py`
+- `node --check frontend/js/main.js`
+- `node --check frontend/js/api.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_dashboard_boot_integration.py` -> `8 passed`
+
+### Remaining Next Step
+1. Move to `T-UX-321` if the next priority is exposing real job-alerts UI from seeker-facing surfaces.
+2. Keep the current cleanup deletions and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit as separate work unless you want them packaged next.
+
 ## 2026-04-08 (T-UX-301: Search Payload Normalization)
 
 Branch: `feat/T-1A4-1A6-search-quality-signals`
