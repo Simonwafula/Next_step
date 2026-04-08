@@ -1,5 +1,31 @@
 # Handoff
 
+## 2026-04-08 (T-UX-321: Homepage Job Alerts UI)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-321` by adding a real seeker-facing alerts flow on the homepage:
+  - [index.html](/home/nextstep.co.ke/public_html/frontend/index.html) now includes a `Job alerts` account tab and a `Save this search` entry point in the results header
+  - [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js) now pre-fills alert drafts from the current search, creates alerts through `/api/users/job-alerts`, loads existing alerts for the authenticated user, and deletes alerts from the same UI
+  - [main.css](/home/nextstep.co.ke/public_html/frontend/styles/main.css) adds the small layout styles for the new alert controls and list
+- Added route coverage in [test_dashboard_user_routes.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_user_routes.py) for:
+  - creating a job alert with query/filter payloads
+  - deleting a job alert
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/tests/test_dashboard_user_routes.py`
+- `backend/venv3.11/bin/ruff check backend/tests/test_dashboard_user_routes.py`
+- `node --check frontend/js/main.js`
+- `node --check frontend/js/api.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_dashboard_boot_integration.py` -> `10 passed`
+
+### Remaining Next Step
+1. Move to `T-UX-330` if the next priority is expanding premium pathways and skills-gap coverage beyond the fixed role set.
+2. Keep the current cleanup deletions and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit as separate work unless you want them packaged next.
+
 ## 2026-04-08 (T-UX-320: Homepage Search Actions)
 
 Branch: `feat/T-1A4-1A6-search-quality-signals`

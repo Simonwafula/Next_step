@@ -8,6 +8,7 @@ from sqlalchemy.orm import joinedload
 from app.api.user_routes import router as user_router
 from app.db.database import get_db
 from app.db.models import (
+    JobAlert,
     JobApplication,
     JobPost,
     JobSkill,
@@ -440,4 +441,66 @@ def test_create_job_application_records_tracking_source(db_session_factory):
     ).scalar_one()
     assert application.status == "applied"
     assert application.application_source == "homepage_search"
+    db.close()
+
+
+def test_create_job_alert_persists_query_and_filters(db_session_factory):
+    user_id = _create_user(db_session_factory, with_profile=True)
+    app = _create_test_app(db_session_factory, user_id)
+
+    with TestClient(app) as client:
+        response = client.post(
+            "/api/users/job-alerts",
+            json={
+                "name": "Data roles Nairobi",
+                "query": "data analyst",
+                "filters": {"location": "Nairobi", "high_confidence_only": True},
+                "frequency": "weekly",
+                "delivery_methods": ["email"],
+            },
+        )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["message"] == "Job alert created successfully"
+
+    db = db_session_factory()
+    alert = db.execute(select(JobAlert).where(JobAlert.user_id == user_id)).scalar_one()
+    assert alert.name == "Data roles Nairobi"
+    assert alert.query == "data analyst"
+    assert alert.filters["location"] == "Nairobi"
+    assert alert.frequency == "weekly"
+    db.close()
+
+
+def test_delete_job_alert_removes_record(db_session_factory):
+    user_id = _create_user(db_session_factory, with_profile=True)
+    app = _create_test_app(db_session_factory, user_id)
+
+    db = db_session_factory()
+    alert = JobAlert(
+        user_id=user_id,
+        name="Delete me",
+        query="sql",
+        filters={"location": "Remote"},
+        frequency="daily",
+        delivery_methods=["email"],
+        is_active=True,
+    )
+    db.add(alert)
+    db.commit()
+    alert_id = alert.id
+    db.close()
+
+    with TestClient(app) as client:
+        response = client.delete(f"/api/users/job-alerts/{alert_id}")
+
+    assert response.status_code == 200
+    assert response.json()["message"] == "Job alert deleted successfully"
+
+    db = db_session_factory()
+    deleted = db.execute(
+        select(JobAlert).where(JobAlert.id == alert_id)
+    ).scalar_one_or_none()
+    assert deleted is None
     db.close()
