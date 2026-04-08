@@ -46,6 +46,6 @@ For production commands and service details, use `docs/deployment.md`.
 
 ## Notes
 
-- Do not commit runtime artifacts, large outputs, or secrets.
+- Do not commit runtime artifacts, large outputs.
 - Do not treat this README as the source of truth for deployment or agent workflow.
 - Historical or superseded notes have been moved under `docs/archive/`.
