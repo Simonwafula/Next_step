@@ -1,5 +1,12 @@
 # Next Step Backend - Deployment Guide
 
+This document is retained for backend-specific and historical reference.
+
+For the live VPS deployment used by `nextstep.co.ke`, use `docs/deployment.md`
+as the canonical source of truth. Parts of this file still describe older generic
+or pre-CyberPanel deployment paths and should not be treated as the active
+production runbook.
+
 ## Overview
 
 Next Step is a career advisory platform for Kenya that aggregates jobs from multiple sources and provides intelligent search, recommendations, and notifications.

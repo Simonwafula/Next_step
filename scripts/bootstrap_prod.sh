@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
-# One-shot production bootstrap for the NextStep CyberPanel VPS.
+# Canonical one-shot production bootstrap for the NextStep CyberPanel VPS.
 # Run as root on the VPS. This script expects /home/nextstep.co.ke/.env to exist.
 set -euo pipefail
 
-APP_USER="${APP_USER:-nexts7595}"
-APP_GROUP="${APP_GROUP:-nexts7595}"
+APP_USER="${APP_USER:-nexts9742}"
+APP_GROUP="${APP_GROUP:-nexts9742}"
 DEPLOY_HOME="${DEPLOY_HOME:-/home/nextstep.co.ke}"
 REPO_ROOT="${REPO_ROOT:-/home/nextstep.co.ke/public_html}"
 ENV_FILE="${ENV_FILE:-/home/nextstep.co.ke/.env}"
@@ -112,7 +112,7 @@ bootstrap_venv() {
 run_migrations() {
   local alembic_cfg="$REPO_ROOT/backend/alembic.ini"
   if [[ -f "$alembic_cfg" ]]; then
-    sudo -u "$APP_USER" bash -lc "set -o allexport; source '$ENV_FILE'; set +o allexport; source '$VENV_DIR/bin/activate'; cd '$REPO_ROOT/backend'; alembic -c '$alembic_cfg' upgrade head"
+    sudo -u "$APP_USER" bash -lc "set -o allexport; source '$ENV_FILE'; set +o allexport; source '$VENV_DIR/bin/activate'; cd '$REPO_ROOT/backend'; alembic -c '$alembic_cfg' upgrade heads"
     return
   fi
   echo "alembic.ini not found; running SQLAlchemy init_db() instead."
@@ -137,10 +137,11 @@ After=network.target
 [Service]
 Type=simple
 User=${APP_USER}
+Group=${APP_GROUP}
 WorkingDirectory=${REPO_ROOT}/backend
 EnvironmentFile=${ENV_FILE}
 Environment=PATH=${VENV_DIR}/bin:/usr/local/bin:/usr/bin
-ExecStart=${VENV_DIR}/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+ExecStart=${VENV_DIR}/bin/uvicorn app.main:app --host 127.0.0.1 --port 8010 --workers 2
 Restart=always
 
 [Install]
@@ -155,6 +156,7 @@ After=network.target redis.service
 [Service]
 Type=simple
 User=${APP_USER}
+Group=${APP_GROUP}
 WorkingDirectory=${REPO_ROOT}/backend
 EnvironmentFile=${ENV_FILE}
 Environment=PATH=${VENV_DIR}/bin:/usr/local/bin:/usr/bin
@@ -173,6 +175,7 @@ After=network.target redis.service
 [Service]
 Type=simple
 User=${APP_USER}
+Group=${APP_GROUP}
 WorkingDirectory=${REPO_ROOT}/backend
 EnvironmentFile=${ENV_FILE}
 Environment=PATH=${VENV_DIR}/bin:/usr/local/bin:/usr/bin

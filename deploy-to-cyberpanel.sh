@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Legacy CyberPanel deployment script kept for reference.
+# Prefer `scripts/bootstrap_prod.sh` for the current production bootstrap path.
+#
 # NextStep Career Platform - CyberPanel Deployment Script
 # This script deploys the application to a VPS with CyberPanel already configured
 # 

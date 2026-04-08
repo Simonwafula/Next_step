@@ -1,6 +1,10 @@
 # Operations
 
-Consolidated documentation.
+This file is no longer the canonical deployment guide.
+
+Use `docs/deployment.md` for the current VPS layout, runtime user, internal port,
+and public routing. Keep this file focused on operational reference material and
+legacy notes that have not yet been consolidated into the canonical deployment doc.
 
 ## Runbook
 

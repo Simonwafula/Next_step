@@ -59,6 +59,7 @@ htmlcov/
 
 # Artifacts & Data
 artifacts/
+analysis_outputs/
 data/samples/*.csv
 data/samples/*.json
 !data/samples/.gitkeep
@@ -79,6 +80,7 @@ Thumbs.db
 tmp/
 temp/
 *.tmp
+backend/celerybeat-schedule
 
 # Notebooks
 .ipynb_checkpoints/

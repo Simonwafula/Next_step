@@ -1,5 +1,8 @@
 #!/bin/bash
 
+# Legacy upgrade script retained for historical reference.
+# Prefer `scripts/bootstrap_prod.sh` for the active production bootstrap path.
+#
 # Next_KE Platform Upgrades v2.0 Deployment Script
 # This script handles database migrations, dependency installation, and deployment
 

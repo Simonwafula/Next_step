@@ -1,5 +1,5 @@
-# This helper prepares the production environment referenced in the CyberPanel instructions.
-# Run it once from `/home/nextstep.co.ke/public_html` as the `nexts7595` user.
+# Supporting helper for the canonical production bootstrap in `scripts/bootstrap_prod.sh`.
+# Run it once from `/home/nextstep.co.ke/public_html` as the `nexts9742` user.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
