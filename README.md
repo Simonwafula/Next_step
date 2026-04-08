@@ -1,94 +1,51 @@
-# Career Translator + Labour Market Intelligence (LMI)
+# Next Step
 
-A starter scaffold for a system that:
-- Ingests jobs from reputable boards/ATS (e.g., Greenhouse/Lever/RSS).
-- Cleans/normalizes titles & skills, deduplicates, embeds text for similarity search.
-- Stores everything in Postgres (+ pgvector).
-- Exposes APIs (FastAPI) for search, recommendations, stats, and a WhatsApp webhook.
-- Generates Labour Market Intelligence (LMI) weekly via dbt.
-- Spins up Metabase for dashboards.
+Next Step is a job-matching and labour market intelligence platform built around:
 
-> This is a scaffold intended to run with Docker. Components are minimal and ready to extend.
+- a FastAPI backend for search, recommendation, ingestion, and admin workflows
+- a static frontend for public search and user journeys
+- dbt models for analytics and reporting
 
-## Services
-- **backend**: FastAPI app (search, recommend, stats, WhatsApp webhook, ingestion jobs).
-- **postgres**: Postgres 16 with pgvector extension.
-- **metabase**: Metabase UI (http://localhost:3000) — connect to Postgres manually on first run.
-- **redis**: broker/backing store for Celery tasks.
-- **celery_worker**: background worker for scrapers, processing, and monitoring jobs.
-- **celery_beat**: scheduler for periodic workflows (daily, scraper health, gov source monitor).
+This README is intentionally brief. Detailed operational and workflow instructions
+live in the canonical documents listed below.
 
-## Quick start
-1. Copy `.env.example` to `.env` and adjust values.
-2. `docker compose up --build` (first run will build backend image and start Celery services).
-3. Visit FastAPI docs: http://localhost:8000/docs
-4. Visit Metabase: http://localhost:3000 (create admin, add Postgres using env values).
+## Repo Layout
 
-## Local dev (no Docker)
-1. Copy `.env.example` to `.env` and adjust values.
-2. Create the virtual environment and install deps:
-   - `python3.11 -m venv backend/venv3.11`
-   - `backend/venv3.11/bin/pip install -r backend/requirements.txt`
-3. Run the dev helper:
-   - `./scripts/dev-start.sh`
-4. Open:
-   - Frontend: http://127.0.0.1:5173
-   - API docs: http://127.0.0.1:8000/docs
-5. SQLite vs Postgres:
-   - Use SQLite for quick local dev: set `USE_POSTGRES=false` or `DATABASE_URL=sqlite:///./var/nextstep.sqlite` in `.env`.
-   - Use Postgres: set `DATABASE_URL=postgresql://user:pass@localhost:5432/nextstep` (and ensure Postgres is running).
+- `backend/` - API, models, services, ingestion, tests
+- `frontend/` - static site assets and pages
+- `dbt/` - analytics models
+- `deploy/` - committed systemd unit templates
+- `scripts/` - operational helpers and bootstrap scripts
+- `docs/` - canonical project documentation
 
-## Troubleshooting (local dev)
-- Missing `.env`: copy from `.env.example` in the repo root.
-- Backend venv missing: create it at `backend/venv3.11` and install `backend/requirements.txt`.
-- SQLite file path errors: ensure `DATABASE_URL` uses `sqlite:///./var/nextstep.sqlite` or an absolute path.
-- Postgres connection errors: confirm Postgres is running and `DATABASE_URL` credentials are correct.
+## Canonical Docs
 
-## Data model (simplified)
-See `backend/app/db/models.py` for SQLAlchemy models. Key tables:
-- `job_post`, `organization`, `location`, `title_norm`, `skill`, `job_skill`
-
-## Ingestion
-Connectors live in `backend/app/ingestion/connectors`. Start with:
-- `greenhouse.py`
-- `lever.py`
-- `rss.py` (generic RSS/Atom feeds)
-- `html_generic.py` (placeholder for polite scraping if allowed)
-
-Configure sources in `backend/app/ingestion/sources.yaml`. Run ingestion via `/admin/ingest` endpoint or background scheduler.
-
-## Normalization
-- Titles mapped to canonical families in `normalization/titles.py`
-- Skills extracted via simple patterns in `normalization/skills.py` (stub — extend with NLP later).
-
-## Recommender
-- Embeddings stub in `ml/embeddings.py` (deterministic hashing → vectors; swap with a real model later).
-- Cosine similarity for title/skills vectors in `services/recommend.py`.
-
-## WhatsApp mini-advisor
-- Webhook at `/whatsapp/webhook` (Twilio-compatible). Add your credentials to `.env`.
-- Minimal intents: search by degree/skills, basic transition suggestion, set alert (stub).
-
-## dbt & LMI
-- `dbt/` holds a tiny dbt project with weekly metrics examples.
-- After ingestion, run dbt models to compute aggregates for Metabase.
-
-## Documentation
-- Canonical deployment guide: `docs/deployment.md`
-- Operations runbook: `docs/runbook.md`
-- Ingestion & workflows: `docs/ingestion-workflows.md`
-- Integrations: `docs/integrations.md`
-- Product roadmap & research: `docs/product.md`
-- Feature status: `docs/features.md`
+- Deployment: `docs/deployment.md`
+- Runbook: `docs/runbook.md`
+- Ingestion workflows: `docs/ingestion-workflows.md`
+- Product and roadmap context: `docs/product.md`
+- Features: `docs/features.md`
 - User journey: `docs/userjourney.md`
+
+## Workflow Docs
+
+- Repo/agent operating rules: `AGENTS.md`
 - Change tracking: `changemap.md`
+- Session handoff log: `handoff.md`
+
+## Production Summary
+
+- Domain: `nextstep.co.ke`
+- Repo root: `/home/nextstep.co.ke/public_html`
+- Frontend docroot: `/home/nextstep.co.ke/public_html/frontend`
+- Runtime env: `/home/nextstep.co.ke/.env`
+- Runtime venv: `/home/nextstep.co.ke/.venv`
+- Backend bind: `127.0.0.1:8010`
+
+For production commands and service details, use `docs/deployment.md`.
 
 ## Notes
-- This scaffold avoids heavy NLP deps by default. Replace `ml/embeddings.py` with your provider (OpenAI, HuggingFace, etc).
-- Respect robots.txt and TOS for any scraping; prefer official ATS APIs/RSS feeds.
-- Ensure compliance with data protection laws for user data and messaging consent.
 
-## Commands
-- `docker compose up --build`
-- `docker compose logs -f backend`
-- Run dbt from a container or your host: see `docs/operations.md`.
+- Do not commit runtime artifacts, large outputs, or secrets.
+- Do not treat this README as the source of truth for deployment or agent workflow.
+- Historical or superseded notes have been moved under `docs/archive/`.
