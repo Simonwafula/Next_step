@@ -166,7 +166,9 @@ def extract_entity_skills(
     min_confidence: float | None = None,
 ) -> list[dict[str, object]]:
     """Extract normalized skill payloads from JobEntities.skills."""
-    threshold = get_top_skill_min_confidence() if min_confidence is None else min_confidence
+    threshold = (
+        get_top_skill_min_confidence() if min_confidence is None else min_confidence
+    )
     if not raw_skills:
         return []
 

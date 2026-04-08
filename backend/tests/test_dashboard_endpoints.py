@@ -412,8 +412,7 @@ class TestAdminLmiQuality:
         assert representativeness["coverage"]["sector"]["coverage_pct"] == 0.0
         assert representativeness["coverage_gaps"]
         assert any(
-            gap["dimension"] == "sector"
-            for gap in representativeness["coverage_gaps"]
+            gap["dimension"] == "sector" for gap in representativeness["coverage_gaps"]
         )
         assert representativeness["status"] == "warning"
 

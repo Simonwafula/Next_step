@@ -409,7 +409,9 @@ def get_representativeness_report(
     jobs_with_geography = sum(
         int(count) for geography, count in geography_rows if geography
     )
-    sector_coverage_pct = round((jobs_with_sector / total_jobs) * 100, 1) if total_jobs else 0.0
+    sector_coverage_pct = (
+        round((jobs_with_sector / total_jobs) * 100, 1) if total_jobs else 0.0
+    )
     geography_coverage_pct = (
         round((jobs_with_geography / total_jobs) * 100, 1) if total_jobs else 0.0
     )
@@ -417,7 +419,11 @@ def get_representativeness_report(
     def _mix(rows: list[tuple[object, int]], *, unknown_label: str) -> list[dict]:
         items = []
         for key, count in rows[:top_n]:
-            label = str(key).strip() if key is not None and str(key).strip() else unknown_label
+            label = (
+                str(key).strip()
+                if key is not None and str(key).strip()
+                else unknown_label
+            )
             share = round((int(count) / total_jobs) * 100, 1) if total_jobs else 0.0
             items.append({"label": label, "count": int(count), "share_pct": share})
         return items
@@ -427,12 +433,16 @@ def get_representativeness_report(
     geography_mix = _mix(geography_rows, unknown_label="unknown_location")
 
     top_source_share = source_mix[0]["share_pct"] if source_mix else 0.0
-    unknown_sector_share = round(
-        ((total_jobs - jobs_with_sector) / total_jobs) * 100, 1
-    ) if total_jobs else 0.0
-    unknown_geography_share = round(
-        ((total_jobs - jobs_with_geography) / total_jobs) * 100, 1
-    ) if total_jobs else 0.0
+    unknown_sector_share = (
+        round(((total_jobs - jobs_with_sector) / total_jobs) * 100, 1)
+        if total_jobs
+        else 0.0
+    )
+    unknown_geography_share = (
+        round(((total_jobs - jobs_with_geography) / total_jobs) * 100, 1)
+        if total_jobs
+        else 0.0
+    )
 
     coverage_gaps = []
     if unknown_sector_share >= 40.0:

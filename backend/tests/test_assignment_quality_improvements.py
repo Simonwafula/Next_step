@@ -22,7 +22,11 @@ def test_normalize_company_name_strips_listing_prefixes_and_artifacts():
 
 def test_normalize_location_handles_global_and_cleanup():
     assert normalize_location(" Nairobi \n Kenya ") == ("Nairobi", "Nairobi", "Kenya")
-    assert normalize_location("International") == ("International", "International", None)
+    assert normalize_location("International") == (
+        "International",
+        "International",
+        None,
+    )
 
 
 def test_build_title_company_date_key_normalizes_inputs():

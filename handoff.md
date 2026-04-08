@@ -71,6 +71,19 @@ Commit: `pending`
   - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `11 passed, 47 deselected`
   - `node --check frontend/js/admin.js`
 
+### Ruff Fix
+- Root cause: [backend/venv3.11/bin/ruff](/home/nextstep.co.ke/public_html/backend/venv3.11/bin/ruff) was a checked-in macOS Mach-O binary, so linting was broken on this Linux host.
+- Fix applied:
+  - installed `ruff 0.15.9` into `/home/nextstep.co.ke/.venv`
+  - replaced [backend/venv3.11/bin/ruff](/home/nextstep.co.ke/public_html/backend/venv3.11/bin/ruff) with a shell wrapper that executes `/home/nextstep.co.ke/.venv/bin/python -m ruff "$@"`
+  - ran Ruff format on the changed Python files in this branch
+- Validation:
+  - `backend/venv3.11/bin/ruff --version` -> `ruff 0.15.9`
+  - `backend/venv3.11/bin/ruff check ...` -> pass
+  - `backend/venv3.11/bin/ruff format --check ...` -> pass
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `11 passed, 47 deselected`
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py` -> `10 passed`
+
 ## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
 
 Branch: `feat/T-DS-910-920-instrumentation-intelligence`

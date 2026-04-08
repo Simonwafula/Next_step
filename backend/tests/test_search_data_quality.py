@@ -49,7 +49,9 @@ def test_search_jobs_prioritizes_cleaner_sources_and_exposes_quality_fields(
 
     clean_org = Organization(name="Safaricom Kenya", sector="tech", verified=True)
     noisy_org = Organization(name="Jobs at Example Ltd", sector="tech", verified=False)
-    clean_loc = Location(city="Nairobi", region="Nairobi", country="Kenya", raw="Nairobi, Kenya")
+    clean_loc = Location(
+        city="Nairobi", region="Nairobi", country="Kenya", raw="Nairobi, Kenya"
+    )
     noisy_loc = Location(raw="International")
     db.add_all([clean_org, noisy_org, clean_loc, noisy_loc])
     db.flush()
@@ -118,9 +120,13 @@ def test_search_jobs_prioritizes_cleaner_sources_and_exposes_quality_fields(
     assert payload["results"][0]["data_quality_flags"]["listing_page"] is False
     assert payload["results"][0]["source_quality_tier"] == "high"
 
-    noisy_result = next(item for item in payload["results"] if item["id"] == noisy_job.id)
+    noisy_result = next(
+        item for item in payload["results"] if item["id"] == noisy_job.id
+    )
     assert noisy_result["quality_tag"] == "Needs review"
     assert noisy_result["data_quality_flags"]["listing_page"] is True
     assert noisy_result["data_quality_flags"]["company_noise"] is True
     assert noisy_result["data_quality_flags"]["dedupe_cluster"] == clean_job.id
-    assert noisy_result["source_quality_score"] == get_source_quality_score("telegram:jobs")
+    assert noisy_result["source_quality_score"] == get_source_quality_score(
+        "telegram:jobs"
+    )
