@@ -1,9 +1,13 @@
 # Minimal Lever board ingest
 # Public postings API: https://api.lever.co/v0/postings/{board_token}
-from sqlalchemy.orm import Session
-from ...db.models import JobPost, Organization, Location
 from datetime import datetime
 import httpx
+
+from sqlalchemy.orm import Session
+
+from ...db.models import JobPost, Location, Organization
+from ...normalization.companies import normalize_company_name
+from ...normalization.locations import normalize_location
 
 
 def ingest_lever(db: Session, **src) -> int:
@@ -16,6 +20,7 @@ def ingest_lever(db: Session, **src) -> int:
     jobs = httpx.get(url, timeout=30).json()
 
     if org_name:
+        org_name = normalize_company_name(org_name)
         org = db.query(Organization).filter(Organization.name == org_name).one_or_none()
         if not org:
             org = Organization(name=org_name, ats="lever", verified=True)
@@ -41,9 +46,25 @@ def ingest_lever(db: Session, **src) -> int:
             else None
         )
         if loc_raw:
-            loc = Location(raw=loc_raw)
-            db.add(loc)
-            db.flush()
+            city, region, country = normalize_location(loc_raw)
+            loc = (
+                db.query(Location)
+                .filter(
+                    Location.city == city,
+                    Location.region == region,
+                    Location.country == country,
+                )
+                .one_or_none()
+            )
+            if not loc:
+                loc = Location(
+                    raw=" ".join(loc_raw.split()),
+                    city=city,
+                    region=region,
+                    country=country,
+                )
+                db.add(loc)
+                db.flush()
 
         jp = JobPost(
             source="lever",

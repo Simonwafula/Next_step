@@ -20,6 +20,11 @@ KENYA_LOCATIONS = {
     "remote": ["remote", "work from home", "anywhere"],
 }
 
+GLOBAL_LOCATION_PATTERNS = {
+    "Global": ["global", "worldwide"],
+    "International": ["international", "multiple countries", "multinational"],
+}
+
 
 def normalize_location(raw: str) -> tuple[str, str, str]:
     """
@@ -29,7 +34,9 @@ def normalize_location(raw: str) -> tuple[str, str, str]:
     if not raw:
         return (None, None, "Kenya")
 
-    r = raw.lower().strip()
+    r = re.sub(r"\s+", " ", raw.lower()).strip()
+    r = re.sub(r"\bstate\b", "", r).strip()
+    r = re.sub(r"\s+", " ", r)
 
     # Fast match for known Kenya cities/regions
     for canon, patterns in KENYA_LOCATIONS.items():
@@ -37,6 +44,10 @@ def normalize_location(raw: str) -> tuple[str, str, str]:
             if canon == "remote":
                 return ("Remote", "Remote", "Kenya")
             return (canon.title(), canon.title(), "Kenya")
+
+    for canon, patterns in GLOBAL_LOCATION_PATTERNS.items():
+        if any(p in r for p in patterns):
+            return (canon, canon, None)
 
     # Fallback to basic cleaning
     cleaned = re.sub(r"[^a-z\s,]", "", r).strip()

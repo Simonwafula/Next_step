@@ -15,6 +15,8 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ...db.models import JobPost, Organization, Location
+from ...normalization.companies import normalize_company_name
+from ...normalization.locations import normalize_location
 from ...services.deduplication_service import DeduplicationService
 
 try:
@@ -369,7 +371,7 @@ def ingest_gov_careers(db: Session, **src) -> int:
     # JobPost.source attribution (default remains "gov_careers").
     job_source = str(src.get("source") or "gov_careers")[:120]
 
-    org_name = src.get("org") or src.get("name")
+    org_name = normalize_company_name(src.get("org") or src.get("name"))
     keywords = src.get("keywords") or DEFAULT_KEYWORDS
     max_links = int(src.get("max_links", 200))
     max_detail_pages = int(src.get("max_detail_pages", 20))
@@ -394,17 +396,18 @@ def ingest_gov_careers(db: Session, **src) -> int:
 
     location = None
     if county:
+        city, region, country = normalize_location(county)
         location = (
             db.query(Location)
             .filter(
-                Location.country == "Kenya",
-                Location.region == county,
-                Location.city.is_(None),
+                Location.country == country,
+                Location.region == region,
+                Location.city == city,
             )
             .one_or_none()
         )
         if not location:
-            location = Location(country="Kenya", region=county, raw=county)
+            location = Location(country=country, region=region, city=city, raw=county)
             db.add(location)
             db.flush()
 

@@ -11,6 +11,7 @@ from sqlalchemy import or_
 from sqlalchemy.orm import Session
 
 from ...db.models import IngestionState, JobPost, Organization
+from ...normalization.companies import normalize_company_name
 from ...services.deduplication_service import DeduplicationService
 
 logger = logging.getLogger(__name__)
@@ -179,6 +180,9 @@ def _get_or_create_state(db: Session, source_key: str) -> IngestionState:
 
 
 def _get_or_create_org(db: Session, name: str | None) -> Organization | None:
+    if not name:
+        return None
+    name = normalize_company_name(name)
     if not name:
         return None
     org = db.query(Organization).filter(Organization.name == name).one_or_none()

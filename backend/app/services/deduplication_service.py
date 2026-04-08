@@ -16,11 +16,13 @@ from difflib import SequenceMatcher
 from datetime import datetime
 import logging
 
-from sqlalchemy import select, func
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..db.models import JobPost, Organization
 from ..ml.embeddings import generate_embeddings
+from ..normalization.companies import normalize_company_name
+from ..normalization.dedupe import build_title_company_date_key, normalize_title_key
 
 logger = logging.getLogger(__name__)
 
@@ -134,34 +136,10 @@ class DeduplicationService:
         Returns:
             Normalized title string
         """
-        if not title:
-            return ""
+        return normalize_title_key(title)
 
-        # Convert to lowercase
-        title = title.lower().strip()
-
-        # Remove common prefixes/suffixes
-        patterns_to_remove = [
-            r"^jobs?\s+at\s+",
-            r"^vacancies\s+at\s+",
-            r"^careers?\s+at\s+",
-            r"^positions?\s+at\s+",
-            r"^openings?\s+at\s+",
-            r"\s*-\s*urgent$",
-            r"\s*-\s*immediate\s+hire$",
-            r"\s*\(.*?\)\s*$",  # Remove parenthetical content
-        ]
-
-        for pattern in patterns_to_remove:
-            title = re.sub(pattern, "", title, flags=re.IGNORECASE)
-
-        # Normalize whitespace
-        title = re.sub(r"\s+", " ", title).strip()
-
-        # Remove special characters but keep alphanumeric and basic punctuation
-        title = re.sub(r"[^\w\s\-&+]", "", title)
-
-        return title
+    def normalize_company(self, company_name: str | None) -> str:
+        return normalize_company_name(company_name or "")
 
     def calculate_title_similarity(self, title1: str, title2: str) -> float:
         """
@@ -258,6 +236,7 @@ class DeduplicationService:
         title: str,
         company_name: Optional[str] = None,
         location_id: Optional[int] = None,
+        posted_at: Optional[datetime] = None,
         days_lookback: int = 30,
     ) -> List[Tuple[JobPost, float]]:
         """
@@ -277,19 +256,13 @@ class DeduplicationService:
             return []
 
         try:
+            normalized_company = self.normalize_company(company_name)
+            target_key = build_title_company_date_key(title, company_name, posted_at)
+
             # Build query
-            query = select(JobPost)
-
-            # Filter by company if provided
-            if company_name:
-                org_query = select(Organization.id).where(
-                    func.lower(Organization.name) == company_name.lower()
-                )
-                org_result = await db.execute(org_query)
-                org_id = org_result.scalar_one_or_none()
-
-                if org_id:
-                    query = query.where(JobPost.org_id == org_id)
+            query = select(JobPost, Organization.name).join(
+                Organization, JobPost.org_id == Organization.id, isouter=True
+            )
 
             # Filter by location if provided
             if location_id:
@@ -305,12 +278,21 @@ class DeduplicationService:
             query = query.limit(100)
 
             result = await db.execute(query)
-            candidates = result.scalars().all()
+            candidates = result.all()
 
             # Calculate similarity for each candidate
             matches = []
-            for candidate in candidates:
+            for candidate, candidate_org_name in candidates:
+                if normalized_company:
+                    if self.normalize_company(candidate_org_name) != normalized_company:
+                        continue
+
                 similarity = self.calculate_title_similarity(title, candidate.title_raw)
+                candidate_key = build_title_company_date_key(
+                    candidate.title_raw, candidate_org_name, candidate.first_seen
+                )
+                if target_key and candidate_key == target_key:
+                    similarity = 1.0
                 if similarity >= self.TITLE_SIMILARITY_THRESHOLD:
                     matches.append((candidate, similarity))
 
@@ -407,6 +389,7 @@ class DeduplicationService:
         company_name: Optional[str] = None,
         location_id: Optional[int] = None,
         org_id: Optional[int] = None,
+        posted_at: Optional[datetime] = None,
     ) -> Dict:
         """
         Comprehensive duplicate detection using all strategies
@@ -443,14 +426,18 @@ class DeduplicationService:
 
         # 2. Check fuzzy title + company match
         title_matches = await self.find_duplicates_by_title_company(
-            db, title, company_name, location_id
+            db, title, company_name, location_id, posted_at
         )
         results["matches"]["title_company"] = title_matches
 
         if title_matches and title_matches[0][1] >= 0.95:
             # Very high title similarity with same company
             results["is_duplicate"] = True
-            results["duplicate_type"] = "fuzzy_title_company"
+            results["duplicate_type"] = (
+                "title_company_date"
+                if title_matches[0][1] == 1.0
+                else "fuzzy_title_company"
+            )
             results["duplicate_job"] = title_matches[0][0]
             results["confidence"] = title_matches[0][1]
             return results

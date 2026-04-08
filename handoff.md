@@ -1081,3 +1081,20 @@ Branch: `main`
 
 ### Tests Run
 - Live deployment smoke checks only; no `ruff` or `pytest` run during this session
+
+---
+
+## 2026-04-08 (T-1A0 assignment-driven data quality hardening backlog)
+
+Branch: `main`
+
+### Summary
+- Logged the PostgreSQL assignment review outcomes as implementation backlog items in `changemap.md`.
+- Backlog retained for follow-up implementation:
+  - curated skill-confidence filtering for user-facing skills and matching
+  - source-quality scoring to prioritize cleaner records in search and alerts
+  - explicit job data-quality flags for noisy/listing-page records and location confidence
+  - sector-coverage improvement and representativeness reporting for analytics
+
+### Next Step
+- Finish the remaining assignment-driven hardening items above after validating the newly added normalization, dedupe, and analysis-view changes in a staging-like database.

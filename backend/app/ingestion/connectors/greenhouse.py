@@ -1,9 +1,13 @@
 # Minimal Greenhouse board ingest (public boards)
 # Docs pattern: https://boards.greenhouse.io/{board_token}
-from sqlalchemy.orm import Session
-from ...db.models import JobPost, Organization, Location
 from datetime import datetime
 import httpx
+
+from sqlalchemy.orm import Session
+
+from ...db.models import JobPost, Location, Organization
+from ...normalization.companies import normalize_company_name
+from ...normalization.locations import normalize_location
 
 
 def ingest_greenhouse(db: Session, **src) -> int:
@@ -16,6 +20,7 @@ def ingest_greenhouse(db: Session, **src) -> int:
     url = f"https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
     jobs = httpx.get(url, timeout=30).json().get("jobs", [])
     if org_name:
+        org_name = normalize_company_name(org_name)
         org = db.query(Organization).filter(Organization.name == org_name).one_or_none()
         if not org:
             org = Organization(name=org_name, ats="greenhouse", verified=True)
@@ -36,9 +41,26 @@ def ingest_greenhouse(db: Session, **src) -> int:
 
         loc = None
         if j.get("location", {}).get("name"):
-            loc = Location(raw=j["location"]["name"])
-            db.add(loc)
-            db.flush()
+            loc_raw = j["location"]["name"]
+            city, region, country = normalize_location(loc_raw)
+            loc = (
+                db.query(Location)
+                .filter(
+                    Location.city == city,
+                    Location.region == region,
+                    Location.country == country,
+                )
+                .one_or_none()
+            )
+            if not loc:
+                loc = Location(
+                    raw=" ".join(loc_raw.split()),
+                    city=city,
+                    region=region,
+                    country=country,
+                )
+                db.add(loc)
+                db.flush()
 
         jp = JobPost(
             source="greenhouse",

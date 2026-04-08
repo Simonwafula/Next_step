@@ -14,6 +14,23 @@ COMPANY_SUFFIXES = [
     " corporation",
 ]
 
+COMPANY_PREFIX_PATTERNS = [
+    r"^jobs?\s+at\s+",
+    r"^vacancies\s+at\s+",
+    r"^careers?\s+at\s+",
+    r"^job opportunities\s+at\s+",
+    r"^current opportunities\s+at\s+",
+    r"^positions?\s+at\s+",
+    r"^openings?\s+at\s+",
+]
+
+COMPANY_ARTIFACT_PATTERNS = [
+    r"^read more about this company$",
+    r"^company profile$",
+    r"^about the company$",
+    r"^our vision is to be .+$",
+]
+
 
 def normalize_company_name(raw: str) -> str:
     """
@@ -26,7 +43,14 @@ def normalize_company_name(raw: str) -> str:
         return ""
 
     # Lowercase and strip whitespace
-    name = raw.lower().strip()
+    name = re.sub(r"\s+", " ", raw.lower()).strip()
+
+    for pattern in COMPANY_ARTIFACT_PATTERNS:
+        if re.fullmatch(pattern, name, flags=re.IGNORECASE):
+            return ""
+
+    for pattern in COMPANY_PREFIX_PATTERNS:
+        name = re.sub(pattern, "", name, flags=re.IGNORECASE)
 
     # Remove common suffixes
     for suffix in COMPANY_SUFFIXES:
@@ -36,6 +60,11 @@ def normalize_company_name(raw: str) -> str:
 
     # Remove any trailing " & co", " and co"
     name = re.sub(r"\s+(and|&)\s+co\.?$", "", name)
+    name = re.sub(r"[^\w\s&+.-]", "", name)
+    name = re.sub(r"\s+", " ", name).strip(" .,-")
+
+    if not name:
+        return ""
 
     # Handle known aliases (can be expanded)
     ALIASES = {

@@ -57,6 +57,16 @@
   - [x] (T-107) Pipeline logging/metrics
   - [x] (T-108) Tests for parsers + dedupe (`backend/test_processors.py`, etc.)
 
+## 1.1 Assignment-Driven Data Quality Backlog (2026-04-08)
+- [/] (T-1A0) Assignment-driven app hardening from PostgreSQL data-mining review
+  - [x] (T-1A1) Extend normalization rules for obvious company/title/location artifacts affecting search and analytics
+  - [x] (T-1A2) Extend deduplication to support `title + company + first_seen_date` composite matching in addition to URL/content checks
+  - [x] (T-1A3) Add reproducible analysis materialized view script for cleaned job-post exploration
+  - [ ] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
+  - [ ] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
+  - [ ] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
+  - [ ] (T-1A7) Improve sector coverage and backfill representativeness reporting for analytics
+
 ## 2. NLP extraction (Implemented; hardening pending)
 - [/] (T-200) description_clean builder
   - [x] (T-201) skills taxonomy + matcher (`backend/app/normalization/skills.py`)

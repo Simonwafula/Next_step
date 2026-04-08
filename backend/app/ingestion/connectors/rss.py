@@ -1,9 +1,12 @@
 # Generic RSS/Atom ingest (for boards exposing feeds)
-from sqlalchemy.orm import Session
-from ...db.models import JobPost, Organization
 from datetime import datetime
 import httpx
 import re
+
+from sqlalchemy.orm import Session
+
+from ...db.models import JobPost, Organization
+from ...normalization.companies import normalize_company_name
 
 
 def ingest_rss(db: Session, **src) -> int:
@@ -18,6 +21,7 @@ def ingest_rss(db: Session, **src) -> int:
     items = re.findall(r"<item>(.*?)</item>", xml, flags=re.DOTALL | re.IGNORECASE)
 
     if org_name:
+        org_name = normalize_company_name(org_name)
         org = db.query(Organization).filter(Organization.name == org_name).one_or_none()
         if not org:
             org = Organization(name=org_name, verified=False)
