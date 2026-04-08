@@ -1,5 +1,34 @@
 # Handoff
 
+## 2026-04-08 (T-UX-301: Search Payload Normalization)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-301` by normalizing the public search contract in [search.py](/home/nextstep.co.ke/public_html/backend/app/services/search.py) and [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py):
+  - canonicalized every `/api/search` response around `results`
+  - preserved `jobs` as a mirrored compatibility alias at the API boundary
+  - made no-result suggestion/fallback responses return the same dict payload shape instead of a bare list
+- Aligned frontend search callers with the canonical payload:
+  - [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js) now reads `payload.results` directly for the shipped homepage search flow
+  - [api.js](/home/nextstep.co.ke/public_html/frontend/js/api.js) now returns a normalized results array to older JS consumers like [search.js](/home/nextstep.co.ke/public_html/frontend/js/search.js)
+- Added regression coverage:
+  - [test_search_modes.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_modes.py) now asserts the route normalizes legacy `jobs`-only payloads into canonical `results`
+  - [test_search_response_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_response_shape.py) locks the no-match fallback shape
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/app/services/search.py backend/app/api/routes.py backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py`
+- `backend/venv3.11/bin/ruff check backend/app/services/search.py backend/app/api/routes.py backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py`
+- `node --check frontend/js/main.js`
+- `node --check frontend/js/api.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py` -> `16 passed`
+
+### Remaining Next Step
+1. Move to `T-UX-320` if the next priority is wiring real seeker actions from homepage search cards.
+2. Keep the current cleanup deletions and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit as separate work unless you want them folded into a follow-up commit.
+
 ## 2026-04-08 (T-UX-312: Dashboard Boot-Path Integration Coverage)
 
 Branch: `feat/T-1A4-1A6-search-quality-signals`

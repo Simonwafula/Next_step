@@ -62,6 +62,20 @@ LOW_CONFIDENCE_LOCATION_TERMS = {
 _SOURCE_QUALITY_CACHE: dict[str, float] | None = None
 
 
+def build_search_response(
+    results: list[dict],
+    **extra: object,
+) -> dict[str, object]:
+    """Return the canonical public search payload shape."""
+    payload: dict[str, object] = {
+        "results": results,
+        # Back-compat for older consumers still reading `jobs`.
+        "jobs": results,
+    }
+    payload.update(extra)
+    return payload
+
+
 def cosine_similarity(a, b):
     """Calculate cosine similarity between two vectors"""
     a = np.array(a)
@@ -366,23 +380,22 @@ def search_jobs(
             if title_value and company_value:
                 companies[(title_value, company_value)] += 1
 
-        return {
-            "results": jobs,
-            "jobs": jobs,
-            "total": len(jobs),
-            "limit": int(limit),
-            "offset": int(offset),
-            "has_more": False,
-            "title_clusters": [
+        return build_search_response(
+            jobs,
+            total=len(jobs),
+            limit=int(limit),
+            offset=int(offset),
+            has_more=False,
+            title_clusters=[
                 {"title": t, "count_ads": int(c)} for t, c in clusters.most_common(50)
             ],
-            "companies_hiring": [
+            companies_hiring=[
                 {"title": t, "company": co, "count_ads": int(c)}
                 for (t, co), c in companies.most_common(200)
             ],
-            "selected": {"title": title, "company": company},
-            "meta": {"degree": degree},
-        }
+            selected={"title": title, "company": company},
+            meta={"degree": degree},
+        )
 
     try:
         bind = db.get_bind()
@@ -851,19 +864,17 @@ def search_jobs(
     if not results and q:
         return suggest_alternatives(db, q, location, seniority)
 
-    return {
-        # Back-compat: older clients expect `results` to be a list of jobs.
-        "results": results,
-        "jobs": results,
-        "total": int(total_jobs),
-        "limit": int(limit),
-        "offset": int(offset),
-        "has_more": bool(has_more),
-        "title_clusters": [
+    return build_search_response(
+        results,
+        total=int(total_jobs),
+        limit=int(limit),
+        offset=int(offset),
+        has_more=bool(has_more),
+        title_clusters=[
             {"title": title_value, "count_ads": int(count)}
             for title_value, count in clusters.most_common(50)
         ],
-        "companies_hiring": [
+        companies_hiring=[
             {
                 "title": title_value,
                 "company": company_name,
@@ -871,7 +882,7 @@ def search_jobs(
             }
             for (title_value, company_name), count in companies.most_common(200)
         ],
-        "selected": {
+        selected={
             "title": title,
             "company": company,
             "role_family": role_family,
@@ -879,23 +890,23 @@ def search_jobs(
             "sector": sector,
             "high_confidence_only": bool(high_confidence_only),
         },
-        "role_families": [
+        role_families=[
             {"role_family": value, "count_ads": int(count)}
             for value, count in role_families.most_common(40)
         ],
-        "seniority_buckets": [
+        seniority_buckets=[
             {"seniority": value, "count_ads": int(count)}
             for value, count in seniority_buckets.most_common(20)
         ],
-        "counties_hiring": [
+        counties_hiring=[
             {"county": value, "count_ads": int(count)}
             for value, count in counties_hiring.most_common(30)
         ],
-        "sectors_hiring": [
+        sectors_hiring=[
             {"sector": value, "count_ads": int(count)}
             for value, count in sectors_hiring.most_common(30)
         ],
-    }
+    )
 
 
 def log_search_serving(
@@ -1086,23 +1097,71 @@ def suggest_alternatives(
                         "is_suggestion": True,
                     }
                 )
-            return results
+            return build_search_response(
+                results,
+                total=len(results),
+                limit=len(results),
+                offset=0,
+                has_more=False,
+                title_clusters=[],
+                companies_hiring=[],
+                selected={
+                    "title": None,
+                    "company": None,
+                    "role_family": normalized_family,
+                    "county": None,
+                    "sector": None,
+                    "high_confidence_only": False,
+                },
+                role_families=[],
+                seniority_buckets=[],
+                counties_hiring=[],
+                sectors_hiring=[],
+                meta={
+                    "suggestion": True,
+                    "original_query": original_query,
+                },
+            )
 
     # Return empty with helpful message
-    return [
-        {
-            "id": 0,
-            "title": "No exact matches found",
-            "organization": None,
-            "location": None,
-            "url": None,
-            "why_match": (
-                f"Try broader terms like "
-                f"'{normalized_family.replace('_', ' ')}' or check spelling"
-            ),
-            "is_suggestion": True,
-        }
-    ]
+    return build_search_response(
+        [
+            {
+                "id": 0,
+                "title": "No exact matches found",
+                "organization": None,
+                "location": None,
+                "url": None,
+                "why_match": (
+                    f"Try broader terms like "
+                    f"'{normalized_family.replace('_', ' ')}' or check spelling"
+                ),
+                "is_suggestion": True,
+            }
+        ],
+        total=1,
+        limit=1,
+        offset=0,
+        has_more=False,
+        title_clusters=[],
+        companies_hiring=[],
+        selected={
+            "title": None,
+            "company": None,
+            "role_family": normalized_family if normalized_family != "other" else None,
+            "county": None,
+            "sector": None,
+            "high_confidence_only": False,
+        },
+        role_families=[],
+        seniority_buckets=[],
+        counties_hiring=[],
+        sectors_hiring=[],
+        meta={
+            "suggestion": True,
+            "original_query": original_query,
+        },
+    )
 
 
 def generate_match_explanation(

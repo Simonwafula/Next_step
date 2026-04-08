@@ -516,6 +516,20 @@ const renderResults = async (items) => {
         const qualityTag = item.quality_tag
             ? `<span class="quality-tag ${item.high_confidence ? 'high' : 'medium'}">${escapeHtml(item.quality_tag)}</span>`
             : '';
+        const dataQualityIssues = Array.isArray(item.data_quality_issues) ? item.data_quality_issues : [];
+        const qualityNotes = [];
+        if (item.source_quality_tier && item.source_quality_tier !== 'high') {
+            qualityNotes.push(`Source: ${item.source_quality_tier}`);
+        }
+        if (item.location_confidence && item.location_confidence !== 'high') {
+            qualityNotes.push(`Location: ${item.location_confidence} confidence`);
+        }
+        if (dataQualityIssues.includes('duplicate_candidate')) {
+            qualityNotes.push('Possible duplicate');
+        }
+        if (dataQualityIssues.includes('listing_page')) {
+            qualityNotes.push('Listing-style title');
+        }
         const contractLabel = item.contract_type
             ? escapeHtml(item.contract_type)
             : '';
@@ -535,6 +549,7 @@ const renderResults = async (items) => {
             <div class="result-meta">${org} · ${location}</div>
             ${metaExtra ? `<div class="result-meta">${metaExtra}</div>` : ''}
             <div class="result-meta">${escapeHtml(salaryText)}</div>
+            ${qualityNotes.length ? `<div class="result-meta">${escapeHtml(qualityNotes.join(' · '))}</div>` : ''}
             ${skillTags ? `<div class="result-skills">${skillTags}</div>` : ''}
             ${matchLabel
                 ? `<div class="result-match">${escapeHtml(`${matchLabel}${missingLabel}`)}</div>`
@@ -658,9 +673,9 @@ const fetchResults = async () => {
         }
 
         const payload = await response.json();
-        const rawItems = Array.isArray(payload) ? payload : payload.results || payload.jobs || [];
+        const rawItems = Array.isArray(payload?.results) ? payload.results : [];
         renderGuidedResults(payload, currentGuidedMode);
-        renderAggregates(Array.isArray(payload) ? null : payload);
+        renderAggregates(payload);
         await renderResults(rawItems);
         document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {

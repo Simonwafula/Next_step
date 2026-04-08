@@ -50,6 +50,26 @@ api_router.include_router(payment_router, prefix="/payments", tags=["payments"])
 api_router.include_router(analytics_router, tags=["analytics"])
 
 
+def _normalize_search_response(payload: object) -> dict:
+    """Coerce `/api/search` responses into a canonical dict shape."""
+    if isinstance(payload, list):
+        results = payload
+        response_payload = {"results": results}
+    elif isinstance(payload, dict):
+        response_payload = dict(payload)
+        raw_results = response_payload.get("results")
+        if raw_results is None:
+            raw_results = response_payload.get("jobs")
+        results = raw_results if isinstance(raw_results, list) else []
+        response_payload["results"] = results
+    else:
+        results = []
+        response_payload = {"results": results}
+
+    response_payload["jobs"] = response_payload["results"]
+    return response_payload
+
+
 @api_router.get("/search")
 def search(
     q: str = Query("", description="Search query, job title, or 'I studied [degree]'"),
@@ -99,12 +119,8 @@ def search(
         offset=offset,
     )
 
-    response_payload = payload if isinstance(payload, dict) else {"results": payload}
-    search_results = response_payload.get("results")
-    if search_results is None:
-        search_results = response_payload.get("jobs")
-    if not isinstance(search_results, list):
-        search_results = []
+    response_payload = _normalize_search_response(payload)
+    search_results = response_payload["results"]
     current_user_id = getattr(current_user, "id", None) if current_user else None
 
     # T-DS-911: log serve-time features for ranking trainer
@@ -131,9 +147,7 @@ def search(
             **response_payload,
             "personalized": True,
             "user_profile_used": bool(current_user.profile),
-            "total": (
-                payload.get("total") if isinstance(payload, dict) else len(payload)
-            ),
+            "total": int(response_payload.get("total") or len(search_results)),
         }
 
     if not mode:
