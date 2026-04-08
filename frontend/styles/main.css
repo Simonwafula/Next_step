@@ -799,6 +799,24 @@ a {
     padding-bottom: 0;
 }
 
+.admin-quality-section {
+    display: grid;
+    gap: 0.65rem;
+    padding: 0.85rem 0;
+    border-top: 1px solid rgba(17, 19, 21, 0.08);
+}
+
+.admin-quality-section:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.admin-quality-gaps {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
 .data-list {
     display: grid;
     gap: 0.9rem;

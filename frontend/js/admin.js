@@ -366,9 +366,25 @@ const renderLmiQuality = (payload) => {
     const skills = payload.skills_extraction || {};
     const engagement = payload.engagement || {};
     const revenue = payload.revenue || {};
+    const representativeness = payload.representativeness || {};
     const conversionAlert = revenue.conversion_alert || {};
     const trend = Array.isArray(revenue.conversion_trend_14d)
         ? revenue.conversion_trend_14d
+        : [];
+    const coverage = representativeness.coverage || {};
+    const sectorCoverage = coverage.sector || {};
+    const geographyCoverage = coverage.geography || {};
+    const sourceMix = Array.isArray(representativeness.source_mix)
+        ? representativeness.source_mix
+        : [];
+    const sectorMix = Array.isArray(representativeness.sector_mix)
+        ? representativeness.sector_mix
+        : [];
+    const geographyMix = Array.isArray(representativeness.geography_mix)
+        ? representativeness.geography_mix
+        : [];
+    const coverageGaps = Array.isArray(representativeness.coverage_gaps)
+        ? representativeness.coverage_gaps
         : [];
     const upgrades14d = trend.reduce(
         (total, row) => total + Number(row.upgrades || 0),
@@ -382,55 +398,118 @@ const renderLmiQuality = (payload) => {
             ) / trend.length
         ).toFixed(1)
         : '0.0';
+    const renderMixRows = (items, emptyMessage) => {
+        if (!items.length) {
+            return `<p class="panel-note">${escapeHtml(emptyMessage)}</p>`;
+        }
+        return items.slice(0, 4).map((item) => `
+            <div class="metric-row">
+                <span>${escapeHtml(item.label || 'unknown')}</span>
+                <strong>${escapeHtml(item.share_pct ?? 0)}%</strong>
+            </div>
+        `).join('');
+    };
+    const gapsMarkup = coverageGaps.length
+        ? `
+            <div class="admin-quality-section">
+                <p class="panel-label">Coverage gaps</p>
+                <div class="admin-quality-gaps">
+                    ${coverageGaps.map((gap) => `
+                        <span class="badge ${gap.severity === 'warning' ? 'badge-warning' : 'badge-info'}">
+                            ${escapeHtml(gap.dimension)}: ${escapeHtml(gap.share_pct ?? 0)}%
+                        </span>
+                    `).join('')}
+                </div>
+            </div>
+        `
+        : '';
 
     adminLmiQuality.innerHTML = `
-        <div class="metric-row">
-            <span>Scraper success rate (7d)</span>
-            <strong>${escapeHtml(scraping.success_rate_7d ?? 0)}%</strong>
+        <div class="admin-quality-section">
+            <p class="panel-label">Pipeline and engagement</p>
+            <div class="metric-row">
+                <span>Scraper success rate (7d)</span>
+                <strong>${escapeHtml(scraping.success_rate_7d ?? 0)}%</strong>
+            </div>
+            <div class="metric-row">
+                <span>Extraction quality score</span>
+                <strong>${escapeHtml(skills.quality_score ?? 0)}%</strong>
+            </div>
+            <div class="metric-row">
+                <span>LMI engagement (30d)</span>
+                <strong>${escapeHtml(engagement.lmi_engagement_rate_30d ?? 0)}%</strong>
+            </div>
         </div>
-        <div class="metric-row">
-            <span>Extraction quality score</span>
-            <strong>${escapeHtml(skills.quality_score ?? 0)}%</strong>
+        <div class="admin-quality-section">
+            <p class="panel-label">Representativeness</p>
+            <div class="metric-row">
+                <span>Active sample window</span>
+                <strong>${escapeHtml(representativeness.window_days ?? 0)} days</strong>
+            </div>
+            <div class="metric-row">
+                <span>Sample size</span>
+                <strong>${escapeHtml(representativeness.sample_size ?? 0)} jobs</strong>
+            </div>
+            <div class="metric-row">
+                <span>Sector coverage</span>
+                <strong>${escapeHtml(sectorCoverage.coverage_pct ?? 0)}%</strong>
+            </div>
+            <div class="metric-row">
+                <span>Geography coverage</span>
+                <strong>${escapeHtml(geographyCoverage.coverage_pct ?? 0)}%</strong>
+            </div>
         </div>
-        <div class="metric-row">
-            <span>LMI engagement (30d)</span>
-            <strong>${escapeHtml(engagement.lmi_engagement_rate_30d ?? 0)}%</strong>
+        ${gapsMarkup}
+        <div class="admin-quality-section">
+            <p class="panel-label">Top source mix</p>
+            ${renderMixRows(sourceMix, 'No source mix yet.')}
         </div>
-        <div class="metric-row">
-            <span>Estimated MRR</span>
-            <strong>KES ${escapeHtml(revenue.estimated_mrr_kes ?? 0)}</strong>
+        <div class="admin-quality-section">
+            <p class="panel-label">Top sector mix</p>
+            ${renderMixRows(sectorMix, 'No sector coverage yet.')}
         </div>
-        <div class="metric-row">
-            <span>Free → paid conversion (30d)</span>
-            <strong>${escapeHtml(revenue.conversion_rate_30d ?? 0)}%</strong>
+        <div class="admin-quality-section">
+            <p class="panel-label">Top geography mix</p>
+            ${renderMixRows(geographyMix, 'No geography coverage yet.')}
         </div>
-        <div class="metric-row">
-            <span>New paid users (30d)</span>
-            <strong>${escapeHtml(revenue.upgraded_users_30d ?? 0)}</strong>
-        </div>
-        <div class="metric-row">
-            <span>Upgrades (14d trend)</span>
-            <strong>${escapeHtml(upgrades14d)}</strong>
-        </div>
-        <div class="metric-row">
-            <span>Avg conversion (14d)</span>
-            <strong>${escapeHtml(avgConversion14d)}%</strong>
-        </div>
-        <div class="metric-row">
-            <span>Conversion alert</span>
-            <strong>${escapeHtml(conversionAlert.status || 'unknown')}</strong>
-        </div>
-        <div class="metric-row">
-            <span>Avg conversion (7d)</span>
-            <strong>${escapeHtml(conversionAlert.avg_conversion_7d ?? 0)}%</strong>
-        </div>
-        <div class="metric-row">
-            <span>Estimated ARPU</span>
-            <strong>KES ${escapeHtml(revenue.estimated_arpu_kes ?? 0)}</strong>
-        </div>
-        <div class="metric-row">
-            <span>Estimated churn</span>
-            <strong>${escapeHtml(revenue.estimated_churn_rate ?? 0)}%</strong>
+        <div class="admin-quality-section">
+            <p class="panel-label">Revenue and conversion</p>
+            <div class="metric-row">
+                <span>Estimated MRR</span>
+                <strong>KES ${escapeHtml(revenue.estimated_mrr_kes ?? 0)}</strong>
+            </div>
+            <div class="metric-row">
+                <span>Free → paid conversion (30d)</span>
+                <strong>${escapeHtml(revenue.conversion_rate_30d ?? 0)}%</strong>
+            </div>
+            <div class="metric-row">
+                <span>New paid users (30d)</span>
+                <strong>${escapeHtml(revenue.upgraded_users_30d ?? 0)}</strong>
+            </div>
+            <div class="metric-row">
+                <span>Upgrades (14d trend)</span>
+                <strong>${escapeHtml(upgrades14d)}</strong>
+            </div>
+            <div class="metric-row">
+                <span>Avg conversion (14d)</span>
+                <strong>${escapeHtml(avgConversion14d)}%</strong>
+            </div>
+            <div class="metric-row">
+                <span>Conversion alert</span>
+                <strong>${escapeHtml(conversionAlert.status || 'unknown')}</strong>
+            </div>
+            <div class="metric-row">
+                <span>Avg conversion (7d)</span>
+                <strong>${escapeHtml(conversionAlert.avg_conversion_7d ?? 0)}%</strong>
+            </div>
+            <div class="metric-row">
+                <span>Estimated ARPU</span>
+                <strong>KES ${escapeHtml(revenue.estimated_arpu_kes ?? 0)}</strong>
+            </div>
+            <div class="metric-row">
+                <span>Estimated churn</span>
+                <strong>${escapeHtml(revenue.estimated_churn_rate ?? 0)}%</strong>
+            </div>
         </div>
     `;
 };

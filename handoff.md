@@ -57,6 +57,11 @@ Commit: `pending`
 1. Resolve the broken local `ruff` setup if strict DoD lint enforcement is required on this host.
 2. Decide whether the representativeness block also needs a dedicated admin endpoint or frontend rendering beyond the existing `/api/admin/lmi-quality` payload.
 
+### UI Follow-up
+- [admin.js](/home/nextstep.co.ke/public_html/frontend/js/admin.js) now renders the `representativeness` payload inside the existing “LMI quality metrics” panel.
+- [main.css](/home/nextstep.co.ke/public_html/frontend/styles/main.css) adds minimal section/gap styling so source mix, sector mix, geography mix, and coverage-gap badges are readable without changing the page structure.
+- Validation: `node --check frontend/js/admin.js`
+
 ## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
 
 Branch: `feat/T-DS-910-920-instrumentation-intelligence`
