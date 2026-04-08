@@ -383,6 +383,9 @@ const renderLmiQuality = (payload) => {
     const geographyMix = Array.isArray(representativeness.geography_mix)
         ? representativeness.geography_mix
         : [];
+    const representativenessTrend = Array.isArray(representativeness.trend_6m)
+        ? representativeness.trend_6m
+        : [];
     const coverageGaps = Array.isArray(representativeness.coverage_gaps)
         ? representativeness.coverage_gaps
         : [];
@@ -418,6 +421,27 @@ const renderLmiQuality = (payload) => {
                         <span class="badge ${gap.severity === 'warning' ? 'badge-warning' : 'badge-info'}">
                             ${escapeHtml(gap.dimension)}: ${escapeHtml(gap.share_pct ?? 0)}%
                         </span>
+                    `).join('')}
+                </div>
+            </div>
+        `
+        : '';
+    const trendMarkup = representativenessTrend.length
+        ? `
+            <div class="admin-quality-section">
+                <p class="panel-label">6 month representativeness trend</p>
+                <div class="admin-quality-trend-grid">
+                    ${representativenessTrend.map((row) => `
+                        <div class="kpi-mini">
+                            <p class="kpi-mini-label">${escapeHtml(row.month || '--')}</p>
+                            <p class="kpi-mini-value">${escapeHtml(row.sample_size ?? 0)}</p>
+                            <p class="kpi-mini-label">jobs</p>
+                            <p class="panel-note">
+                                S ${escapeHtml(row.sector_coverage_pct ?? 0)}%
+                                · G ${escapeHtml(row.geography_coverage_pct ?? 0)}%
+                                · Top ${escapeHtml(row.top_source_share_pct ?? 0)}%
+                            </p>
+                        </div>
                     `).join('')}
                 </div>
             </div>
@@ -472,6 +496,7 @@ const renderLmiQuality = (payload) => {
             <p class="panel-label">Top geography mix</p>
             ${renderMixRows(geographyMix, 'No geography coverage yet.')}
         </div>
+        ${trendMarkup}
         <div class="admin-quality-section">
             <p class="panel-label">Revenue and conversion</p>
             <div class="metric-row">

@@ -469,6 +469,10 @@ def get_representativeness_report(
         "source_mix": source_mix,
         "sector_mix": sector_mix,
         "geography_mix": geography_mix,
+        "trend_6m": _build_representativeness_trend(
+            db,
+            months=6,
+        ),
         "coverage": {
             "sector": {
                 "jobs_with_sector": int(jobs_with_sector),
@@ -484,6 +488,97 @@ def get_representativeness_report(
         "coverage_gaps": coverage_gaps,
         "status": "warning" if coverage_gaps else "healthy",
     }
+
+
+def _build_representativeness_trend(
+    db: Session,
+    *,
+    months: int = 6,
+) -> list[dict]:
+    months = max(months, 1)
+    now = datetime.utcnow()
+    current_month = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    month_starts = []
+    for offset in range(months - 1, -1, -1):
+        month = current_month.month - offset
+        year = current_month.year
+        while month <= 0:
+            month += 12
+            year -= 1
+        month_starts.append(datetime(year, month, 1))
+
+    rows = db.execute(
+        select(
+            JobPost.first_seen,
+            JobPost.source,
+            Organization.sector,
+            func.coalesce(Location.region, Location.city, Location.raw),
+        )
+        .select_from(JobPost)
+        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+        .join(Location, Location.id == JobPost.location_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= month_starts[0])
+    ).all()
+
+    buckets: dict[str, dict[str, object]] = {
+        month.strftime("%Y-%m"): {
+            "month": month.strftime("%Y-%m"),
+            "sample_size": 0,
+            "jobs_with_sector": 0,
+            "jobs_with_geography": 0,
+            "source_counts": Counter(),
+        }
+        for month in month_starts
+    }
+
+    for first_seen, source, sector, geography in rows:
+        if not first_seen:
+            continue
+        bucket_key = first_seen.strftime("%Y-%m")
+        bucket = buckets.get(bucket_key)
+        if not bucket:
+            continue
+        bucket["sample_size"] = int(bucket["sample_size"]) + 1
+        if sector:
+            bucket["jobs_with_sector"] = int(bucket["jobs_with_sector"]) + 1
+        if geography:
+            bucket["jobs_with_geography"] = int(bucket["jobs_with_geography"]) + 1
+        cast_counts = bucket["source_counts"]
+        if isinstance(cast_counts, Counter):
+            cast_counts[str(source or "unknown_source")] += 1
+
+    trend = []
+    for month_key in sorted(buckets.keys()):
+        bucket = buckets[month_key]
+        sample_size = int(bucket["sample_size"])
+        source_counts = bucket["source_counts"]
+        top_source_share = 0.0
+        if sample_size and isinstance(source_counts, Counter) and source_counts:
+            top_source_share = round(
+                (source_counts.most_common(1)[0][1] / sample_size) * 100,
+                1,
+            )
+        trend.append(
+            {
+                "month": month_key,
+                "sample_size": sample_size,
+                "sector_coverage_pct": round(
+                    (int(bucket["jobs_with_sector"]) / sample_size) * 100,
+                    1,
+                )
+                if sample_size
+                else 0.0,
+                "geography_coverage_pct": round(
+                    (int(bucket["jobs_with_geography"]) / sample_size) * 100,
+                    1,
+                )
+                if sample_size
+                else 0.0,
+                "top_source_share_pct": top_source_share,
+            }
+        )
+    return trend
 
 
 def run_drift_checks(

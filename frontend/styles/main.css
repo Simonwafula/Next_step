@@ -817,6 +817,12 @@ a {
     gap: 0.5rem;
 }
 
+.admin-quality-trend-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+    gap: 0.75rem;
+}
+
 .data-list {
     display: grid;
     gap: 0.9rem;

@@ -62,6 +62,15 @@ Commit: `pending`
 - [main.css](/home/nextstep.co.ke/public_html/frontend/styles/main.css) adds minimal section/gap styling so source mix, sector mix, geography mix, and coverage-gap badges are readable without changing the page structure.
 - Validation: `node --check frontend/js/admin.js`
 
+### Trend Follow-up
+- [analytics.py](/home/nextstep.co.ke/public_html/backend/app/services/analytics.py) now adds `representativeness.trend_6m`, a monthly series with `sample_size`, `sector_coverage_pct`, `geography_coverage_pct`, and `top_source_share_pct`.
+- [test_dashboard_endpoints.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_endpoints.py) now validates the presence and shape of the 6-month trend history.
+- [admin.js](/home/nextstep.co.ke/public_html/frontend/js/admin.js) renders the trend series as compact cards inside the same LMI quality panel.
+- Validation:
+  - `python3 -m py_compile backend/app/services/analytics.py backend/tests/test_dashboard_endpoints.py`
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `11 passed, 47 deselected`
+  - `node --check frontend/js/admin.js`
+
 ## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
 
 Branch: `feat/T-DS-910-920-instrumentation-intelligence`

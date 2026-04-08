@@ -349,6 +349,8 @@ class TestAdminLmiQuality:
         assert "sector_mix" in representativeness
         assert "geography_mix" in representativeness
         assert "coverage" in representativeness
+        assert "trend_6m" in representativeness
+        assert len(representativeness["trend_6m"]) == 6
 
         revenue = data["revenue"]
         assert "estimated_mrr_kes" in revenue
@@ -414,6 +416,54 @@ class TestAdminLmiQuality:
             for gap in representativeness["coverage_gaps"]
         )
         assert representativeness["status"] == "warning"
+
+    def test_lmi_quality_includes_representativeness_trend_history(
+        self,
+        client,
+        db_session_factory,
+    ):
+        db = db_session_factory()
+        org = Organization(name="Trend Org", sector="tech", verified=True)
+        loc = Location(
+            country="Kenya",
+            region="Nairobi",
+            city="Nairobi",
+            raw="Nairobi, Kenya",
+        )
+        db.add_all([org, loc])
+        db.flush()
+
+        now = datetime.utcnow()
+        for idx in range(3):
+            created = now - timedelta(days=30 * idx)
+            db.add(
+                JobPost(
+                    source="rss" if idx < 2 else "telegram:jobs",
+                    url=f"https://example.com/jobs/trend-{idx}",
+                    url_hash=f"trend-{idx}",
+                    title_raw=f"Trend Job {idx}",
+                    org_id=org.id,
+                    location_id=loc.id,
+                    description_raw="Quality description " * 20,
+                    first_seen=created,
+                    last_seen=created,
+                    is_active=True,
+                )
+            )
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+
+        trend = resp.json()["representativeness"]["trend_6m"]
+        assert len(trend) == 6
+        assert all("month" in row for row in trend)
+        assert all("sample_size" in row for row in trend)
+        assert all("sector_coverage_pct" in row for row in trend)
+        assert all("geography_coverage_pct" in row for row in trend)
+        assert all("top_source_share_pct" in row for row in trend)
+        assert any(row["sample_size"] > 0 for row in trend)
 
     def test_lmi_quality_includes_conversion_metrics(
         self,
