@@ -4,7 +4,7 @@
 - TODO, IN_PROGRESS, BLOCKED, DONE
 
 ## Phase-1: UI Rebrand & Views Implementation (2026-02-15)
-- [x] (T-UI-010) Logo asset: copied `nextstep logo white.png` → `frontend/assets/nextstep-logo.png`
+- [x] (T-UI-010) Logo asset: copied `docs/archive/assets/nextstep-logo-white.png` → `frontend/assets/nextstep-logo.png`
 - [x] (T-UI-020) Replace brand-mark spans with `<img class="brand-logo">` across all 10 HTML pages
   - index.html, dashboard.html, admin.html, career-pathways.html, skills-gap-scan.html
   - beta.html, beta-admin.html, 403.html, 404.html, 500.html
@@ -65,12 +65,14 @@
   - [x] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
   - [x] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
   - [x] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
-  - [ ] (T-1A7) Improve sector coverage and backfill representativeness reporting for analytics
+  - [x] (T-1A7) Improve sector coverage and backfill representativeness reporting for analytics
   - [x] (T-1A8) Add safe backfill helper for existing organization/location normalization and `job_post` reference repointing
   - [x] (T-1A9) Add materialized-view refresh helper and validate refresh against Postgres
   - [x] (T-1A10) Add one-step CLI cleanup cycle for normalized-entity backfill plus analysis-view create/refresh
   - Log 2026-04-08: search result shaping now filters low-confidence extracted skills, exposes explicit `data_quality_flags` + `data_quality_issues`, adds `source_quality_score/source_quality_tier`, and heuristic ranking now prefers cleaner sources/results when model scores tie.
+  - Log 2026-04-08: `/api/admin/lmi-quality` now includes `representativeness` reporting with source mix, sector mix, geography mix, coverage percentages, and `coverage_gaps` warnings when sector/geography attribution is sparse or one source dominates the sample.
   - Tests 2026-04-08: `python3 -m py_compile ...search.py ...ranking.py ...create_job_post_analysis_view.py ...test_search_data_quality.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_cli_data_quality_cycle.py backend/tests/test_normalized_backfill.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_deduplication_url_normalization.py` -> `16 passed`.
+  - Tests 2026-04-08: `python3 -m py_compile backend/app/services/analytics.py backend/app/api/admin_routes.py backend/tests/test_dashboard_endpoints.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `10 passed, 47 deselected`.
   - BLOCKED 2026-04-08: `ruff` could not run in this environment because `backend/venv3.11/bin/ruff` is a non-executable Mach-O binary (`Permission denied`; `file .../ruff` => `Mach-O 64-bit x86_64 executable`) and `/home/nextstep.co.ke/.venv` does not have the `ruff` module installed.
   - BLOCKED 2026-04-08: validating `backend/scripts/create_job_post_analysis_view.py` via `sudo -u postgres ... python3 ...create_job_post_analysis_view.py` failed with `Permission denied` because the `postgres` OS user cannot read files under `/home/nextstep.co.ke/public_html/backend/scripts/`; use direct `psql` SQL execution or relax read permissions before script-based validation.
 
@@ -794,7 +796,7 @@
 - Created `later_features/README.md` documenting restoration criteria and process
 - Created `docs/archive/root/SCOPE_CLEANUP.md` with impact analysis and recommendations
 - **Recommendation**: Run tests to verify no breakage, consider DB migration to drop unused tables
-- **Next**: Focus on MVP per `OUTCOMES_PLAN.md` phases 1-3 (public search, student/early-career/professional outcomes)
+- **Next**: Focus on MVP per `docs/OUTCOMES_PLAN.md` phases 1-3 (public search, student/early-career/professional outcomes)
 
 ### 2026-02-14
 - (T-000c) Capability status reconciliation:

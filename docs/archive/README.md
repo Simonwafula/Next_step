@@ -11,6 +11,16 @@ reference but are no longer intended to live at the repo root.
 - `root/SCOPE_CLEANUP.md`
 - `root/TEST_RESULTS.md`
 - `root/agent-work.md`
+- `root/claude.md`
+
+## Generated Archive
+
+- `generated/repo_state.md`
+
+## Asset Archive
+
+- `assets/nextstep-logo-white.png`
+- `assets/nextstep-logo-transparent.png`
 
 Keep active, user-facing, or operationally current documents at the repo root or
 under `docs/`. Move one-off summaries, PR scratch files, and historical reports

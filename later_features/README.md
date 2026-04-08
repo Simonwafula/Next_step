@@ -31,7 +31,7 @@ This directory contains features that were started but are not part of the Minim
 ## Not Moved (Needs Completion)
 
 - **Notification Service:** Core feature, needs delivery implementation
-- **Career Tools/AI Service:** Per OUTCOMES_PLAN.md, needs RAG pipeline before production
+- **Career Tools/AI Service:** Per docs/OUTCOMES_PLAN.md, needs RAG pipeline before production
 - **ATS Ingestion Connectors:** Already working, part of core functionality
 
 ## Restoration Process

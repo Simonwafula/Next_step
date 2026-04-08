@@ -462,7 +462,7 @@ Worktree: Yes
 
 ## Open Questions
 
-- None — all requirements are specified in OUTCOMES_PLAN.md
+- None — all requirements are specified in docs/OUTCOMES_PLAN.md
 
 ### Deferred Ideas
 

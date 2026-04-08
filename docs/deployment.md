@@ -61,8 +61,8 @@ Repo-managed references:
 - `scripts/bootstrap_prod.sh` (canonical production bootstrap)
 - `scripts/setup_prod_environment.sh` (supporting helper for runtime setup)
 - `deploy/systemd/`
-- `deploy-to-cyberpanel.sh` (legacy reference)
-- `deploy_upgrades.sh` (legacy reference)
+- `scripts/legacy/deploy-to-cyberpanel.sh` (legacy reference)
+- `scripts/legacy/deploy_upgrades.sh` (legacy reference)
 
 Live server files:
 

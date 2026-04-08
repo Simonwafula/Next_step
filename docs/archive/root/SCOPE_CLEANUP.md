@@ -2,7 +2,7 @@
 
 ## Summary
 
-Moved scope creep features to `later_features/` to reduce codebase complexity and focus on MVP (Minimum Viable Product) as defined in `OUTCOMES_PLAN.md`.
+Moved scope creep features to `later_features/` to reduce codebase complexity and focus on MVP (Minimum Viable Product) as defined in `docs/OUTCOMES_PLAN.md`.
 
 ## Impact Metrics
 
@@ -71,7 +71,7 @@ Moved scope creep features to `later_features/` to reduce codebase complexity an
 - ✅ User dashboard
 - ✅ Notification models (delivery needs completion)
 - ✅ WhatsApp webhook
-- ✅ Career tools service (needs RAG completion per OUTCOMES_PLAN.md)
+- ✅ Career tools service (needs RAG completion per docs/OUTCOMES_PLAN.md)
 
 ## Features That Need Completion (Not Moved)
 
@@ -79,7 +79,7 @@ Moved scope creep features to `later_features/` to reduce codebase complexity an
    - Models exist, delivery stubbed
    - Priority: HIGH - users expect job alerts
 
-2. **Career Tools / AI Service** - Per OUTCOMES_PLAN.md Phase 2
+2. **Career Tools / AI Service** - Per docs/OUTCOMES_PLAN.md Phase 2
    - T-801-805: RAG, grounding, guardrails, evaluation all missing
    - Current implementation is mock/prompt-only
    - Priority: MEDIUM - defer until Phase 2 or remove UI exposure
@@ -126,12 +126,12 @@ After cleanup:
 1. Run test suite to ensure no breakage
 2. Update `changemap.md` with cleanup notes
 3. Consider creating feature flags for Career Tools to hide incomplete features
-4. Document Phase 1-3 priorities per `OUTCOMES_PLAN.md`
+4. Document Phase 1-3 priorities per `docs/OUTCOMES_PLAN.md`
 5. Create migration to drop unused DB tables (optional, VPS only)
 
 ## References
 
 - Audit report: Internal analysis (2026-02-14)
-- Product direction: `OUTCOMES_PLAN.md`
+- Product direction: `docs/OUTCOMES_PLAN.md`
 - Feature tracking: `changemap.md`
 - Architecture decisions: `docs/ml-db-production-plan.md`
