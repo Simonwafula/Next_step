@@ -1,5 +1,36 @@
 # Handoff
 
+## 2026-04-08 (T-1A4/T-1A5/T-1A6: Search Quality Signals)
+
+Branch: `main`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-1A4` by filtering user-facing `top_skills` / `skills_found` from `JobEntities.skills` through the existing confidence thresholding path in [search.py](/home/nextstep.co.ke/public_html/backend/app/services/search.py).
+- Completed `T-1A5` by using `source_quality_score` and `source_quality_tier` in search results and heuristic ranking tie-breaks in [ranking.py](/home/nextstep.co.ke/public_html/backend/app/services/ranking.py).
+- Completed `T-1A6` by changing search quality output from an opaque list into explicit flags plus issues:
+  - `data_quality_flags.listing_page`
+  - `data_quality_flags.company_noise`
+  - `data_quality_flags.location_confidence`
+  - `data_quality_flags.dedupe_cluster`
+  - `data_quality_flags.has_rich_description`
+  - `data_quality_issues` remains the issue list for ranking/display
+- Extended [create_job_post_analysis_view.py](/home/nextstep.co.ke/public_html/backend/scripts/create_job_post_analysis_view.py) so the analysis materialized view also exposes `source_quality_tier` and the same listing/company/location quality columns.
+- Added focused coverage in [test_search_data_quality.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_data_quality.py) and updated [test_assignment_quality_improvements.py](/home/nextstep.co.ke/public_html/backend/tests/test_assignment_quality_improvements.py) for the explicit-flag shape.
+
+### Tests Run
+- `python3 -m py_compile backend/app/services/search.py backend/app/services/ranking.py backend/scripts/create_job_post_analysis_view.py backend/tests/test_search_data_quality.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_cli_data_quality_cycle.py backend/tests/test_normalized_backfill.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_deduplication_url_normalization.py` -> `16 passed`
+
+### Blockers
+- `ruff` could not run here because [backend/venv3.11/bin/ruff](/home/nextstep.co.ke/public_html/backend/venv3.11/bin/ruff) is a non-executable Mach-O binary, and `/home/nextstep.co.ke/.venv` does not have the `ruff` module installed.
+- Script-based Postgres validation for [create_job_post_analysis_view.py](/home/nextstep.co.ke/public_html/backend/scripts/create_job_post_analysis_view.py) failed under `sudo -u postgres` because the `postgres` OS user cannot read files in `/home/nextstep.co.ke/public_html/backend/scripts/`. Use direct `psql` execution or adjust file permissions before retrying the script.
+
+### Remaining Next Step
+1. Finish `T-1A7`: sector coverage improvement and representativeness reporting for analytics.
+2. If required for strict DoD, install a Linux-compatible `ruff` or replace the broken local binary.
+
 ## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
 
 Branch: `feat/T-DS-910-920-instrumentation-intelligence`

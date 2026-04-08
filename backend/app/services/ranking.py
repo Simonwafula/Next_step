@@ -215,15 +215,36 @@ def rank_results(
     if ranker.load():
         try:
             scores = ranker.score(features)
-            # Sort by score descending
-            ranked_indices = np.argsort(-scores)
+            ranked_indices = sorted(
+                range(len(results)),
+                key=lambda i: (
+                    float(scores[i]),
+                    float(results[i].get("source_quality_score") or 0.0),
+                    1.0
+                    if str(results[i].get("quality_tag") or "") == "High confidence"
+                    else 0.0,
+                    -len(results[i].get("data_quality_issues") or []),
+                ),
+                reverse=True,
+            )
             return [results[int(i)] for i in ranked_indices]
         except Exception:
             pass  # Fall through to heuristic
 
-    # Fallback: heuristic sort by similarity
+    # Fallback: blend retrieval quality with source/data-quality signals.
+    def _fallback_score(
+        item: dict[str, Any],
+    ) -> tuple[float, float, float, float, float]:
+        return (
+            float(item.get("similarity_score") or 0.0),
+            float(item.get("source_quality_score") or 0.0),
+            1.0 if str(item.get("quality_tag") or "") == "High confidence" else 0.0,
+            -float(len(item.get("data_quality_issues") or [])),
+            _recency_score(item.get("first_seen")),
+        )
+
     return sorted(
         results,
-        key=lambda x: float(x.get("similarity_score") or 0.0),
+        key=_fallback_score,
         reverse=True,
     )

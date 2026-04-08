@@ -62,13 +62,17 @@
   - [x] (T-1A1) Extend normalization rules for obvious company/title/location artifacts affecting search and analytics
   - [x] (T-1A2) Extend deduplication to support `title + company + first_seen_date` composite matching in addition to URL/content checks
   - [x] (T-1A3) Add reproducible analysis materialized view script for cleaned job-post exploration
+  - [x] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
+  - [x] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
+  - [x] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
+  - [ ] (T-1A7) Improve sector coverage and backfill representativeness reporting for analytics
   - [x] (T-1A8) Add safe backfill helper for existing organization/location normalization and `job_post` reference repointing
   - [x] (T-1A9) Add materialized-view refresh helper and validate refresh against Postgres
   - [x] (T-1A10) Add one-step CLI cleanup cycle for normalized-entity backfill plus analysis-view create/refresh
-  - [ ] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
-  - [ ] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
-  - [ ] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
-  - [ ] (T-1A7) Improve sector coverage and backfill representativeness reporting for analytics
+  - Log 2026-04-08: search result shaping now filters low-confidence extracted skills, exposes explicit `data_quality_flags` + `data_quality_issues`, adds `source_quality_score/source_quality_tier`, and heuristic ranking now prefers cleaner sources/results when model scores tie.
+  - Tests 2026-04-08: `python3 -m py_compile ...search.py ...ranking.py ...create_job_post_analysis_view.py ...test_search_data_quality.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_cli_data_quality_cycle.py backend/tests/test_normalized_backfill.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_deduplication_url_normalization.py` -> `16 passed`.
+  - BLOCKED 2026-04-08: `ruff` could not run in this environment because `backend/venv3.11/bin/ruff` is a non-executable Mach-O binary (`Permission denied`; `file .../ruff` => `Mach-O 64-bit x86_64 executable`) and `/home/nextstep.co.ke/.venv` does not have the `ruff` module installed.
+  - BLOCKED 2026-04-08: validating `backend/scripts/create_job_post_analysis_view.py` via `sudo -u postgres ... python3 ...create_job_post_analysis_view.py` failed with `Permission denied` because the `postgres` OS user cannot read files under `/home/nextstep.co.ke/public_html/backend/scripts/`; use direct `psql` SQL execution or relax read permissions before script-based validation.
 
 ## 2. NLP extraction (Implemented; hardening pending)
 - [/] (T-200) description_clean builder

@@ -17,6 +17,7 @@ WITH base AS (
     SELECT
         jp.id AS job_id,
         jp.source,
+        jdm.canonical_job_id AS dedupe_cluster_id,
         NULLIF(BTRIM(jp.url), '') AS url,
         NULLIF(REGEXP_REPLACE(BTRIM(jp.title_raw), '\\s+', ' ', 'g'), '') AS title_raw_clean,
         NULLIF(REGEXP_REPLACE(BTRIM(COALESCE(o.name, '')), '\\s+', ' ', 'g'), '') AS company_raw_clean,
@@ -38,6 +39,16 @@ WITH base AS (
         l.country,
         o.sector,
         jp.is_active,
+        CASE
+            WHEN LOWER(COALESCE(jp.source, '')) LIKE 'telegram:%' THEN 0.58
+            WHEN LOWER(COALESCE(jp.source, '')) IN ('greenhouse', 'lever') THEN 0.97
+            WHEN LOWER(COALESCE(jp.source, '')) = 'rss' THEN 0.84
+            WHEN LOWER(COALESCE(jp.source, '')) = 'gov_careers' THEN 0.78
+            WHEN LOWER(COALESCE(jp.source, '')) = 'html_generic' THEN 0.62
+            WHEN LOWER(COALESCE(jp.source, '')) = 'tender_rss' THEN 0.72
+            WHEN COALESCE(jp.source, '') LIKE '%.%' THEN 0.62
+            ELSE 0.65
+        END AS source_quality_score,
         ROW_NUMBER() OVER (
             PARTITION BY COALESCE(
                 NULLIF(BTRIM(jp.url), ''),
@@ -48,10 +59,17 @@ WITH base AS (
     FROM job_post jp
     LEFT JOIN organization o ON o.id = jp.org_id
     LEFT JOIN location l ON l.id = jp.location_id
+    LEFT JOIN job_dedupe_map jdm ON jdm.job_id = jp.id
 )
 SELECT
     job_id,
     source,
+    source_quality_score,
+    CASE
+        WHEN source_quality_score >= 0.85 THEN 'high'
+        WHEN source_quality_score >= 0.70 THEN 'medium'
+        ELSE 'low'
+    END AS source_quality_tier,
     url,
     title_raw_clean,
     company_raw_clean,
@@ -74,9 +92,26 @@ SELECT
     sector,
     is_active,
     dedupe_rank,
+    dedupe_cluster_id,
     (description_text IS NOT NULL AND LENGTH(description_text) >= 250) AS has_rich_description,
     (company_raw_clean IS NOT NULL) AS has_company,
-    (location_raw_clean IS NOT NULL) AS has_location
+    (location_raw_clean IS NOT NULL) AS has_location,
+    (
+        title_raw_clean ~* '^(jobs?|vacancies|careers?|job opportunities|current opportunities|positions?|openings?) at '
+        OR title_raw_clean IN ('jobs', 'vacancies', 'careers', 'job opportunities', 'current opportunities', 'open positions')
+    ) AS listing_page_flag,
+    (
+        COALESCE(company_raw_clean, '') = ''
+        OR company_raw_clean ~* '^(jobs?|vacancies|careers?) at '
+        OR company_raw_clean ~* '^read more about this company$'
+    ) AS company_noise_flag,
+    CASE
+        WHEN city IS NOT NULL AND region IS NOT NULL AND country IS NOT NULL THEN 'high'
+        WHEN LOWER(COALESCE(location_raw_clean, '')) IN ('global', 'international', 'multiple locations', 'various locations', 'nationwide') THEN 'low'
+        WHEN LOWER(COALESCE(location_raw_clean, '')) LIKE '%remote%' THEN 'medium'
+        WHEN location_raw_clean IS NOT NULL THEN 'medium'
+        ELSE 'low'
+    END AS location_confidence
 FROM base;
 
 CREATE INDEX IF NOT EXISTS idx_job_post_cleaned_mv_posted_date
