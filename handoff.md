@@ -1,5 +1,36 @@
 # Handoff
 
+## 2026-04-08 (T-UX-310/T-UX-311: Dashboard API Contract Alignment)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-310` by adding `GET /api/users/market-fit` in [user_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/user_routes.py):
+  - returns the exact dashboard shape expected by [dashboard-ui.js](/home/nextstep.co.ke/public_html/frontend/js/dashboard-ui.js)
+  - analyzes recent active jobs against the authenticated profile
+  - builds deterministic missing-skill demand counts from normalized `job_skill` rows when available, with text-extraction fallback
+- Completed `T-UX-311` in [user_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/user_routes.py):
+  - added `GET /api/users/applications/by-stage` for the shipped kanban board
+  - grouped stored application `status` values into the dashboard stages `saved`, `applied`, `interview`, `offer`, `rejected`
+  - updated `PUT /api/users/applications/{id}` to accept dashboard `stage` payloads and return both normalized `stage` and stored `status`
+- Added focused regression coverage in [test_dashboard_user_routes.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_user_routes.py) for:
+  - empty-profile market-fit fallback
+  - populated market-fit output
+  - kanban grouping
+  - `stage` update compatibility
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`
+- `backend/venv3.11/bin/ruff check backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_user_activity.py backend/tests/test_dashboard_endpoints.py` -> `66 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_subscription_paywall.py backend/tests/test_user_job_match_endpoint.py backend/tests/test_skills_gap_scan_endpoint.py` -> `10 passed`
+
+### Remaining Next Step
+1. Start `T-UX-312` to add dashboard boot-path integration coverage now that the missing APIs exist.
+2. Then return to `T-UX-301` if search payload normalization is still the next highest-priority user-path gap on this branch.
+
 ## 2026-04-08 (T-UX-300: Guided Search Logging Hardening)
 
 Branch: `feat/T-1A4-1A6-search-quality-signals`
