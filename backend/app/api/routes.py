@@ -100,6 +100,12 @@ def search(
     )
 
     response_payload = payload if isinstance(payload, dict) else {"results": payload}
+    search_results = response_payload.get("results")
+    if search_results is None:
+        search_results = response_payload.get("jobs")
+    if not isinstance(search_results, list):
+        search_results = []
+    current_user_id = getattr(current_user, "id", None) if current_user else None
 
     # T-DS-911: log serve-time features for ranking trainer
     log_search_serving(
@@ -114,9 +120,9 @@ def search(
             "county": county,
             "sector": sector,
         },
-        results=response_payload.get("results") or [],
+        results=search_results,
         mode=mode or "standard",
-        user_id=current_user.id if current_user else None,
+        user_id=current_user_id,
         session_id=None,  # populated by session middleware when available
     )
 

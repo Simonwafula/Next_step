@@ -1074,7 +1074,7 @@ Added to `main.css`:
 - Overall against the current implemented user journeys: `71%`
 
 ### Highest-Priority Gaps
-- [ ] (T-UX-300) Fix guided-search auth/logging regression in `/api/search`
+- [x] (T-UX-300) Fix guided-search auth/logging regression in `/api/search`
   - Make serve-time logging tolerate optional or partial authenticated-user objects.
   - Restore the failing guided-mode cases in `backend/tests/test_search_modes.py`.
 - [ ] (T-UX-301) Normalize `/api/search` payload semantics across backend, tests, and frontend
@@ -1097,9 +1097,11 @@ Added to `main.css`:
 ### Audit Notes
 - Log 2026-04-08: persona coverage audit was based on shipped frontend pages, active API routes, backend service paths, and representative tests; admin/LMI is the strongest implemented surface, while employer/recruiter capability is largely still roadmap-only.
 - Log 2026-04-08: `.pilot/tasks/` does not currently exist in this checkout, so the prioritized backlog was recorded in `changemap.md`, which is the repo's active task ledger in practice.
+- Log 2026-04-08: completed `T-UX-300` by hardening `/api/search` so serve-time logging tolerates optional or partial authenticated-user objects and logs the actual search result list whether the payload uses `results` or `jobs`.
 
 ### Representative Validation
 - Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_skills_gap_scan_endpoint.py backend/tests/test_user_activity.py backend/tests/test_admin_processing_endpoints.py -q` -> `18 passed`
 - Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_data_quality.py backend/tests/test_skill_filtering.py backend/tests/test_search_match_explanation_skills_shape.py backend/tests/test_user_job_match_endpoint.py -q` -> `11 passed, 1 warning`
-- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `2 failed, 69 passed`
-  - Current failure to fix first: `AttributeError: '_UserStub' object has no attribute 'id'` in `backend/app/api/routes.py` when guided search mode hits serve-time logging.
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_modes.py -q` -> `4 passed`
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_public_apply_redirect.py -q` -> `7 passed`
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `71 passed`

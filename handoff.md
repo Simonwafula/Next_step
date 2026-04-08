@@ -1,5 +1,26 @@
 # Handoff
 
+## 2026-04-08 (T-UX-300: Guided Search Logging Hardening)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-300` by hardening [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py):
+  - serve-time logging now tolerates optional or partial authenticated-user objects via safe `id` lookup
+  - logging now uses the actual search result list whether the payload shape is `results` or `jobs`
+- This closes the guided-search regression surfaced during the persona coverage audit, where guided mode crashed on partial authenticated-user stubs in [test_search_modes.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_modes.py).
+
+### Tests Run
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_modes.py -q` -> `4 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_public_apply_redirect.py -q` -> `7 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `71 passed`
+
+### Remaining Next Step
+1. Start `T-UX-310` to either implement `/api/users/market-fit` or remove the live dashboard dependency.
+2. Then do `T-UX-311` to bring the applications kanban contract into line with the backend.
+
 ## 2026-04-08 (Persona Coverage Audit + Prioritized Gap Backlog)
 
 Branch: `feat/T-1A4-1A6-search-quality-signals`
@@ -37,8 +58,8 @@ Commit: `pending`
   - `AttributeError: '_UserStub' object has no attribute 'id'`
 
 ### Remaining Next Step
-1. Fix `T-UX-300` first so guided search is stable again.
-2. Then do `T-UX-310` and `T-UX-311` to bring the shipped dashboard UI back into sync with real backend routes.
+1. Start `T-UX-310` to either implement `/api/users/market-fit` or remove the live dashboard dependency.
+2. Then do `T-UX-311` to bring the shipped dashboard UI back into sync with real backend routes.
 
 ## 2026-04-08 (T-1A4/T-1A5/T-1A6: Search Quality Signals)
 
