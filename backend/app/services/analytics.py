@@ -8,6 +8,8 @@ from sqlalchemy.orm import Session
 from ..db.models import (
     JobPost,
     JobEntities,
+    Location,
+    Organization,
     TitleNorm,
     SkillTrendsMonthly,
     RoleEvolution,
@@ -353,6 +355,134 @@ def get_intelligence_metadata(
         "source_mix": source_mix,
         "confidence_note": confidence_note,
         "role_family": role_family,
+    }
+
+
+def get_representativeness_report(
+    db: Session,
+    *,
+    window_days: int = 180,
+    top_n: int = 5,
+) -> dict:
+    """Summarise source/sector/geography coverage for admin quality review."""
+    since = datetime.utcnow() - timedelta(days=max(window_days, 1))
+
+    total_jobs = (
+        db.execute(
+            select(func.count(JobPost.id))
+            .where(JobPost.is_active.is_(True))
+            .where(JobPost.first_seen >= since)
+        ).scalar()
+        or 0
+    )
+
+    source_rows = db.execute(
+        select(JobPost.source, func.count(JobPost.id))
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+        .group_by(JobPost.source)
+        .order_by(desc(func.count(JobPost.id)))
+    ).all()
+
+    sector_rows = db.execute(
+        select(Organization.sector, func.count(JobPost.id))
+        .select_from(JobPost)
+        .join(Organization, Organization.id == JobPost.org_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+        .group_by(Organization.sector)
+        .order_by(desc(func.count(JobPost.id)))
+    ).all()
+
+    geography_expr = func.coalesce(Location.region, Location.city, Location.raw)
+    geography_rows = db.execute(
+        select(geography_expr, func.count(JobPost.id))
+        .select_from(JobPost)
+        .join(Location, Location.id == JobPost.location_id, isouter=True)
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+        .group_by(geography_expr)
+        .order_by(desc(func.count(JobPost.id)))
+    ).all()
+
+    jobs_with_sector = sum(int(count) for sector, count in sector_rows if sector)
+    jobs_with_geography = sum(
+        int(count) for geography, count in geography_rows if geography
+    )
+    sector_coverage_pct = round((jobs_with_sector / total_jobs) * 100, 1) if total_jobs else 0.0
+    geography_coverage_pct = (
+        round((jobs_with_geography / total_jobs) * 100, 1) if total_jobs else 0.0
+    )
+
+    def _mix(rows: list[tuple[object, int]], *, unknown_label: str) -> list[dict]:
+        items = []
+        for key, count in rows[:top_n]:
+            label = str(key).strip() if key is not None and str(key).strip() else unknown_label
+            share = round((int(count) / total_jobs) * 100, 1) if total_jobs else 0.0
+            items.append({"label": label, "count": int(count), "share_pct": share})
+        return items
+
+    source_mix = _mix(source_rows, unknown_label="unknown_source")
+    sector_mix = _mix(sector_rows, unknown_label="unknown_sector")
+    geography_mix = _mix(geography_rows, unknown_label="unknown_location")
+
+    top_source_share = source_mix[0]["share_pct"] if source_mix else 0.0
+    unknown_sector_share = round(
+        ((total_jobs - jobs_with_sector) / total_jobs) * 100, 1
+    ) if total_jobs else 0.0
+    unknown_geography_share = round(
+        ((total_jobs - jobs_with_geography) / total_jobs) * 100, 1
+    ) if total_jobs else 0.0
+
+    coverage_gaps = []
+    if unknown_sector_share >= 40.0:
+        coverage_gaps.append(
+            {
+                "dimension": "sector",
+                "severity": "warning",
+                "message": "Large share of jobs lack sector attribution.",
+                "share_pct": unknown_sector_share,
+            }
+        )
+    if unknown_geography_share >= 35.0:
+        coverage_gaps.append(
+            {
+                "dimension": "geography",
+                "severity": "warning",
+                "message": "Large share of jobs lack a reliable geography tag.",
+                "share_pct": unknown_geography_share,
+            }
+        )
+    if top_source_share >= 70.0:
+        coverage_gaps.append(
+            {
+                "dimension": "source_mix",
+                "severity": "warning",
+                "message": "One source dominates the active job sample.",
+                "share_pct": top_source_share,
+            }
+        )
+
+    return {
+        "window_days": window_days,
+        "sample_size": int(total_jobs),
+        "source_mix": source_mix,
+        "sector_mix": sector_mix,
+        "geography_mix": geography_mix,
+        "coverage": {
+            "sector": {
+                "jobs_with_sector": int(jobs_with_sector),
+                "coverage_pct": sector_coverage_pct,
+                "unknown_share_pct": unknown_sector_share,
+            },
+            "geography": {
+                "jobs_with_geography": int(jobs_with_geography),
+                "coverage_pct": geography_coverage_pct,
+                "unknown_share_pct": unknown_geography_share,
+            },
+        },
+        "coverage_gaps": coverage_gaps,
+        "status": "warning" if coverage_gaps else "healthy",
     }
 
 

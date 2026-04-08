@@ -31,6 +31,32 @@ Commit: `pending`
 1. Finish `T-1A7`: sector coverage improvement and representativeness reporting for analytics.
 2. If required for strict DoD, install a Linux-compatible `ruff` or replace the broken local binary.
 
+## 2026-04-08 (T-1A7: Representativeness Reporting)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-1A7` by adding [get_representativeness_report()](/home/nextstep.co.ke/public_html/backend/app/services/analytics.py) in [analytics.py](/home/nextstep.co.ke/public_html/backend/app/services/analytics.py).
+- Wired the report into [admin_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/admin_routes.py) so `/api/admin/lmi-quality` now returns:
+  - `representativeness.source_mix`
+  - `representativeness.sector_mix`
+  - `representativeness.geography_mix`
+  - `representativeness.coverage`
+  - `representativeness.coverage_gaps`
+  - `representativeness.status`
+- Added endpoint coverage in [test_dashboard_endpoints.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_endpoints.py) for both the normal populated response and a sparse-sector warning case.
+
+### Tests Run
+- `python3 -m py_compile backend/app/services/analytics.py backend/app/api/admin_routes.py backend/tests/test_dashboard_endpoints.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `10 passed, 47 deselected`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_cli_data_quality_cycle.py backend/tests/test_normalized_backfill.py backend/tests/test_deduplication_url_normalization.py` -> `16 passed`
+
+### Remaining Next Step
+1. Resolve the broken local `ruff` setup if strict DoD lint enforcement is required on this host.
+2. Decide whether the representativeness block also needs a dedicated admin endpoint or frontend rendering beyond the existing `/api/admin/lmi-quality` payload.
+
 ## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
 
 Branch: `feat/T-DS-910-920-instrumentation-intelligence`

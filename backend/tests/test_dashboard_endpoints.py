@@ -323,6 +323,7 @@ class TestAdminLmiQuality:
         assert "scraping_health" in data
         assert "skills_extraction" in data
         assert "engagement" in data
+        assert "representativeness" in data
         assert "revenue" in data
 
     def test_lmi_quality_with_seeded_data(self, client, seeded_db):
@@ -342,6 +343,13 @@ class TestAdminLmiQuality:
         assert "active_search_users_30d" in engagement
         assert 0 <= engagement["lmi_engagement_rate_30d"] <= 100
 
+        representativeness = data["representativeness"]
+        assert representativeness["sample_size"] >= 1
+        assert "source_mix" in representativeness
+        assert "sector_mix" in representativeness
+        assert "geography_mix" in representativeness
+        assert "coverage" in representativeness
+
         revenue = data["revenue"]
         assert "estimated_mrr_kes" in revenue
         assert "estimated_arpu_kes" in revenue
@@ -350,6 +358,62 @@ class TestAdminLmiQuality:
         assert "conversion_rate_30d" in revenue
         assert "conversion_trend_14d" in revenue
         assert "conversion_alert" in revenue
+
+    def test_lmi_quality_flags_representativeness_gaps_when_sector_missing(
+        self,
+        client,
+        db_session_factory,
+    ):
+        db = db_session_factory()
+        now = datetime.utcnow()
+
+        loc = Location(
+            country="Kenya",
+            region="Nairobi",
+            city="Nairobi",
+            raw="Nairobi, Kenya",
+        )
+        db.add(loc)
+        db.flush()
+
+        db.add_all(
+            [
+                JobPost(
+                    source="rss",
+                    url="https://example.com/jobs/rep-1",
+                    url_hash="rep-1",
+                    title_raw="Data Analyst",
+                    location_id=loc.id,
+                    description_raw="Python SQL dashboards " * 20,
+                    first_seen=now - timedelta(days=1),
+                    is_active=True,
+                ),
+                JobPost(
+                    source="rss",
+                    url="https://example.com/jobs/rep-2",
+                    url_hash="rep-2",
+                    title_raw="Research Officer",
+                    location_id=loc.id,
+                    description_raw="Monitoring reporting surveys " * 20,
+                    first_seen=now - timedelta(days=2),
+                    is_active=True,
+                ),
+            ]
+        )
+        db.commit()
+        db.close()
+
+        resp = client.get("/api/admin/lmi-quality")
+        assert resp.status_code == 200
+
+        representativeness = resp.json()["representativeness"]
+        assert representativeness["coverage"]["sector"]["coverage_pct"] == 0.0
+        assert representativeness["coverage_gaps"]
+        assert any(
+            gap["dimension"] == "sector"
+            for gap in representativeness["coverage_gaps"]
+        )
+        assert representativeness["status"] == "warning"
 
     def test_lmi_quality_includes_conversion_metrics(
         self,

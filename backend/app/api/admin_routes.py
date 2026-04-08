@@ -28,6 +28,7 @@ from ..db.models import (
 )
 from ..services.auth_service import require_admin
 from ..services.analytics import (
+    get_representativeness_report,
     get_skill_trends,
     get_role_evolution,
     get_title_adjacency,
@@ -548,6 +549,8 @@ def admin_lmi_quality(
             whatsapp_enabled=bool(alert_settings["whatsapp_enabled"]),
         )
 
+    representativeness = get_representativeness_report(db, window_days=180)
+
     return {
         "scraping_health": {
             "total_runs_7d": total_runs_7d,
@@ -568,6 +571,7 @@ def admin_lmi_quality(
             "active_application_users_30d": active_application_users_30d,
             "lmi_engagement_rate_30d": lmi_engagement_rate,
         },
+        "representativeness": representativeness,
         "revenue": {
             "paid_users": paid_users,
             "upgraded_users_30d": upgraded_users_30d,
