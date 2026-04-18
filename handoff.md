@@ -1,5 +1,29 @@
 # Handoff
 
+## 2026-04-18 (T-1A12 Action 2: Reviewed Seniority Audit Set)
+
+Branch: `feat/T-1A12-seniority-rollout`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-1A12 Action 2` by adding [seniority_review_sample.csv](/home/nextstep.co.ke/public_html/data/samples/seniority_review_sample.csv) and [seniority_labeling_guide.md](/home/nextstep.co.ke/public_html/docs/seniority_labeling_guide.md).
+- The reviewed sample is a repo-safe silver set:
+  - `20` rows total
+  - balanced `5` per current label (`Entry`, `Mid-Level`, `Senior`, `Executive`)
+  - anonymized and title-centric rather than raw-description based
+  - includes known lexical traps such as `sales executive` and `executive sous chef`
+- Added [test_seniority_review_sample.py](/home/nextstep.co.ke/public_html/backend/tests/test_seniority_review_sample.py) to lock the sample schema, uniqueness, balanced current-label counts, and allowed value ranges.
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/tests/test_seniority_review_sample.py`
+- `backend/venv3.11/bin/ruff check backend/tests/test_seniority_review_sample.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_seniority_review_sample.py`
+
+### Remaining Next Step
+1. Move to `T-1A12 Action 3` to add stronger extracted seniority features and the associated schema/test work.
+2. Keep the unrelated worktree deletions, the local `notebooks/data/` artifact, and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit out of the Action 2 commit unless they are intentionally packaged later.
+
 ## 2026-04-18 (T-1A12 Action 1: Production Seniority Policy)
 
 Branch: `feat/T-1A12-seniority-rollout`

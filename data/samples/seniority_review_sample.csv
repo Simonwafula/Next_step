@@ -1,0 +1,21 @@
+sample_id,source,current_label,reviewed_label,review_confidence,title_for_review,education_bucket,quality_score,review_theme,review_notes
+SEN-REV-001,brightermonday.co.ke,Entry,Entry,high,Business Development Assistant,Bachelor,0.0,assistant_cue,Assistant title strongly indicates early-career support scope rather than independent ownership.
+SEN-REV-002,brightermonday.co.ke,Entry,Entry,high,Junior Accountant,Bachelor,0.0,junior_cue,Explicit junior cue keeps this in the entry band.
+SEN-REV-003,migration,Entry,Entry,high,IT Intern,Diploma,0.9,intern_cue,Intern title is a direct entry-level signal.
+SEN-REV-004,brightermonday.co.ke,Entry,Mid-Level,medium,Travel Consultant,Bachelor,0.0,consultant_scope,Consultant title suggests independent role ownership without an early-career cue.
+SEN-REV-005,brightermonday.co.ke,Entry,Mid-Level,medium,Relationship Officer,Bachelor,0.0,officer_scope,Officer title usually maps better to independent contributor work than entry support work.
+SEN-REV-006,brightermonday.co.ke,Mid-Level,Mid-Level,high,WordPress Web Designer,UNKNOWN,0.0,individual_contributor,No senior or executive cue and the role reads like a standard independent contributor.
+SEN-REV-007,brightermonday.co.ke,Mid-Level,Mid-Level,high,"Logistics & Shipping Coordinator",Diploma,0.0,coordinator_scope,Coordinator title implies operational ownership but not management hierarchy.
+SEN-REV-008,brightermonday.co.ke,Mid-Level,Mid-Level,high,Procurement Officer,Diploma,0.0,officer_scope,Officer title fits a mid-level professional IC band absent stronger leadership cues.
+SEN-REV-009,brightermonday.co.ke,Mid-Level,Senior,high,Head Teacher,Bachelor,0.0,function_head,Head title implies supervisory leadership over a school function.
+SEN-REV-010,brightermonday.co.ke,Mid-Level,Senior,medium,"Monitoring, Evaluation and Learning Advisor",UNKNOWN,0.0,senior_specialist,Advisor title often signals a senior specialist role even without formal line management.
+SEN-REV-011,brightermonday.co.ke,Senior,Senior,high,Senior Back-End Developer,Bachelor,0.0,senior_cue,Explicit senior cue keeps this in the senior band.
+SEN-REV-012,brightermonday.co.ke,Senior,Senior,high,Human Resource Manager,Bachelor,0.0,manager_scope,Manager title implies supervisory or departmental ownership short of executive tier.
+SEN-REV-013,migration,Senior,Senior,high,Lead Data Scientist,Master,0.9,lead_cue,Lead title indicates senior technical leadership rather than executive governance.
+SEN-REV-014,migration,Senior,Mid-Level,medium,ICT Officer,Master,0.9,officer_vs_manager,Officer title lacks a clear senior cue and reads closer to a mid-level professional role.
+SEN-REV-015,migration,Senior,Mid-Level,medium,Assistant Food & Beverage Manager,Bachelor,0.9,assistant_manager,Assistant manager sits below a full manager band and is safer to review as mid-level.
+SEN-REV-016,gov_careers,Executive,Executive,high,County Chief Officer,UNKNOWN,0.4323,chief_officer,Chief officer is an executive public-service appointment.
+SEN-REV-017,gov_careers,Executive,Executive,high,"Director, Communication & Public Relations",UNKNOWN,0.4993,director_scope,Director title indicates executive functional leadership.
+SEN-REV-018,migration,Executive,Executive,high,Global Talent Development Director,Master,0.9,director_scope,Director title plus global remit places this in the executive band.
+SEN-REV-019,migration,Executive,Senior,medium,Executive Sous Chef,Diploma,0.82,executive_lexical_trap,Executive here modifies kitchen rank and should not be treated as company executive leadership.
+SEN-REV-020,migration,Executive,Mid-Level,high,Sales Executive,Bachelor,0.9,sales_executive_trap,Sales executive is a lexical trap that usually refers to a quota-carrying IC role rather than executive leadership.

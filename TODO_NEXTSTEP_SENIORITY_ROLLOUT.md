@@ -128,6 +128,9 @@ Completed notes:
 
 ### Action 2: Build a Reviewed Label Audit Set
 
+Status:
+- `DONE 2026-04-18`
+
 Goal:
 - create a gold or silver evaluation subset to measure real quality rather than trusting noisy labels blindly
 
@@ -153,6 +156,13 @@ Logs required:
 - log sample size
 - log label guidelines
 - log whether repo-safe reviewed data exists
+
+Completed notes:
+- Added `data/samples/seniority_review_sample.csv` as a repo-safe silver audit set with `20` reviewed rows.
+- The sample is balanced across current labels with `5` rows each for `Entry`, `Mid-Level`, `Senior`, and `Executive`.
+- Added `docs/seniority_labeling_guide.md` with the taxonomy, lexical traps, confidence rules, and current sample design.
+- Decision logged: repo-safe reviewed data exists, but it is intentionally anonymized and title-centric; operational-only back-links to raw postings are deferred outside the repo.
+- Added `backend/tests/test_seniority_review_sample.py` to validate the sample schema, balanced current-label counts, and allowed field values.
 
 ### Action 3: Add Stronger Extracted Features
 
