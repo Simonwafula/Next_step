@@ -2,7 +2,7 @@
 
 Purpose: turn the current assignment-grade seniority classifier into a production-safe capability for `nextstep.co.ke` clientele without leaking secrets, without skipping logs, and without collapsing multiple risky changes into one push.
 
-Status: `PLANNED`
+Status: `IN_PROGRESS`
 Owner: `codex`
 Suggested branch when implementation starts: `feat/T-1A12-seniority-rollout`
 
@@ -82,6 +82,9 @@ Completed notes:
 
 ### Action 1: Define Production Seniority Policy
 
+Status:
+- `DONE 2026-04-18`
+
 Goal:
 - decide exactly how seniority is allowed to affect product behavior
 
@@ -115,6 +118,13 @@ Push gate:
 
 Logs required:
 - record the chosen behavior and any deferred decisions
+
+Completed notes:
+- Chosen rollout mode is `internal_only` for model-predicted seniority.
+- Predicted seniority is allowed only as a bounded internal ranking/recommendation/alert-ordering signal in the current phase.
+- Soft user-facing labels are deferred until reviewed labels, calibration, stronger offline quality, and versioned prediction storage exist.
+- Hard filtering on model-predicted seniority is explicitly prohibited in the current rollout policy.
+- Existing ingestion-time `JobPost.seniority` behavior remains separate from this new predicted-seniority policy.
 
 ### Action 2: Build a Reviewed Label Audit Set
 

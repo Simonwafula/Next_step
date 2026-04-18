@@ -1,5 +1,26 @@
 # Handoff
 
+## 2026-04-18 (T-1A12 Action 1: Production Seniority Policy)
+
+Branch: `feat/T-1A12-seniority-rollout`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-1A12 Action 1` by adding [seniority_rollout_policy.md](/home/nextstep.co.ke/public_html/docs/seniority_rollout_policy.md).
+- The policy chooses `internal_only` for **model-predicted** seniority in the current rollout:
+  - allowed now as a bounded internal signal in ranking, recommendations, and alert ordering
+  - deferred for user-facing `Likely ...` labels until reviewed labels, calibration, stronger offline quality, and versioned prediction storage exist
+  - explicitly prohibited as a hard filter in the current phase
+- Recorded the scope boundary that this applies to future predicted seniority only; existing ingestion-time [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py), [search.py](/home/nextstep.co.ke/public_html/backend/app/services/search.py), and [ranking.py](/home/nextstep.co.ke/public_html/backend/app/services/ranking.py) behavior around `JobPost.seniority` remains separate.
+
+### Tests Run
+- Manual policy review against [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py), [search.py](/home/nextstep.co.ke/public_html/backend/app/services/search.py), and [ranking.py](/home/nextstep.co.ke/public_html/backend/app/services/ranking.py) to confirm the rollout decision matches the current shipped seniority touchpoints.
+
+### Remaining Next Step
+1. Move to `T-1A12 Action 2` to create the reviewed seniority audit set and labeling guide.
+2. Keep the unrelated worktree deletions, the local `notebooks/data/` artifact, and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit out of the Action 1 commit unless they are intentionally packaged later.
+
 ## 2026-04-08 (T-UX-321: Homepage Job Alerts UI)
 
 Branch: `feat/T-1A4-1A6-search-quality-signals`
