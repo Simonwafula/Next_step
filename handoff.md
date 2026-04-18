@@ -1394,3 +1394,91 @@ Branch: `main`
 - Validated Postgres refresh:
   - `REFRESH MATERIALIZED VIEW analysis.job_post_cleaned_mv;`
   - row count after refresh: `110781`
+
+---
+
+## 2026-04-18 (T-1A11 CSA 821 assignment notebook)
+
+Branch: `main`
+
+### Summary
+- Added a submission-ready notebook at `notebooks/csa821_assignment_1_nextstep_kenya_seniority_classification.ipynb`.
+- Added a reproducible dataset bundle alongside it:
+  - `notebooks/data/csa821_kenya_seniority_dataset.csv`
+  - `notebooks/sql/csa821_kenya_seniority_dataset_export.sql`
+- The notebook now prefers the fixed CSV snapshot, falling back to PostgreSQL regeneration only if the CSV is missing.
+- Implemented a full assignment workflow: data loading, summary statistics, missing-value handling, outlier clipping, normalization, one-hot encoding, feature selection, train/test split, model comparison, hyperparameter tuning, and visual evaluation.
+
+### Why This Notebook
+- The live database has enough data volume for a serious assignment, while the repo CSV export is only a 100-row sample.
+- The Kenya subset is directly aligned to the assignment bonus marks for local relevance.
+- `seniority` is a better target than salary because salary coverage is sparse and noisier in the current data.
+
+### Tests Run
+- `python3 -m json.tool notebooks/csa821_assignment_1_nextstep_kenya_seniority_classification.ipynb`
+- `/home/nextstep.co.ke/.venv/bin/python` smoke-run against PostgreSQL with the same query/pipeline shape used in the notebook on a sampled dataset
+- `/home/nextstep.co.ke/.venv/bin/python` CSV-only smoke-run on a sampled dataset to confirm reproducible execution without database access
+
+### Next Step
+- Fill in the real group-member names and registration numbers in the first markdown cell.
+- If submitting the CSV with the notebook, the notebook can run without `DATABASE_URL`.
+- Keep `DATABASE_URL` available only if you want to regenerate the CSV from PostgreSQL.
+- If needed for submission packaging, export the finished notebook to PDF or HTML after execution.
+
+---
+
+## 2026-04-18 (T-1A12 seniority rollout execution TODO)
+
+Branch: `main`
+
+### Summary
+- Added `TODO_NEXTSTEP_SENIORITY_ROLLOUT.md` at the repo root.
+- The file converts the seniority-model improvement discussion into an execution plan with scoped actions, per-action tests, push gates, logging requirements, branch/commit conventions, and explicit secret-handling rules.
+- The TODO also requires that any newly discovered follow-up changes or product decisions be logged in the TODO itself plus the repo ledgers instead of being handled implicitly.
+
+### Why This Exists
+- The current seniority model is useful but not strong enough for unconditional production exposure.
+- Future rollout work needs to happen incrementally so changes can be tested, logged, committed, and pushed action by action.
+- The worktree is already dirty, so disciplined scoping and logging are necessary before starting implementation actions.
+
+### Tests Run
+- Manual review of `TODO_NEXTSTEP_SENIORITY_ROLLOUT.md` against repo operating rules and logging requirements
+
+### Next Step
+- When implementation begins, create `feat/T-1A12-seniority-rollout` and execute only Action 0 first.
+- Do not combine multiple rollout actions into one push.
+
+---
+
+## 2026-04-18 (T-1A12 Action 0 baseline freeze)
+
+Branch: `feat/T-1A12-seniority-rollout`
+
+### Summary
+- Completed Action 0 from `TODO_NEXTSTEP_SENIORITY_ROLLOUT.md`.
+- Added `docs/seniority_baseline.md` to freeze the current seniority-classification baseline before production-oriented changes.
+- Recorded the reproducible asset set, current dataset shape, class distribution, top-source/title summary, and current sampled metrics.
+
+### Frozen Baseline
+- Snapshot rows: `38,335`
+- Snapshot columns: `14`
+- Classes:
+  - `Mid-Level`: `15,106`
+  - `Senior`: `13,063`
+  - `Entry`: `5,779`
+  - `Executive`: `4,387`
+- Sampled CSV-only metrics:
+  - `Linear SVM` weighted F1: `0.6464`
+  - `Logistic Regression` weighted F1: `0.5537`
+
+### Tests Run
+- `python3 -m json.tool notebooks/csa821_assignment_1_nextstep_kenya_seniority_classification.ipynb`
+- `/home/nextstep.co.ke/.venv/bin/python` CSV-only sampled smoke evaluation of the baseline pipeline
+
+### Decision Logged
+- The full `notebooks/data/csa821_kenya_seniority_dataset.csv` snapshot is kept local and is not part of the git commit because it is a large output.
+- The committed reproducibility path for the repo is the notebook, SQL export, and baseline note; the CSV can be regenerated locally when needed.
+
+### Next Step
+- Stage and commit only the Action 0 files.
+- Push the feature branch after the scoped commit.
