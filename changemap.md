@@ -4,7 +4,7 @@
 - TODO, IN_PROGRESS, BLOCKED, DONE
 
 ## Phase-1: UI Rebrand & Views Implementation (2026-02-15)
-- [x] (T-UI-010) Logo asset: copied `nextstep logo white.png` → `frontend/assets/nextstep-logo.png`
+- [x] (T-UI-010) Logo asset: copied `docs/archive/assets/nextstep-logo-white.png` → `frontend/assets/nextstep-logo.png`
 - [x] (T-UI-020) Replace brand-mark spans with `<img class="brand-logo">` across all 10 HTML pages
   - index.html, dashboard.html, admin.html, career-pathways.html, skills-gap-scan.html
   - beta.html, beta-admin.html, 403.html, 404.html, 500.html
@@ -62,13 +62,24 @@
   - [x] (T-1A1) Extend normalization rules for obvious company/title/location artifacts affecting search and analytics
   - [x] (T-1A2) Extend deduplication to support `title + company + first_seen_date` composite matching in addition to URL/content checks
   - [x] (T-1A3) Add reproducible analysis materialized view script for cleaned job-post exploration
+  - [x] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
+  - [x] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
+  - [x] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
+  - [x] (T-1A7) Improve sector coverage and backfill representativeness reporting for analytics
   - [x] (T-1A8) Add safe backfill helper for existing organization/location normalization and `job_post` reference repointing
   - [x] (T-1A9) Add materialized-view refresh helper and validate refresh against Postgres
   - [x] (T-1A10) Add one-step CLI cleanup cycle for normalized-entity backfill plus analysis-view create/refresh
-  - [ ] (T-1A4) Add curated skill-confidence filtering for user-facing skill chips and matching
-  - [ ] (T-1A5) Add source-quality scoring to rank cleaner sources higher in search and alerts
-  - [ ] (T-1A6) Add explicit job data-quality flags (`listing_page`, `company_noise`, `location_confidence`, `dedupe_cluster`)
-  - [ ] (T-1A7) Improve sector coverage and backfill representativeness reporting for analytics
+  - Log 2026-04-08: search result shaping now filters low-confidence extracted skills, exposes explicit `data_quality_flags` + `data_quality_issues`, adds `source_quality_score/source_quality_tier`, and heuristic ranking now prefers cleaner sources/results when model scores tie.
+  - Log 2026-04-08: `/api/admin/lmi-quality` now includes `representativeness` reporting with source mix, sector mix, geography mix, coverage percentages, and `coverage_gaps` warnings when sector/geography attribution is sparse or one source dominates the sample.
+  - Log 2026-04-08: admin UI now renders the `representativeness` block inside the existing LMI quality panel, including top source/sector/geography mix plus warning badges for coverage gaps.
+  - Log 2026-04-08: representativeness reporting now includes a `trend_6m` monthly series and the admin UI renders it as compact trend cards showing sample size, sector coverage, geography coverage, and top-source concentration over time.
+  - Log 2026-04-08: repaired `backend/venv3.11/bin/ruff` on this Linux host by replacing the checked-in macOS binary with a wrapper to `/home/nextstep.co.ke/.venv/bin/python -m ruff` and installing `ruff 0.15.9` into `/home/nextstep.co.ke/.venv`.
+  - Tests 2026-04-08: `python3 -m py_compile ...search.py ...ranking.py ...create_job_post_analysis_view.py ...test_search_data_quality.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_cli_data_quality_cycle.py backend/tests/test_normalized_backfill.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_deduplication_url_normalization.py` -> `16 passed`.
+  - Tests 2026-04-08: `python3 -m py_compile backend/app/services/analytics.py backend/app/api/admin_routes.py backend/tests/test_dashboard_endpoints.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `10 passed, 47 deselected`.
+  - Tests 2026-04-08: `node --check frontend/js/admin.js` -> pass.
+  - Tests 2026-04-08: `python3 -m py_compile backend/app/services/analytics.py backend/tests/test_dashboard_endpoints.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `11 passed, 47 deselected`; `node --check frontend/js/admin.js` -> pass.
+  - Tests 2026-04-08: `backend/venv3.11/bin/ruff --version` -> `ruff 0.15.9`; `backend/venv3.11/bin/ruff check ...` -> pass; `backend/venv3.11/bin/ruff format --check ...` -> pass; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `11 passed, 47 deselected`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py` -> `10 passed`.
+  - BLOCKED 2026-04-08: validating `backend/scripts/create_job_post_analysis_view.py` via `sudo -u postgres ... python3 ...create_job_post_analysis_view.py` failed with `Permission denied` because the `postgres` OS user cannot read files under `/home/nextstep.co.ke/public_html/backend/scripts/`; use direct `psql` SQL execution or relax read permissions before script-based validation.
 
 ## 2. NLP extraction (Implemented; hardening pending)
 - [/] (T-200) description_clean builder
@@ -790,7 +801,7 @@
 - Created `later_features/README.md` documenting restoration criteria and process
 - Created `docs/archive/root/SCOPE_CLEANUP.md` with impact analysis and recommendations
 - **Recommendation**: Run tests to verify no breakage, consider DB migration to drop unused tables
-- **Next**: Focus on MVP per `OUTCOMES_PLAN.md` phases 1-3 (public search, student/early-career/professional outcomes)
+- **Next**: Focus on MVP per `docs/OUTCOMES_PLAN.md` phases 1-3 (public search, student/early-career/professional outcomes)
 
 ### 2026-02-14
 - (T-000c) Capability status reconciliation:
@@ -1050,3 +1061,61 @@ Added to `main.css`:
 
 ### Known follow-up
 - Alembic has multiple heads and one pending branch currently fails with `DuplicateTable` for `search_serving_log`; deployment was left running because the app and existing schema objects are healthy.
+
+## 8.1 Persona Coverage Audit & Prioritized Gap Backlog (2026-04-08)
+
+### Current Coverage Snapshot
+- Visitor / Guest: `80%`
+- Registered Job Seeker: `68%`
+- Returning User: `55%`
+- Premium Career Planner / Career Switcher: `60%`
+- Admin / Operator: `85%`
+- Employer / Recruiter: `10%`
+- Overall against the current implemented user journeys: `71%`
+
+### Highest-Priority Gaps
+- [x] (T-UX-300) Fix guided-search auth/logging regression in `/api/search`
+  - Make serve-time logging tolerate optional or partial authenticated-user objects.
+  - Restore the failing guided-mode cases in `backend/tests/test_search_modes.py`.
+- [x] (T-UX-301) Normalize `/api/search` payload semantics across backend, tests, and frontend
+  - Canonicalized `/api/search` around `results`, kept `jobs` as a mirrored compatibility alias at the API boundary, and made fallback/suggestion payloads use the same dict shape.
+  - Updated frontend search callers to consume `results` consistently instead of guessing between `results` and `jobs`.
+- [x] (T-UX-310) Implement `GET /api/users/market-fit` or remove the live dashboard dependency until backed by real data
+  - Added a real `/api/users/market-fit` response in `backend/app/api/user_routes.py` using the authenticated profile plus recent active jobs, with deterministic skill-gap aggregation that prefers normalized `job_skill` rows and falls back to text extraction.
+- [x] (T-UX-311) Implement `GET /api/users/applications/by-stage` and align application update semantics
+  - Added `/api/users/applications/by-stage` for the dashboard kanban and updated `PUT /api/users/applications/{id}` so dashboard `stage` payloads map cleanly onto stored `status` values without breaking existing callers.
+- [x] (T-UX-312) Add dashboard boot-path integration tests
+  - Added shipped-contract coverage in `backend/tests/test_dashboard_boot_integration.py` for the dashboard HTML/JS tab boot sequence plus the real route shapes used by `/api/auth/me`, `/api/auth/profile`, `/api/users/recommendations`, `/api/users/saved-jobs`, `/api/users/applications`, `/api/users/notifications`, `/api/users/market-fit`, and `/api/users/applications/by-stage`.
+  - Fixed `/api/auth/me` so `last_login` is truly nullable in the response model, which the new boot-path test surfaced for first-session users.
+- [x] (T-UX-320) Wire logged-in homepage search results to real seeker actions
+  - Homepage search cards now expose authenticated `Save` and `Track` actions backed by the existing `/api/users/saved-jobs` and `/api/users/applications` routes, while keeping `Apply` as the real external action.
+  - Cards preload saved/application state so logged-in users see accurate `Saved` / `Tracked` button states and inline action feedback.
+- [x] (T-UX-321) Add end-to-end job-alerts UI or remove the implied promise from seeker-facing surfaces until it exists
+  - Added a real seeker-facing alerts flow on the homepage: authenticated users can save the current search as an alert, review alerts in the account area, and delete alerts from the same UI.
+  - Wired the new UI directly to the existing `/api/users/job-alerts` CRUD routes instead of leaving alerts as an implied capability.
+- [ ] (T-UX-330) Expand premium pathways and skills-gap coverage beyond the narrow fixed role set
+  - Pair this with existing `T-DS-924` to replace hardcoded roadmap content with market-derived baselines.
+- [ ] (T-UX-340) Decide employer / recruiter scope explicitly
+  - Either cut it from near-term product claims or ship a narrow MVP; current code coverage is minimal.
+
+### Audit Notes
+- Log 2026-04-08: persona coverage audit was based on shipped frontend pages, active API routes, backend service paths, and representative tests; admin/LMI is the strongest implemented surface, while employer/recruiter capability is largely still roadmap-only.
+- Log 2026-04-08: `.pilot/tasks/` does not currently exist in this checkout, so the prioritized backlog was recorded in `changemap.md`, which is the repo's active task ledger in practice.
+- Log 2026-04-08: completed `T-UX-300` by hardening `/api/search` so serve-time logging tolerates optional or partial authenticated-user objects and logs the actual search result list whether the payload uses `results` or `jobs`.
+- Log 2026-04-08: completed `T-UX-301` by normalizing `/api/search` onto a canonical `results` array across service, route, tests, and frontend callers while preserving a mirrored `jobs` alias for compatibility; no-result suggestion responses now return the same dict shape instead of a bare list.
+- Log 2026-04-08: completed `T-UX-320` by wiring logged-in homepage search cards to the real save/application endpoints, preloading saved/tracked state on render, and refreshing the saved-jobs account section after homepage saves.
+- Log 2026-04-08: completed `T-UX-321` by adding a real homepage job-alert management surface in the account area plus a results-header “Save this search” entry point, backed directly by the existing job-alert CRUD routes.
+- Log 2026-04-08: completed `T-UX-310` and `T-UX-311` by adding the missing dashboard-facing `/api/users/market-fit` and `/api/users/applications/by-stage` endpoints, grouping application statuses into the shipped kanban stages, and accepting dashboard `stage` updates on the existing application update route.
+- Log 2026-04-08: completed `T-UX-312` by adding boot-path integration coverage against the shipped dashboard HTML/JS contract and the real backend route shapes it consumes; this also surfaced and fixed a nullable `last_login` response-model bug in `/api/auth/me`.
+- Tests 2026-04-08: `backend/venv3.11/bin/ruff format backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`; `backend/venv3.11/bin/ruff check backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_user_activity.py backend/tests/test_dashboard_endpoints.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_subscription_paywall.py backend/tests/test_user_job_match_endpoint.py backend/tests/test_skills_gap_scan_endpoint.py`
+- Tests 2026-04-08: `backend/venv3.11/bin/ruff format backend/tests/test_dashboard_user_routes.py`; `backend/venv3.11/bin/ruff check backend/tests/test_dashboard_user_routes.py`; `node --check frontend/js/main.js`; `node --check frontend/js/api.js`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_dashboard_boot_integration.py` -> `10 passed`
+- Tests 2026-04-08: `backend/venv3.11/bin/ruff format backend/tests/test_dashboard_user_routes.py`; `backend/venv3.11/bin/ruff check backend/tests/test_dashboard_user_routes.py`; `node --check frontend/js/main.js`; `node --check frontend/js/api.js`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_dashboard_boot_integration.py` -> `8 passed`
+- Tests 2026-04-08: `backend/venv3.11/bin/ruff format backend/app/services/search.py backend/app/api/routes.py backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py`; `backend/venv3.11/bin/ruff check backend/app/services/search.py backend/app/api/routes.py backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py`; `node --check frontend/js/main.js`; `node --check frontend/js/api.js`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py` -> `16 passed`
+- Tests 2026-04-08: `backend/venv3.11/bin/ruff format backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`; `backend/venv3.11/bin/ruff check backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`; `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_boot_integration.py backend/tests/test_dashboard_user_routes.py` -> `6 passed`
+
+### Representative Validation
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_skills_gap_scan_endpoint.py backend/tests/test_user_activity.py backend/tests/test_admin_processing_endpoints.py -q` -> `18 passed`
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_data_quality.py backend/tests/test_skill_filtering.py backend/tests/test_search_match_explanation_skills_shape.py backend/tests/test_user_job_match_endpoint.py -q` -> `11 passed, 1 warning`
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_modes.py -q` -> `4 passed`
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_public_apply_redirect.py -q` -> `7 passed`
+- Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `71 passed`

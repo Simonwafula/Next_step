@@ -2,18 +2,78 @@ import logging
 import os
 import re
 from collections import Counter
+from pathlib import Path
 
 import numpy as np
+import yaml
 from sqlalchemy import func, or_, select, union
 from sqlalchemy.orm import Session
 
-from ..db.models import JobPost, Organization, Location, SearchServingLog, TitleNorm
+from ..db.models import (
+    JobDedupeMap,
+    JobPost,
+    Location,
+    Organization,
+    SearchServingLog,
+    TitleNorm,
+)
+from ..normalization.companies import normalize_company_name
 from ..ml.embeddings import embed_text
 from ..normalization.titles import get_careers_for_degree, normalize_title
 from .ranking import rank_results
 from .salary_service import salary_service
 
 logger = logging.getLogger(__name__)
+
+DEFAULT_TOP_SKILL_MIN_CONFIDENCE = 0.68
+DEFAULT_SOURCE_QUALITY_SCORES = {
+    "greenhouse": 0.97,
+    "lever": 0.97,
+    "rss": 0.84,
+    "gov_careers": 0.78,
+    "telegram": 0.58,
+    "tender_rss": 0.72,
+    "html_generic": 0.62,
+}
+LISTING_TITLE_PATTERNS = (
+    re.compile(r"^jobs?\s+at\s+", re.IGNORECASE),
+    re.compile(r"^vacancies\s+at\s+", re.IGNORECASE),
+    re.compile(r"^careers?\s+at\s+", re.IGNORECASE),
+    re.compile(r"^job opportunities\s+at\s+", re.IGNORECASE),
+    re.compile(r"^current opportunities\s+at\s+", re.IGNORECASE),
+    re.compile(r"^positions?\s+at\s+", re.IGNORECASE),
+    re.compile(r"^openings?\s+at\s+", re.IGNORECASE),
+)
+GENERIC_LISTING_TITLES = {
+    "jobs",
+    "vacancies",
+    "careers",
+    "job opportunities",
+    "current opportunities",
+    "open positions",
+}
+LOW_CONFIDENCE_LOCATION_TERMS = {
+    "global",
+    "international",
+    "multiple locations",
+    "various locations",
+    "nationwide",
+}
+_SOURCE_QUALITY_CACHE: dict[str, float] | None = None
+
+
+def build_search_response(
+    results: list[dict],
+    **extra: object,
+) -> dict[str, object]:
+    """Return the canonical public search payload shape."""
+    payload: dict[str, object] = {
+        "results": results,
+        # Back-compat for older consumers still reading `jobs`.
+        "jobs": results,
+    }
+    payload.update(extra)
+    return payload
 
 
 def cosine_similarity(a, b):
@@ -23,6 +83,251 @@ def cosine_similarity(a, b):
     if np.linalg.norm(a) == 0 or np.linalg.norm(b) == 0:
         return 0.0
     return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
+
+
+def _bounded_score(value: float | int | None, default: float) -> float:
+    try:
+        score = float(value)
+    except (TypeError, ValueError):
+        return default
+    return max(0.0, min(1.0, score))
+
+
+def _load_source_quality_scores() -> dict[str, float]:
+    global _SOURCE_QUALITY_CACHE
+    if _SOURCE_QUALITY_CACHE is not None:
+        return _SOURCE_QUALITY_CACHE
+
+    scores: dict[str, float] = {}
+    ingestion_dir = Path(__file__).resolve().parents[1] / "ingestion"
+    config_paths = (
+        ingestion_dir / "sources.yaml",
+        ingestion_dir / "government_sources.yaml",
+    )
+    for path in config_paths:
+        if not path.exists():
+            continue
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                payload = yaml.safe_load(handle) or {}
+        except Exception:
+            continue
+        for src in payload.get("sources", []):
+            source_key = str(
+                src.get("source") or src.get("name") or src.get("org") or ""
+            ).strip()
+            if not source_key:
+                continue
+            source_type = str(src.get("type") or "").strip().lower()
+            default = DEFAULT_SOURCE_QUALITY_SCORES.get(source_type, 0.65)
+            scores[source_key.lower()] = _bounded_score(
+                src.get("source_quality_score"),
+                default,
+            )
+
+    _SOURCE_QUALITY_CACHE = scores
+    return scores
+
+
+def get_source_quality_score(source: str | None) -> float:
+    source_value = (source or "").strip().lower()
+    if not source_value:
+        return 0.65
+
+    configured_scores = _load_source_quality_scores()
+    if source_value in configured_scores:
+        return configured_scores[source_value]
+
+    if source_value.startswith("telegram:"):
+        return DEFAULT_SOURCE_QUALITY_SCORES["telegram"]
+    if source_value in DEFAULT_SOURCE_QUALITY_SCORES:
+        return DEFAULT_SOURCE_QUALITY_SCORES[source_value]
+    if "greenhouse" in source_value:
+        return DEFAULT_SOURCE_QUALITY_SCORES["greenhouse"]
+    if "lever" in source_value:
+        return DEFAULT_SOURCE_QUALITY_SCORES["lever"]
+    if "rss" in source_value:
+        return DEFAULT_SOURCE_QUALITY_SCORES["rss"]
+    if any(
+        token in source_value
+        for token in ("career", "jobs", "vacancy", "opportunity", ".co.", ".go.ke")
+    ):
+        return DEFAULT_SOURCE_QUALITY_SCORES["gov_careers"]
+    if "." in source_value:
+        return DEFAULT_SOURCE_QUALITY_SCORES["html_generic"]
+    return 0.65
+
+
+def get_source_quality_tier(score: float | None) -> str:
+    value = _bounded_score(score, 0.65)
+    if value >= 0.85:
+        return "high"
+    if value >= 0.7:
+        return "medium"
+    return "low"
+
+
+def get_top_skill_min_confidence() -> float:
+    return _bounded_score(
+        os.getenv("NEXTSTEP_TOP_SKILL_MIN_CONFIDENCE"),
+        DEFAULT_TOP_SKILL_MIN_CONFIDENCE,
+    )
+
+
+def extract_entity_skills(
+    raw_skills: object,
+    *,
+    min_confidence: float | None = None,
+) -> list[dict[str, object]]:
+    """Extract normalized skill payloads from JobEntities.skills."""
+    threshold = (
+        get_top_skill_min_confidence() if min_confidence is None else min_confidence
+    )
+    if not raw_skills:
+        return []
+
+    extracted: list[dict[str, object]] = []
+    if isinstance(raw_skills, list):
+        for item in raw_skills:
+            if isinstance(item, str):
+                value = item.strip()
+                if value:
+                    extracted.append({"value": value, "confidence": None})
+                continue
+            if not isinstance(item, dict):
+                continue
+            value = (
+                item.get("value")
+                or item.get("name")
+                or item.get("skill")
+                or item.get("text")
+            )
+            if not isinstance(value, str):
+                continue
+            normalized = value.strip()
+            if not normalized:
+                continue
+            confidence_raw = item.get("confidence")
+            confidence = None
+            if confidence_raw is not None:
+                try:
+                    confidence = float(confidence_raw)
+                except (TypeError, ValueError):
+                    confidence = None
+            if confidence is not None and confidence < threshold:
+                continue
+            extracted.append({"value": normalized, "confidence": confidence})
+        return extracted
+
+    if isinstance(raw_skills, dict):
+        for key, confidence_raw in raw_skills.items():
+            value = str(key).strip()
+            if not value:
+                continue
+            confidence = None
+            if confidence_raw is not None:
+                try:
+                    confidence = float(confidence_raw)
+                except (TypeError, ValueError):
+                    confidence = None
+            if confidence is not None and confidence < threshold:
+                continue
+            extracted.append({"value": value, "confidence": confidence})
+    return extracted
+
+
+def infer_location_confidence(location: Location | None) -> str:
+    if not location:
+        return "low"
+    raw = (getattr(location, "raw", None) or "").strip().lower()
+    if raw and (raw in LOW_CONFIDENCE_LOCATION_TERMS or "international" in raw):
+        return "low"
+    if raw and "remote" in raw:
+        return "medium"
+    if location.city and location.region and location.country:
+        return "high"
+    if location.city or location.region or raw:
+        return "medium"
+    return "low"
+
+
+def is_listing_page_job(job_post: JobPost) -> bool:
+    title = (getattr(job_post, "title_raw", None) or "").strip().lower()
+    if not title:
+        return False
+    if title in GENERIC_LISTING_TITLES:
+        return True
+    return any(pattern.match(title) for pattern in LISTING_TITLE_PATTERNS)
+
+
+def has_company_noise(org: Organization | None) -> bool:
+    if not org or not getattr(org, "name", None):
+        return False
+    raw_name = str(org.name).strip()
+    normalized = normalize_company_name(raw_name)
+    if not normalized:
+        return True
+    raw_lower = raw_name.lower().strip()
+    normalized_lower = normalized.lower().strip()
+    if raw_lower == normalized_lower:
+        return False
+    return any(pattern.match(raw_lower) for pattern in LISTING_TITLE_PATTERNS)
+
+
+def build_job_data_quality(
+    job_post: JobPost,
+    org: Organization | None,
+    location: Location | None,
+    *,
+    dedupe_cluster_id: int | None = None,
+) -> dict[str, object]:
+    location_confidence = infer_location_confidence(location)
+    description_text = (
+        getattr(job_post, "description_clean", None)
+        or getattr(job_post, "description_raw", None)
+        or ""
+    ).strip()
+    description_length = len(description_text)
+    is_duplicate_candidate = bool(
+        dedupe_cluster_id is not None
+        and dedupe_cluster_id != getattr(job_post, "id", None)
+    )
+    has_rich_description = bool(description_text and description_length >= 250)
+    issues: list[str] = []
+
+    listing_page = is_listing_page_job(job_post)
+    if listing_page:
+        issues.append("listing_page")
+
+    company_noise = has_company_noise(org)
+    if company_noise:
+        issues.append("company_noise")
+
+    if location_confidence == "low":
+        issues.append("location_low_confidence")
+
+    if not description_text:
+        issues.append("description_missing")
+    elif description_length < 160:
+        issues.append("description_short")
+
+    if is_duplicate_candidate:
+        issues.append("duplicate_candidate")
+
+    return {
+        "flags": {
+            "listing_page": listing_page,
+            "company_noise": company_noise,
+            "location_confidence": location_confidence,
+            "dedupe_cluster": dedupe_cluster_id,
+            "has_rich_description": has_rich_description,
+        },
+        "issues": issues,
+        "location_confidence": location_confidence,
+        "dedupe_cluster_id": dedupe_cluster_id,
+        "is_duplicate_candidate": is_duplicate_candidate,
+        "description_length": description_length,
+    }
 
 
 def extract_degree_from_query(query: str) -> str | None:
@@ -75,23 +380,22 @@ def search_jobs(
             if title_value and company_value:
                 companies[(title_value, company_value)] += 1
 
-        return {
-            "results": jobs,
-            "jobs": jobs,
-            "total": len(jobs),
-            "limit": int(limit),
-            "offset": int(offset),
-            "has_more": False,
-            "title_clusters": [
+        return build_search_response(
+            jobs,
+            total=len(jobs),
+            limit=int(limit),
+            offset=int(offset),
+            has_more=False,
+            title_clusters=[
                 {"title": t, "count_ads": int(c)} for t, c in clusters.most_common(50)
             ],
-            "companies_hiring": [
+            companies_hiring=[
                 {"title": t, "company": co, "count_ads": int(c)}
                 for (t, co), c in companies.most_common(200)
             ],
-            "selected": {"title": title, "company": company},
-            "meta": {"degree": degree},
-        }
+            selected={"title": title, "company": company},
+            meta={"degree": degree},
+        )
 
     try:
         bind = db.get_bind()
@@ -411,6 +715,17 @@ def search_jobs(
             .all()
         }
 
+    dedupe_cluster_by_job_id: dict[int, int] = {}
+    if job_ids:
+        dedupe_cluster_by_job_id = {
+            row.job_id: row.canonical_job_id
+            for row in db.execute(
+                select(JobDedupeMap).where(JobDedupeMap.job_id.in_(job_ids))
+            )
+            .scalars()
+            .all()
+        }
+
     embeddings_by_job_id = {}
     if job_ids and query_embedding is not None:
         # Fetch embeddings in one query and keep the most recent per job_id.
@@ -454,11 +769,21 @@ def search_jobs(
         why_match = generate_match_explanation(
             q, jp, title_norm, similarity_score, entities
         )
-        top_skills = extract_entity_skill_values(entities.skills if entities else None)
+        curated_skills = extract_entity_skills(entities.skills if entities else None)
+        top_skills = [item["value"] for item in curated_skills[:3]]
         quality_value = (
             float(jp.quality_score) if jp.quality_score is not None else None
         )
         is_high_confidence = bool(quality_value is not None and quality_value >= 0.7)
+        dedupe_cluster_id = dedupe_cluster_by_job_id.get(jp.id)
+        data_quality = build_job_data_quality(
+            jp,
+            org,
+            loc,
+            dedupe_cluster_id=dedupe_cluster_id,
+        )
+        source_quality_score = get_source_quality_score(jp.source)
+        source_quality_tier = get_source_quality_tier(source_quality_score)
         posted_at = (
             jp.first_seen.isoformat() if getattr(jp, "first_seen", None) else None
         )
@@ -491,11 +816,39 @@ def search_jobs(
                 "top_skills": top_skills[:3],
                 "quality_score": quality_value,
                 "high_confidence": is_high_confidence,
-                "quality_tag": "High confidence" if is_high_confidence else "Medium",
+                "quality_tag": (
+                    "High confidence"
+                    if is_high_confidence
+                    and not data_quality["issues"]
+                    and source_quality_tier == "high"
+                    else (
+                        "Needs review"
+                        if source_quality_tier == "low"
+                        or any(
+                            issue in data_quality["issues"]
+                            for issue in (
+                                "listing_page",
+                                "company_noise",
+                                "duplicate_candidate",
+                                "description_missing",
+                            )
+                        )
+                        else "Medium"
+                    )
+                ),
+                "source_quality_score": round(source_quality_score, 2),
+                "source_quality_tier": source_quality_tier,
+                "data_quality_flags": data_quality["flags"],
+                "data_quality_issues": data_quality["issues"],
+                "location_confidence": data_quality["location_confidence"],
+                "dedupe_cluster_id": data_quality["dedupe_cluster_id"],
+                "is_duplicate_candidate": data_quality["is_duplicate_candidate"],
+                "description_length": data_quality["description_length"],
                 "similarity_score": round(similarity_score * 100, 1)
                 if similarity_score > 0
                 else None,
-                "skills_found": entities.skills if entities else [],
+                "skills_found": curated_skills,
+                "skills": top_skills,
             }
         )
 
@@ -511,19 +864,17 @@ def search_jobs(
     if not results and q:
         return suggest_alternatives(db, q, location, seniority)
 
-    return {
-        # Back-compat: older clients expect `results` to be a list of jobs.
-        "results": results,
-        "jobs": results,
-        "total": int(total_jobs),
-        "limit": int(limit),
-        "offset": int(offset),
-        "has_more": bool(has_more),
-        "title_clusters": [
+    return build_search_response(
+        results,
+        total=int(total_jobs),
+        limit=int(limit),
+        offset=int(offset),
+        has_more=bool(has_more),
+        title_clusters=[
             {"title": title_value, "count_ads": int(count)}
             for title_value, count in clusters.most_common(50)
         ],
-        "companies_hiring": [
+        companies_hiring=[
             {
                 "title": title_value,
                 "company": company_name,
@@ -531,7 +882,7 @@ def search_jobs(
             }
             for (title_value, company_name), count in companies.most_common(200)
         ],
-        "selected": {
+        selected={
             "title": title,
             "company": company,
             "role_family": role_family,
@@ -539,23 +890,23 @@ def search_jobs(
             "sector": sector,
             "high_confidence_only": bool(high_confidence_only),
         },
-        "role_families": [
+        role_families=[
             {"role_family": value, "count_ads": int(count)}
             for value, count in role_families.most_common(40)
         ],
-        "seniority_buckets": [
+        seniority_buckets=[
             {"seniority": value, "count_ads": int(count)}
             for value, count in seniority_buckets.most_common(20)
         ],
-        "counties_hiring": [
+        counties_hiring=[
             {"county": value, "count_ads": int(count)}
             for value, count in counties_hiring.most_common(30)
         ],
-        "sectors_hiring": [
+        sectors_hiring=[
             {"sector": value, "count_ads": int(count)}
             for value, count in sectors_hiring.most_common(30)
         ],
-    }
+    )
 
 
 def log_search_serving(
@@ -746,23 +1097,71 @@ def suggest_alternatives(
                         "is_suggestion": True,
                     }
                 )
-            return results
+            return build_search_response(
+                results,
+                total=len(results),
+                limit=len(results),
+                offset=0,
+                has_more=False,
+                title_clusters=[],
+                companies_hiring=[],
+                selected={
+                    "title": None,
+                    "company": None,
+                    "role_family": normalized_family,
+                    "county": None,
+                    "sector": None,
+                    "high_confidence_only": False,
+                },
+                role_families=[],
+                seniority_buckets=[],
+                counties_hiring=[],
+                sectors_hiring=[],
+                meta={
+                    "suggestion": True,
+                    "original_query": original_query,
+                },
+            )
 
     # Return empty with helpful message
-    return [
-        {
-            "id": 0,
-            "title": "No exact matches found",
-            "organization": None,
-            "location": None,
-            "url": None,
-            "why_match": (
-                f"Try broader terms like "
-                f"'{normalized_family.replace('_', ' ')}' or check spelling"
-            ),
-            "is_suggestion": True,
-        }
-    ]
+    return build_search_response(
+        [
+            {
+                "id": 0,
+                "title": "No exact matches found",
+                "organization": None,
+                "location": None,
+                "url": None,
+                "why_match": (
+                    f"Try broader terms like "
+                    f"'{normalized_family.replace('_', ' ')}' or check spelling"
+                ),
+                "is_suggestion": True,
+            }
+        ],
+        total=1,
+        limit=1,
+        offset=0,
+        has_more=False,
+        title_clusters=[],
+        companies_hiring=[],
+        selected={
+            "title": None,
+            "company": None,
+            "role_family": normalized_family if normalized_family != "other" else None,
+            "county": None,
+            "sector": None,
+            "high_confidence_only": False,
+        },
+        role_families=[],
+        seniority_buckets=[],
+        counties_hiring=[],
+        sectors_hiring=[],
+        meta={
+            "suggestion": True,
+            "original_query": original_query,
+        },
+    )
 
 
 def generate_match_explanation(
@@ -777,41 +1176,6 @@ def generate_match_explanation(
     explanations = []
     q = (query or "").lower()
 
-    def _skill_values(raw_skills: object) -> list[str]:
-        """Best-effort extraction of skill strings from JobEntities.skills.
-
-        In production this is typically a list[dict] like:
-        {"value": "python", "confidence": 0.8, ...}
-        but older rows or other processors may store strings or dicts.
-        """
-
-        if not raw_skills:
-            return []
-        if isinstance(raw_skills, list):
-            out: list[str] = []
-            for item in raw_skills:
-                if isinstance(item, str):
-                    s = item.strip()
-                    if s:
-                        out.append(s)
-                    continue
-                if isinstance(item, dict):
-                    v = (
-                        item.get("value")
-                        or item.get("name")
-                        or item.get("skill")
-                        or item.get("text")
-                    )
-                    if isinstance(v, str):
-                        s = v.strip()
-                        if s:
-                            out.append(s)
-            return out
-        if isinstance(raw_skills, dict):
-            # Handle rare cases like {"python": 0.8, "sql": 0.7}
-            return [str(k).strip() for k in raw_skills.keys() if str(k).strip()]
-        return []
-
     # Title match
     if q and q in (job_post.title_raw or "").lower():
         explanations.append("title matches search")
@@ -823,7 +1187,7 @@ def generate_match_explanation(
             raw_skills = entities.get("skills")
         else:
             raw_skills = getattr(entities, "skills", None)
-    skills_lc = {s.lower() for s in _skill_values(raw_skills)}
+    skills_lc = {s["value"].lower() for s in extract_entity_skills(raw_skills)}
     if q and skills_lc and q in skills_lc:
         explanations.append(f"requires {query} skill")
 
@@ -845,31 +1209,7 @@ def generate_match_explanation(
 
 def extract_entity_skill_values(raw_skills: object) -> list[str]:
     """Extract normalized skill strings from JobEntities.skills payload."""
-    if not raw_skills:
-        return []
-    if isinstance(raw_skills, list):
-        out: list[str] = []
-        for item in raw_skills:
-            if isinstance(item, str):
-                value = item.strip()
-                if value:
-                    out.append(value)
-                continue
-            if isinstance(item, dict):
-                value = (
-                    item.get("value")
-                    or item.get("name")
-                    or item.get("skill")
-                    or item.get("text")
-                )
-                if isinstance(value, str):
-                    normalized = value.strip()
-                    if normalized:
-                        out.append(normalized)
-        return out
-    if isinstance(raw_skills, dict):
-        return [str(key).strip() for key in raw_skills.keys() if str(key).strip()]
-    return []
+    return [str(item["value"]) for item in extract_entity_skills(raw_skills)]
 
 
 def format_location(location: Location | None) -> str | None:

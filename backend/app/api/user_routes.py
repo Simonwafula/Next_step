@@ -1,6 +1,8 @@
+from collections import Counter
+from datetime import datetime, timedelta
 from typing import List, Dict, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from pydantic import BaseModel
 
 from ..db.database import get_db
@@ -22,12 +24,34 @@ from ..db.models import (
     SearchHistory,
     UserNotification,
     JobPost,
+    JobSkill,
     Organization,
     Location,
+    Skill,
 )
 from sqlalchemy import select, and_, desc, func
 
 router = APIRouter()
+
+APPLICATION_STAGE_ORDER = ["saved", "applied", "interview", "offer", "rejected"]
+APPLICATION_STATUS_TO_STAGE = {
+    "saved": "saved",
+    "applied": "applied",
+    "submitted": "applied",
+    "in_review": "applied",
+    "reviewing": "applied",
+    "shortlisted": "interview",
+    "interview": "interview",
+    "interviewed": "interview",
+    "screening": "interview",
+    "offer": "offer",
+    "offered": "offer",
+    "hired": "offer",
+    "rejected": "rejected",
+    "declined": "rejected",
+    "withdrawn": "rejected",
+    "closed": "rejected",
+}
 
 
 # Pydantic models
@@ -46,7 +70,8 @@ class JobApplicationRequest(BaseModel):
 
 
 class JobApplicationUpdate(BaseModel):
-    status: str
+    status: str | None = None
+    stage: str | None = None
     feedback_received: str = None
     interview_dates: List[str] = None
     salary_offered: Dict[str, Any] = None
@@ -76,6 +101,37 @@ class SubscriptionCheckoutRequest(BaseModel):
 
 class SubscriptionActivationRequest(BaseModel):
     plan_code: str = "professional_monthly"
+
+
+def _build_location_text(location: Location | None) -> str:
+    if not location:
+        return ""
+
+    parts = [location.raw, location.city, location.region, location.country]
+    return " ".join(str(part) for part in parts if part)
+
+
+def _application_stage(status_value: str | None) -> str:
+    normalized = (status_value or "applied").strip().lower()
+    return APPLICATION_STATUS_TO_STAGE.get(normalized, "applied")
+
+
+def _normalize_stage_update(stage_value: str) -> str:
+    normalized = (stage_value or "").strip().lower()
+    if normalized not in APPLICATION_STAGE_ORDER:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Unsupported application stage",
+        )
+    return normalized
+
+
+def _safe_json_dict(value: Any) -> dict[str, Any]:
+    return value if isinstance(value, dict) else {}
+
+
+def _safe_json_list(value: Any) -> list[Any]:
+    return value if isinstance(value, list) else []
 
 
 @router.get("/subscription/plans")
@@ -165,6 +221,142 @@ async def get_job_match(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to calculate job match",
         )
+
+
+@router.get("/market-fit")
+async def get_market_fit(
+    window_days: int = Query(60, ge=7, le=180),
+    limit: int = Query(200, ge=10, le=500),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Summarize market fit from the user profile and recent active jobs."""
+    profile = current_user.profile
+    if not profile:
+        return {
+            "match_distribution": {"strong": 0, "close": 0, "pivot": 0},
+            "missing_skills": [],
+            "top_counties": [],
+            "top_industries": [],
+            "target_roles": [],
+            "total_jobs_analyzed": 0,
+            "window_days": window_days,
+        }
+
+    window_start = datetime.utcnow() - timedelta(days=window_days)
+    jobs = (
+        db.execute(
+            select(JobPost)
+            .options(
+                joinedload(JobPost.location),
+                joinedload(JobPost.organization),
+                joinedload(JobPost.title_norm),
+            )
+            .where(
+                JobPost.is_active.is_(True),
+                JobPost.first_seen >= window_start,
+            )
+            .order_by(desc(JobPost.first_seen))
+            .limit(limit)
+        )
+        .scalars()
+        .all()
+    )
+    job_ids = [job.id for job in jobs]
+    normalized_skills_by_job: dict[int, list[str]] = {}
+    if job_ids:
+        skill_rows = db.execute(
+            select(JobSkill.job_post_id, Skill.name)
+            .join(Skill, Skill.id == JobSkill.skill_id)
+            .where(JobSkill.job_post_id.in_(job_ids))
+        ).all()
+        for job_id, skill_name in skill_rows:
+            normalized_skills_by_job.setdefault(job_id, []).append(skill_name)
+
+    match_distribution = {"strong": 0, "close": 0, "pivot": 0}
+    county_counts: Counter[str] = Counter()
+    industry_counts: Counter[str] = Counter()
+    missing_skill_counts: Counter[str] = Counter()
+    target_roles = [profile.current_role] if profile.current_role else []
+    profile_skills = {
+        str(skill).strip().lower() for skill in (profile.skills or {}).keys()
+    }
+
+    for job in jobs:
+        location_text = _build_location_text(job.location)
+        scores = ai_service.calculate_job_match_score(
+            profile,
+            job,
+            job_location_text=location_text,
+        )
+        overall_score = float(scores.get("overall_score") or 0.0)
+        if overall_score >= 0.65:
+            match_distribution["strong"] += 1
+        elif overall_score >= 0.35:
+            match_distribution["close"] += 1
+        else:
+            match_distribution["pivot"] += 1
+
+        county_name = None
+        if job.location:
+            county_name = (
+                job.location.region
+                or job.location.city
+                or job.location.raw
+                or job.location.country
+            )
+        if county_name:
+            county_counts[str(county_name)] += 1
+
+        if job.organization and job.organization.sector:
+            industry_counts[str(job.organization.sector)] += 1
+
+        job_skill_names = normalized_skills_by_job.get(job.id)
+        if not job_skill_names:
+            job_text = " ".join(
+                part
+                for part in [job.title_raw, job.description_raw, job.requirements_raw]
+                if part
+            )
+            job_skill_names = list(ai_service.extract_skills_from_text(job_text).keys())
+
+        for skill_name in job_skill_names[:5]:
+            normalized_skill = str(skill_name).strip()
+            if not normalized_skill:
+                continue
+            if normalized_skill.lower() in profile_skills:
+                continue
+            missing_skill_counts[normalized_skill] += 1
+
+    total_jobs_analyzed = len(jobs)
+    missing_skills = [
+        {
+            "name": skill_name,
+            "demand_count": demand_count,
+            "percentage": round((demand_count / total_jobs_analyzed) * 100, 1)
+            if total_jobs_analyzed
+            else 0.0,
+        }
+        for skill_name, demand_count in missing_skill_counts.most_common(8)
+    ]
+    top_counties = [
+        {"name": county_name, "count": count}
+        for county_name, count in county_counts.most_common(5)
+    ]
+    top_industries = [
+        {"name": sector_name, "count": count}
+        for sector_name, count in industry_counts.most_common(5)
+    ]
+
+    return {
+        "match_distribution": match_distribution,
+        "missing_skills": missing_skills,
+        "top_counties": top_counties,
+        "top_industries": top_industries,
+        "target_roles": target_roles,
+        "total_jobs_analyzed": total_jobs_analyzed,
+        "window_days": window_days,
+    }
 
 
 # Personalized Recommendations
@@ -370,6 +562,7 @@ async def get_job_applications(
                 "id": app.id,
                 "job_id": app.job_post_id,
                 "status": app.status,
+                "stage": _application_stage(app.status),
                 "applied_at": app.applied_at.isoformat(),
                 "last_updated": app.last_updated.isoformat(),
                 "application_source": app.application_source,
@@ -379,6 +572,83 @@ async def get_job_applications(
             for app in applications
         ],
         "total": len(applications),
+    }
+
+
+@router.get("/applications/by-stage")
+async def get_job_applications_by_stage(
+    limit: int = Query(100, ge=1, le=200),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Return dashboard-friendly application kanban data grouped by stage."""
+    stmt = (
+        select(JobApplication)
+        .options(
+            joinedload(JobApplication.job_post).joinedload(JobPost.organization),
+            joinedload(JobApplication.job_post).joinedload(JobPost.location),
+        )
+        .where(JobApplication.user_id == current_user.id)
+        .order_by(desc(JobApplication.applied_at))
+        .limit(limit)
+    )
+    applications = db.execute(stmt).scalars().all()
+
+    stages: dict[str, list[dict[str, Any]]] = {
+        stage_name: [] for stage_name in APPLICATION_STAGE_ORDER
+    }
+    now = datetime.utcnow()
+
+    for application in applications:
+        job = application.job_post
+        organization = job.organization if job else None
+        application_stage = _application_stage(application.status)
+        applied_at = application.applied_at or application.last_updated or now
+
+        stages[application_stage].append(
+            {
+                "id": application.id,
+                "job_id": application.job_post_id,
+                "stage": application_stage,
+                "status": application.status,
+                "job_title": job.title_raw
+                if job
+                else f"Job #{application.job_post_id}",
+                "company": organization.name
+                if organization
+                else "Unknown organization",
+                "job_url": job.application_url or job.url if job else None,
+                "applied_at": application.applied_at.isoformat()
+                if application.applied_at
+                else None,
+                "last_updated": application.last_updated.isoformat()
+                if application.last_updated
+                else None,
+                "days_since_applied": max((now - applied_at).days, 0),
+                "deadline": None,
+                "notes": application.notes,
+                "application_source": application.application_source,
+                "interview_dates": _safe_json_list(application.interview_dates),
+                "feedback_received": application.feedback_received,
+                "salary_offered": _safe_json_dict(application.salary_offered),
+            }
+        )
+
+    active_pipeline = sum(
+        len(stages[stage_name]) for stage_name in ["applied", "interview", "offer"]
+    )
+    interview_candidates = len(stages["interview"]) + len(stages["offer"])
+    interview_rate = (
+        round((interview_candidates / active_pipeline) * 100) if active_pipeline else 0
+    )
+
+    return {
+        "analytics": {
+            "total_applications": len(applications),
+            "interview_rate": interview_rate,
+        },
+        "stages": stages,
+        "stage_order": APPLICATION_STAGE_ORDER,
     }
 
 
@@ -444,8 +714,16 @@ async def update_job_application(
             status_code=status.HTTP_404_NOT_FOUND, detail="Application not found"
         )
 
+    update_data = request.model_dump(exclude_unset=True)
+    stage_value = update_data.pop("stage", None)
+    if stage_value is not None:
+        update_data["status"] = _normalize_stage_update(stage_value)
+
+    status_value = update_data.get("status")
+    if status_value is not None:
+        update_data["status"] = str(status_value).strip().lower()
+
     # Update fields
-    update_data = request.dict(exclude_unset=True)
     for field, value in update_data.items():
         if hasattr(application, field):
             setattr(application, field, value)
@@ -453,7 +731,12 @@ async def update_job_application(
     db.commit()
     db.refresh(application)
 
-    return {"message": "Application updated successfully"}
+    return {
+        "message": "Application updated successfully",
+        "id": application.id,
+        "status": application.status,
+        "stage": _application_stage(application.status),
+    }
 
 
 # Job Alerts

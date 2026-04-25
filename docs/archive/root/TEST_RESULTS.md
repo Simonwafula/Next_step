@@ -84,6 +84,6 @@ The removed features can be restored from `later_features/` when validated.
 ## Next Steps
 
 1. ✅ Tests pass
-2. ⏳ Document Phase 1-3 priorities per `OUTCOMES_PLAN.md`
+2. ⏳ Document Phase 1-3 priorities per `docs/OUTCOMES_PLAN.md`
 3. ⏳ Consider DB migration to drop unused tables (optional)
 4. ⏳ Focus on completing notification delivery (core feature)

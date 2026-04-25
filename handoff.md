@@ -1,5 +1,290 @@
 # Handoff
 
+## 2026-04-08 (T-UX-321: Homepage Job Alerts UI)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-321` by adding a real seeker-facing alerts flow on the homepage:
+  - [index.html](/home/nextstep.co.ke/public_html/frontend/index.html) now includes a `Job alerts` account tab and a `Save this search` entry point in the results header
+  - [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js) now pre-fills alert drafts from the current search, creates alerts through `/api/users/job-alerts`, loads existing alerts for the authenticated user, and deletes alerts from the same UI
+  - [main.css](/home/nextstep.co.ke/public_html/frontend/styles/main.css) adds the small layout styles for the new alert controls and list
+- Added route coverage in [test_dashboard_user_routes.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_user_routes.py) for:
+  - creating a job alert with query/filter payloads
+  - deleting a job alert
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/tests/test_dashboard_user_routes.py`
+- `backend/venv3.11/bin/ruff check backend/tests/test_dashboard_user_routes.py`
+- `node --check frontend/js/main.js`
+- `node --check frontend/js/api.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_dashboard_boot_integration.py` -> `10 passed`
+
+### Remaining Next Step
+1. Move to `T-UX-330` if the next priority is expanding premium pathways and skills-gap coverage beyond the fixed role set.
+2. Keep the current cleanup deletions and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit as separate work unless you want them packaged next.
+
+## 2026-04-08 (T-UX-320: Homepage Search Actions)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-320` in [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js):
+  - homepage search cards now wire authenticated `Save` to `/api/users/saved-jobs`
+  - homepage search cards now wire authenticated `Track` to `/api/users/applications`
+  - `Apply` remains the direct external action, while save/track are kept as explicit seeker actions rather than being inferred from link clicks
+  - saved/tracked state is preloaded so logged-in users see the right button state immediately
+  - successful saves refresh the saved-jobs account panel on the homepage
+- Added small supporting styles in [main.css](/home/nextstep.co.ke/public_html/frontend/styles/main.css) for card action rows and inline feedback.
+- Added route coverage in [test_dashboard_user_routes.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_user_routes.py) for:
+  - creating a saved job record
+  - creating an application record with the homepage tracking source
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/tests/test_dashboard_user_routes.py`
+- `backend/venv3.11/bin/ruff check backend/tests/test_dashboard_user_routes.py`
+- `node --check frontend/js/main.js`
+- `node --check frontend/js/api.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_dashboard_boot_integration.py` -> `8 passed`
+
+### Remaining Next Step
+1. Move to `T-UX-321` if the next priority is exposing real job-alerts UI from seeker-facing surfaces.
+2. Keep the current cleanup deletions and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit as separate work unless you want them packaged next.
+
+## 2026-04-08 (T-UX-301: Search Payload Normalization)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-301` by normalizing the public search contract in [search.py](/home/nextstep.co.ke/public_html/backend/app/services/search.py) and [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py):
+  - canonicalized every `/api/search` response around `results`
+  - preserved `jobs` as a mirrored compatibility alias at the API boundary
+  - made no-result suggestion/fallback responses return the same dict payload shape instead of a bare list
+- Aligned frontend search callers with the canonical payload:
+  - [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js) now reads `payload.results` directly for the shipped homepage search flow
+  - [api.js](/home/nextstep.co.ke/public_html/frontend/js/api.js) now returns a normalized results array to older JS consumers like [search.js](/home/nextstep.co.ke/public_html/frontend/js/search.js)
+- Added regression coverage:
+  - [test_search_modes.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_modes.py) now asserts the route normalizes legacy `jobs`-only payloads into canonical `results`
+  - [test_search_response_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_response_shape.py) locks the no-match fallback shape
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/app/services/search.py backend/app/api/routes.py backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py`
+- `backend/venv3.11/bin/ruff check backend/app/services/search.py backend/app/api/routes.py backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py`
+- `node --check frontend/js/main.js`
+- `node --check frontend/js/api.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_modes.py backend/tests/test_search_response_shape.py backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py` -> `16 passed`
+
+### Remaining Next Step
+1. Move to `T-UX-320` if the next priority is wiring real seeker actions from homepage search cards.
+2. Keep the current cleanup deletions and the standalone [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) edit as separate work unless you want them folded into a follow-up commit.
+
+## 2026-04-08 (T-UX-312: Dashboard Boot-Path Integration Coverage)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-312` by adding [test_dashboard_boot_integration.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_boot_integration.py):
+  - locks the shipped tab order and boot sequence in [dashboard.html](/home/nextstep.co.ke/public_html/frontend/dashboard.html) and [dashboard-ui.js](/home/nextstep.co.ke/public_html/frontend/js/dashboard-ui.js)
+  - verifies the real route contracts used during dashboard boot for `/api/auth/me`, `/api/auth/profile`, `/api/users/recommendations`, `/api/users/saved-jobs`, `/api/users/applications`, `/api/users/notifications`, `/api/users/market-fit`, and `/api/users/applications/by-stage`
+- Fixed a boot-path defect in [auth_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/auth_routes.py):
+  - `UserResponse.last_login` is now nullable, matching the route behavior for users who have not logged in before
+  - this prevents `/api/auth/me` from failing validation during dashboard boot for first-session users
+- Reviewed and kept the existing local edits in [main.js](/home/nextstep.co.ke/public_html/frontend/js/main.js) and [test_search_match_explanation_skills_shape.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_match_explanation_skills_shape.py) as separate in-flight work.
+- Dropped the duplicate untracked backfill pair because [backfill_normalized_entities.py](/home/nextstep.co.ke/public_html/backend/scripts/backfill_normalized_entities.py) and [test_normalized_backfill.py](/home/nextstep.co.ke/public_html/backend/tests/test_normalized_backfill.py) already cover that normalization/backfill lane.
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`
+- `backend/venv3.11/bin/ruff check backend/app/api/auth_routes.py backend/tests/test_dashboard_boot_integration.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_boot_integration.py backend/tests/test_dashboard_user_routes.py` -> `6 passed`
+
+### Remaining Next Step
+1. Return to `T-UX-301` if search payload normalization is still the next highest-priority user-path gap on this branch.
+2. Keep the current docs/artifact deletions as separate cleanup; they were not included in `T-UX-312`.
+
+## 2026-04-08 (T-UX-310/T-UX-311: Dashboard API Contract Alignment)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-310` by adding `GET /api/users/market-fit` in [user_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/user_routes.py):
+  - returns the exact dashboard shape expected by [dashboard-ui.js](/home/nextstep.co.ke/public_html/frontend/js/dashboard-ui.js)
+  - analyzes recent active jobs against the authenticated profile
+  - builds deterministic missing-skill demand counts from normalized `job_skill` rows when available, with text-extraction fallback
+- Completed `T-UX-311` in [user_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/user_routes.py):
+  - added `GET /api/users/applications/by-stage` for the shipped kanban board
+  - grouped stored application `status` values into the dashboard stages `saved`, `applied`, `interview`, `offer`, `rejected`
+  - updated `PUT /api/users/applications/{id}` to accept dashboard `stage` payloads and return both normalized `stage` and stored `status`
+- Added focused regression coverage in [test_dashboard_user_routes.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_user_routes.py) for:
+  - empty-profile market-fit fallback
+  - populated market-fit output
+  - kanban grouping
+  - `stage` update compatibility
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`
+- `backend/venv3.11/bin/ruff check backend/app/api/user_routes.py backend/tests/test_dashboard_user_routes.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_user_routes.py backend/tests/test_user_activity.py backend/tests/test_dashboard_endpoints.py` -> `66 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_subscription_paywall.py backend/tests/test_user_job_match_endpoint.py backend/tests/test_skills_gap_scan_endpoint.py` -> `10 passed`
+
+### Remaining Next Step
+1. Start `T-UX-312` to add dashboard boot-path integration coverage now that the missing APIs exist.
+2. Then return to `T-UX-301` if search payload normalization is still the next highest-priority user-path gap on this branch.
+
+## 2026-04-08 (T-UX-300: Guided Search Logging Hardening)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-UX-300` by hardening [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py):
+  - serve-time logging now tolerates optional or partial authenticated-user objects via safe `id` lookup
+  - logging now uses the actual search result list whether the payload shape is `results` or `jobs`
+- This closes the guided-search regression surfaced during the persona coverage audit, where guided mode crashed on partial authenticated-user stubs in [test_search_modes.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_modes.py).
+
+### Tests Run
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_modes.py -q` -> `4 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_public_apply_redirect.py -q` -> `7 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `71 passed`
+
+### Remaining Next Step
+1. Start `T-UX-310` to either implement `/api/users/market-fit` or remove the live dashboard dependency.
+2. Then do `T-UX-311` to bring the applications kanban contract into line with the backend.
+
+## 2026-04-08 (Persona Coverage Audit + Prioritized Gap Backlog)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Audited the current shipped implementation against the repo's actual user journeys and product surfaces:
+  - Visitor / Guest: `80%`
+  - Registered Job Seeker: `68%`
+  - Returning User: `55%`
+  - Premium Career Planner / Career Switcher: `60%`
+  - Admin / Operator: `85%`
+  - Employer / Recruiter: `10%`
+  - Overall against the current implemented user journeys: `71%`
+- Added a prioritized follow-up backlog to [changemap.md](/home/nextstep.co.ke/public_html/changemap.md) under `8.1 Persona Coverage Audit & Prioritized Gap Backlog (2026-04-08)`.
+- Highest-priority follow-ups added:
+  - `T-UX-300` fix guided-search auth/logging regression in `/api/search`
+  - `T-UX-301` align `/api/search` payload semantics
+  - `T-UX-310` implement or remove the dashboard's `market-fit` dependency
+  - `T-UX-311` implement `applications/by-stage` and reconcile `stage` vs `status`
+  - `T-UX-320` wire real seeker actions from homepage search results
+  - `T-UX-340` explicitly decide employer/recruiter scope
+- `.pilot/tasks/` does not exist in this checkout, so the backlog was recorded in `changemap.md`, which is the repo's active task ledger in practice.
+
+### Tests Run
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_skills_gap_scan_endpoint.py backend/tests/test_user_activity.py backend/tests/test_admin_processing_endpoints.py -q` -> `18 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_data_quality.py backend/tests/test_skill_filtering.py backend/tests/test_search_match_explanation_skills_shape.py backend/tests/test_user_job_match_endpoint.py -q` -> `11 passed, 1 warning`
+- `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `2 failed, 69 passed`
+
+### Open Regression Found
+- Guided search mode currently has a real regression in [routes.py](/home/nextstep.co.ke/public_html/backend/app/api/routes.py): serve-time logging assumes `current_user.id` exists.
+- Failing suite: [test_search_modes.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_modes.py)
+- Exact error:
+  - `AttributeError: '_UserStub' object has no attribute 'id'`
+
+### Remaining Next Step
+1. Start `T-UX-310` to either implement `/api/users/market-fit` or remove the live dashboard dependency.
+2. Then do `T-UX-311` to bring the shipped dashboard UI back into sync with real backend routes.
+
+## 2026-04-08 (T-1A4/T-1A5/T-1A6: Search Quality Signals)
+
+Branch: `main`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-1A4` by filtering user-facing `top_skills` / `skills_found` from `JobEntities.skills` through the existing confidence thresholding path in [search.py](/home/nextstep.co.ke/public_html/backend/app/services/search.py).
+- Completed `T-1A5` by using `source_quality_score` and `source_quality_tier` in search results and heuristic ranking tie-breaks in [ranking.py](/home/nextstep.co.ke/public_html/backend/app/services/ranking.py).
+- Completed `T-1A6` by changing search quality output from an opaque list into explicit flags plus issues:
+  - `data_quality_flags.listing_page`
+  - `data_quality_flags.company_noise`
+  - `data_quality_flags.location_confidence`
+  - `data_quality_flags.dedupe_cluster`
+  - `data_quality_flags.has_rich_description`
+  - `data_quality_issues` remains the issue list for ranking/display
+- Extended [create_job_post_analysis_view.py](/home/nextstep.co.ke/public_html/backend/scripts/create_job_post_analysis_view.py) so the analysis materialized view also exposes `source_quality_tier` and the same listing/company/location quality columns.
+- Added focused coverage in [test_search_data_quality.py](/home/nextstep.co.ke/public_html/backend/tests/test_search_data_quality.py) and updated [test_assignment_quality_improvements.py](/home/nextstep.co.ke/public_html/backend/tests/test_assignment_quality_improvements.py) for the explicit-flag shape.
+
+### Tests Run
+- `python3 -m py_compile backend/app/services/search.py backend/app/services/ranking.py backend/scripts/create_job_post_analysis_view.py backend/tests/test_search_data_quality.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_cli_data_quality_cycle.py backend/tests/test_normalized_backfill.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_deduplication_url_normalization.py` -> `16 passed`
+
+### Blockers
+- `ruff` could not run here because [backend/venv3.11/bin/ruff](/home/nextstep.co.ke/public_html/backend/venv3.11/bin/ruff) is a non-executable Mach-O binary, and `/home/nextstep.co.ke/.venv` does not have the `ruff` module installed.
+- Script-based Postgres validation for [create_job_post_analysis_view.py](/home/nextstep.co.ke/public_html/backend/scripts/create_job_post_analysis_view.py) failed under `sudo -u postgres` because the `postgres` OS user cannot read files in `/home/nextstep.co.ke/public_html/backend/scripts/`. Use direct `psql` execution or adjust file permissions before retrying the script.
+
+### Remaining Next Step
+1. Finish `T-1A7`: sector coverage improvement and representativeness reporting for analytics.
+2. If required for strict DoD, install a Linux-compatible `ruff` or replace the broken local binary.
+
+## 2026-04-08 (T-1A7: Representativeness Reporting)
+
+Branch: `feat/T-1A4-1A6-search-quality-signals`
+
+Commit: `pending`
+
+### Summary
+- Completed `T-1A7` by adding [get_representativeness_report()](/home/nextstep.co.ke/public_html/backend/app/services/analytics.py) in [analytics.py](/home/nextstep.co.ke/public_html/backend/app/services/analytics.py).
+- Wired the report into [admin_routes.py](/home/nextstep.co.ke/public_html/backend/app/api/admin_routes.py) so `/api/admin/lmi-quality` now returns:
+  - `representativeness.source_mix`
+  - `representativeness.sector_mix`
+  - `representativeness.geography_mix`
+  - `representativeness.coverage`
+  - `representativeness.coverage_gaps`
+  - `representativeness.status`
+- Added endpoint coverage in [test_dashboard_endpoints.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_endpoints.py) for both the normal populated response and a sparse-sector warning case.
+
+### Tests Run
+- `python3 -m py_compile backend/app/services/analytics.py backend/app/api/admin_routes.py backend/tests/test_dashboard_endpoints.py`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `10 passed, 47 deselected`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py backend/tests/test_cli_data_quality_cycle.py backend/tests/test_normalized_backfill.py backend/tests/test_deduplication_url_normalization.py` -> `16 passed`
+
+### Remaining Next Step
+1. Resolve the broken local `ruff` setup if strict DoD lint enforcement is required on this host.
+2. Decide whether the representativeness block also needs a dedicated admin endpoint or frontend rendering beyond the existing `/api/admin/lmi-quality` payload.
+
+### UI Follow-up
+- [admin.js](/home/nextstep.co.ke/public_html/frontend/js/admin.js) now renders the `representativeness` payload inside the existing “LMI quality metrics” panel.
+- [main.css](/home/nextstep.co.ke/public_html/frontend/styles/main.css) adds minimal section/gap styling so source mix, sector mix, geography mix, and coverage-gap badges are readable without changing the page structure.
+- Validation: `node --check frontend/js/admin.js`
+
+### Trend Follow-up
+- [analytics.py](/home/nextstep.co.ke/public_html/backend/app/services/analytics.py) now adds `representativeness.trend_6m`, a monthly series with `sample_size`, `sector_coverage_pct`, `geography_coverage_pct`, and `top_source_share_pct`.
+- [test_dashboard_endpoints.py](/home/nextstep.co.ke/public_html/backend/tests/test_dashboard_endpoints.py) now validates the presence and shape of the 6-month trend history.
+- [admin.js](/home/nextstep.co.ke/public_html/frontend/js/admin.js) renders the trend series as compact cards inside the same LMI quality panel.
+- Validation:
+  - `python3 -m py_compile backend/app/services/analytics.py backend/tests/test_dashboard_endpoints.py`
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `11 passed, 47 deselected`
+  - `node --check frontend/js/admin.js`
+
+### Ruff Fix
+- Root cause: [backend/venv3.11/bin/ruff](/home/nextstep.co.ke/public_html/backend/venv3.11/bin/ruff) was a checked-in macOS Mach-O binary, so linting was broken on this Linux host.
+- Fix applied:
+  - installed `ruff 0.15.9` into `/home/nextstep.co.ke/.venv`
+  - replaced [backend/venv3.11/bin/ruff](/home/nextstep.co.ke/public_html/backend/venv3.11/bin/ruff) with a shell wrapper that executes `/home/nextstep.co.ke/.venv/bin/python -m ruff "$@"`
+  - ran Ruff format on the changed Python files in this branch
+- Validation:
+  - `backend/venv3.11/bin/ruff --version` -> `ruff 0.15.9`
+  - `backend/venv3.11/bin/ruff check ...` -> pass
+  - `backend/venv3.11/bin/ruff format --check ...` -> pass
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py -k "lmi_quality"` -> `11 passed, 47 deselected`
+  - `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_search_data_quality.py backend/tests/test_assignment_quality_improvements.py` -> `10 passed`
+
 ## 2026-03-23 (T-DS-910/920: Instrumentation + Intelligence Baseline Repair)
 
 Branch: `feat/T-DS-910-920-instrumentation-intelligence`

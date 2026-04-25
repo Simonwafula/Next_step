@@ -17,7 +17,7 @@ if not DB_PATH:
             break
 if not DB_PATH:
     DB_PATH = str(REPO / "jobs.sqlite3")  # Fallback default
-OUT = REPO / "repo_state.md"
+OUT = REPO / "docs" / "archive" / "generated" / "repo_state.md"
 
 
 def sh(cmd):

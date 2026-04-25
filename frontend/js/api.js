@@ -110,8 +110,12 @@ class APIClient {
             q: query,
             ...filters
         };
-        
-        return this.get(CONFIG.ENDPOINTS.SEARCH, params);
+
+        const payload = await this.get(CONFIG.ENDPOINTS.SEARCH, params);
+        if (Array.isArray(payload)) {
+            return payload;
+        }
+        return Array.isArray(payload?.results) ? payload.results : [];
     }
 
     // Translate job title

@@ -7,6 +7,7 @@ const guidedModeButtons = document.querySelectorAll('[data-guided-mode]');
 const resultsGrid = document.getElementById('resultsGrid');
 const resultsMeta = document.getElementById('resultsMeta');
 const resultsTitle = document.getElementById('resultsTitle');
+const saveSearchAlertBtn = document.getElementById('saveSearchAlertBtn');
 const guidedResults = document.getElementById('guidedResults');
 const guidedResultsGrid = document.getElementById('guidedResultsGrid');
 const guidedModeError = document.getElementById('guidedModeError');
@@ -49,6 +50,7 @@ const dropdownTabs = document.querySelectorAll('#userDropdown [data-account-tab]
 const accountViews = {
     profile: document.getElementById('accountProfile'),
     saved: document.getElementById('accountSaved'),
+    alerts: document.getElementById('accountAlerts'),
 };
 const profileName = document.getElementById('profileName');
 const profileEmail = document.getElementById('profileEmail');
@@ -56,6 +58,13 @@ const profileLocation = document.getElementById('profileLocation');
 const profileSkills = document.getElementById('profileSkills');
 const savedJobsList = document.getElementById('savedJobsList');
 const savedJobsEmpty = document.getElementById('savedJobsEmpty');
+const jobAlertForm = document.getElementById('jobAlertForm');
+const jobAlertName = document.getElementById('jobAlertName');
+const jobAlertQuery = document.getElementById('jobAlertQuery');
+const jobAlertFrequency = document.getElementById('jobAlertFrequency');
+const jobAlertStatus = document.getElementById('jobAlertStatus');
+const jobAlertsList = document.getElementById('jobAlertsList');
+const jobAlertsEmpty = document.getElementById('jobAlertsEmpty');
 
 const { escapeHtml, safeUrl } = window.NEXTSTEP_SANITIZE || {
     escapeHtml: (value) => String(value ?? ''),
@@ -87,6 +96,9 @@ let selectedSector = null;
 let highConfidenceOnly = false;
 let currentGuidedMode = 'jobs';
 let currentUserProfile = null;
+let savedJobIds = new Set();
+let trackedJobIds = new Set();
+let currentJobAlerts = [];
 
 const saveAuth = (payload) => {
     localStorage.setItem(authStorageKey, JSON.stringify(payload));
@@ -134,6 +146,7 @@ const setAuthState = (user) => {
             guidedModeWrap.hidden = false;
             // Keep the user's current mode — don't silently switch it on login
         }
+        updateSearchAlertButtonVisibility();
     } else {
         authActions.hidden = false;
         userActions.hidden = true;
@@ -143,11 +156,16 @@ const setAuthState = (user) => {
         if (dashboardMenuLink) dashboardMenuLink.hidden = true;
         if (adminMenuLink) adminMenuLink.hidden = true;
         currentUserProfile = null;
+        savedJobIds = new Set();
+        trackedJobIds = new Set();
+        currentJobAlerts = [];
         if (guidedModeWrap) {
             guidedModeWrap.hidden = true;
             setGuidedMode('jobs', { refresh: false });
         }
         renderGuidedResults({ guided_results: null, mode_error: null }, 'jobs');
+        renderJobAlerts([]);
+        updateSearchAlertButtonVisibility();
     }
 };
 
@@ -311,6 +329,267 @@ const renderSavedJobs = (items) => {
     });
 };
 
+const setJobAlertStatus = (message, isError = false) => {
+    if (!jobAlertStatus) return;
+    jobAlertStatus.textContent = message || '';
+    jobAlertStatus.classList.toggle('auth-error', Boolean(isError));
+};
+
+const currentSearchFilters = () => {
+    const filters = {};
+    if (locationFilter.value) filters.location = locationFilter.value;
+    if (seniorityFilter.value) filters.seniority = seniorityFilter.value;
+    if (selectedTitleCluster) filters.title = selectedTitleCluster;
+    if (selectedCompany) filters.company = selectedCompany;
+    if (selectedRoleFamily) filters.role_family = selectedRoleFamily;
+    if (selectedCounty) filters.county = selectedCounty;
+    if (selectedSector) filters.sector = selectedSector;
+    if (highConfidenceOnly) filters.high_confidence_only = true;
+    return filters;
+};
+
+const buildAlertNameFromSearch = () => {
+    const query = searchInput.value.trim();
+    const location = locationFilter.value.trim();
+    const parts = [query || 'Saved search'];
+    if (location) {
+        parts.push(location);
+    }
+    return parts.join(' · ').slice(0, 120);
+};
+
+const populateJobAlertDraft = () => {
+    if (!jobAlertName || !jobAlertQuery || !jobAlertFrequency) return;
+    jobAlertName.value = buildAlertNameFromSearch();
+    jobAlertQuery.value = searchInput.value.trim();
+    jobAlertFrequency.value = 'daily';
+};
+
+const renderJobAlerts = (alerts) => {
+    currentJobAlerts = Array.isArray(alerts) ? alerts : [];
+    if (!jobAlertsList || !jobAlertsEmpty) return;
+
+    jobAlertsList.innerHTML = '';
+    if (!currentJobAlerts.length) {
+        jobAlertsEmpty.hidden = false;
+        return;
+    }
+
+    jobAlertsEmpty.hidden = true;
+    currentJobAlerts.forEach((alertItem) => {
+        const card = document.createElement('div');
+        card.className = 'alert-item';
+        const filters = alertItem.filters || {};
+        const filterSummary = [
+            filters.location,
+            filters.seniority,
+            filters.role_family,
+            filters.county,
+            filters.sector,
+            filters.high_confidence_only ? 'High confidence only' : '',
+        ].filter(Boolean).join(' · ');
+        const lastTriggered = alertItem.last_triggered
+            ? new Date(alertItem.last_triggered).toLocaleDateString()
+            : 'Not triggered yet';
+
+        card.innerHTML = `
+            <div>
+                <h4>${escapeHtml(alertItem.name || 'Job alert')}</h4>
+                <div class="alert-meta">${escapeHtml(alertItem.query || '')}</div>
+                <div class="alert-submeta">
+                    ${escapeHtml(`${alertItem.frequency || 'daily'} · ${alertItem.jobs_found_total || 0} jobs found · Last: ${lastTriggered}`)}
+                </div>
+                ${filterSummary ? `<div class="alert-submeta">${escapeHtml(filterSummary)}</div>` : ''}
+            </div>
+            <div class="alert-item-actions">
+                <button type="button" class="ghost-btn btn-sm js-delete-alert" data-alert-id="${alertItem.id}">Delete</button>
+            </div>
+        `;
+        jobAlertsList.appendChild(card);
+    });
+};
+
+const loadJobAlerts = async (token) => {
+    const payload = await requestJson(`${apiBase}/users/job-alerts`, {
+        headers: { Authorization: `Bearer ${token}` },
+    }).catch(() => ({ alerts: [] }));
+    renderJobAlerts(payload.alerts || []);
+};
+
+const updateSearchAlertButtonVisibility = () => {
+    if (!saveSearchAlertBtn) return;
+    const auth = getAuth();
+    const query = searchInput.value.trim();
+    saveSearchAlertBtn.hidden = !(auth?.access_token && query);
+};
+
+const syncUserActionState = async (token, options = {}) => {
+    const { renderSaved = false } = options;
+
+    const [savedPayload, applicationsPayload] = await Promise.all([
+        requestJson(`${apiBase}/users/saved-jobs?limit=100`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => ({ saved_jobs: [] })),
+        requestJson(`${apiBase}/users/applications?limit=100`, {
+            headers: { Authorization: `Bearer ${token}` },
+        }).catch(() => ({ applications: [] })),
+    ]);
+
+    const savedItems = Array.isArray(savedPayload.saved_jobs)
+        ? savedPayload.saved_jobs
+        : [];
+    const trackedItems = Array.isArray(applicationsPayload.applications)
+        ? applicationsPayload.applications
+        : [];
+
+    savedJobIds = new Set(
+        savedItems
+            .map((item) => item.job_id)
+            .filter((value) => Number.isInteger(value))
+    );
+    trackedJobIds = new Set(
+        trackedItems
+            .map((item) => item.job_id)
+            .filter((value) => Number.isInteger(value))
+    );
+
+    if (renderSaved) {
+        renderSavedJobs(savedItems);
+    }
+};
+
+const showHomepageActionAuthPrompt = () => {
+    openAuthModal('signin');
+    setAuthError(signinError, 'Sign in to save jobs and track applications.');
+};
+
+const setResultActionMessage = (container, message, isError = false) => {
+    if (!container) return;
+    container.textContent = message || '';
+    container.classList.toggle('error', Boolean(isError));
+};
+
+const saveJobFromResults = async ({ token, jobId, button, statusEl }) => {
+    if (!token) {
+        showHomepageActionAuthPrompt();
+        return;
+    }
+
+    if (!jobId || savedJobIds.has(jobId)) {
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Saved';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Already saved to your account.');
+        return;
+    }
+
+    const originalLabel = button?.textContent || 'Save';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Saving...';
+    }
+
+    try {
+        await requestJson(`${apiBase}/users/saved-jobs`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({ job_id: jobId }),
+        });
+        savedJobIds.add(jobId);
+        if (button) {
+            button.textContent = 'Saved';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Saved to your account.');
+        await syncUserActionState(token, { renderSaved: true });
+    } catch (error) {
+        const alreadySaved = error.message?.toLowerCase().includes('already saved');
+        if (alreadySaved) {
+            savedJobIds.add(jobId);
+            if (button) {
+                button.textContent = 'Saved';
+                button.classList.add('btn-saved');
+                button.disabled = true;
+            }
+            setResultActionMessage(statusEl, 'Already saved to your account.');
+            await syncUserActionState(token, { renderSaved: true });
+            return;
+        }
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+        setResultActionMessage(statusEl, error.message || 'Could not save this job.', true);
+    }
+};
+
+const trackApplicationFromResults = async ({ token, jobId, button, statusEl }) => {
+    if (!token) {
+        showHomepageActionAuthPrompt();
+        return;
+    }
+
+    if (!jobId || trackedJobIds.has(jobId)) {
+        if (button) {
+            button.disabled = true;
+            button.textContent = 'Tracked';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Already in your applications tracker.');
+        return;
+    }
+
+    const originalLabel = button?.textContent || 'Track';
+    if (button) {
+        button.disabled = true;
+        button.textContent = 'Tracking...';
+    }
+
+    try {
+        await requestJson(`${apiBase}/users/applications`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify({
+                job_id: jobId,
+                application_source: 'homepage_search',
+            }),
+        });
+        trackedJobIds.add(jobId);
+        if (button) {
+            button.textContent = 'Tracked';
+            button.classList.add('btn-saved');
+        }
+        setResultActionMessage(statusEl, 'Added to your applications tracker.');
+    } catch (error) {
+        const alreadyTracked = error.message?.toLowerCase().includes('already applied');
+        if (alreadyTracked) {
+            trackedJobIds.add(jobId);
+            if (button) {
+                button.textContent = 'Tracked';
+                button.classList.add('btn-saved');
+                button.disabled = true;
+            }
+            setResultActionMessage(statusEl, 'Already in your applications tracker.');
+            return;
+        }
+
+        if (button) {
+            button.disabled = false;
+            button.textContent = originalLabel;
+        }
+        setResultActionMessage(statusEl, error.message || 'Could not track this application.', true);
+    }
+};
+
 const loadAccountData = async (token) => {
     try {
         const me = await requestJson(`${apiBase}/auth/me`, {
@@ -342,14 +621,14 @@ const loadAccountData = async (token) => {
         renderSkills({});
     }
 
-    try {
-        const saved = await requestJson(`${apiBase}/users/saved-jobs`, {
-            headers: { Authorization: `Bearer ${token}` },
-        });
-        renderSavedJobs(saved.saved_jobs || []);
-    } catch (error) {
+    await syncUserActionState(token, { renderSaved: true }).catch(() => {
+        savedJobIds = new Set();
+        trackedJobIds = new Set();
         renderSavedJobs([]);
-    }
+    });
+    await loadJobAlerts(token).catch(() => {
+        renderJobAlerts([]);
+    });
 };
 
 const renderGuidedResults = (payload, mode) => {
@@ -483,7 +762,10 @@ const renderResults = async (items) => {
                 matchByJobId.set(jobId, matchData);
             }
         });
-        await Promise.all(matchRequests);
+        await Promise.all([
+            syncUserActionState(token),
+            Promise.all(matchRequests),
+        ]);
     }
 
     items.forEach((item) => {
@@ -499,6 +781,7 @@ const renderResults = async (items) => {
             ? `${item.salary_estimated ? 'Estimated: ' : ''}${item.salary_range}`
             : 'Salary not provided';
         const applyLink = escapeHtml(safeUrl(item.apply_url || item.url));
+        const hasApplyLink = Boolean(item.apply_url || item.url);
         const matchLabel = matchData
             ? `${matchData.match_percentage}% match`
             : '';
@@ -516,6 +799,20 @@ const renderResults = async (items) => {
         const qualityTag = item.quality_tag
             ? `<span class="quality-tag ${item.high_confidence ? 'high' : 'medium'}">${escapeHtml(item.quality_tag)}</span>`
             : '';
+        const dataQualityIssues = Array.isArray(item.data_quality_issues) ? item.data_quality_issues : [];
+        const qualityNotes = [];
+        if (item.source_quality_tier && item.source_quality_tier !== 'high') {
+            qualityNotes.push(`Source: ${item.source_quality_tier}`);
+        }
+        if (item.location_confidence && item.location_confidence !== 'high') {
+            qualityNotes.push(`Location: ${item.location_confidence} confidence`);
+        }
+        if (dataQualityIssues.includes('duplicate_candidate')) {
+            qualityNotes.push('Possible duplicate');
+        }
+        if (dataQualityIssues.includes('listing_page')) {
+            qualityNotes.push('Listing-style title');
+        }
         const contractLabel = item.contract_type
             ? escapeHtml(item.contract_type)
             : '';
@@ -526,6 +823,20 @@ const renderResults = async (items) => {
             ? escapeHtml(item.role_family)
             : '';
         const metaExtra = [contractLabel, roleFamilyLabel, postedLabel].filter(Boolean).join(' · ');
+        const canPersist = Boolean(token && Number.isInteger(jobId) && jobId > 0);
+        const isSaved = canPersist && savedJobIds.has(jobId);
+        const isTracked = canPersist && trackedJobIds.has(jobId);
+        const actionsHtml = [
+            hasApplyLink
+                ? `<a class="solid-btn btn-sm" href="${applyLink}" target="_blank" rel="noopener">Apply</a>`
+                : '',
+            canPersist
+                ? `<button type="button" class="ghost-btn btn-sm js-save-job ${isSaved ? 'btn-saved' : ''}" ${isSaved ? 'disabled' : ''}>${isSaved ? 'Saved' : 'Save'}</button>`
+                : '',
+            canPersist
+                ? `<button type="button" class="ghost-btn btn-sm js-track-job ${isTracked ? 'btn-saved' : ''}" ${isTracked ? 'disabled' : ''}>${isTracked ? 'Tracked' : 'Track'}</button>`
+                : '',
+        ].filter(Boolean).join('');
 
         card.innerHTML = `
             <div class="result-card-header">
@@ -535,12 +846,32 @@ const renderResults = async (items) => {
             <div class="result-meta">${org} · ${location}</div>
             ${metaExtra ? `<div class="result-meta">${metaExtra}</div>` : ''}
             <div class="result-meta">${escapeHtml(salaryText)}</div>
+            ${qualityNotes.length ? `<div class="result-meta">${escapeHtml(qualityNotes.join(' · '))}</div>` : ''}
             ${skillTags ? `<div class="result-skills">${skillTags}</div>` : ''}
             ${matchLabel
                 ? `<div class="result-match">${escapeHtml(`${matchLabel}${missingLabel}`)}</div>`
                 : ''}
-            <a class="result-link" href="${applyLink}" target="_blank" rel="noopener">Apply</a>
+            ${actionsHtml ? `<div class="result-actions">${actionsHtml}</div>` : ''}
+            ${canPersist ? '<p class="result-action-status"></p>' : ''}
         `;
+
+        if (canPersist) {
+            const statusEl = card.querySelector('.result-action-status');
+            const saveBtn = card.querySelector('.js-save-job');
+            const trackBtn = card.querySelector('.js-track-job');
+
+            saveBtn?.addEventListener('click', () => {
+                saveJobFromResults({ token, jobId, button: saveBtn, statusEl }).catch((error) => {
+                    setResultActionMessage(statusEl, error.message || 'Could not save this job.', true);
+                });
+            });
+            trackBtn?.addEventListener('click', () => {
+                trackApplicationFromResults({ token, jobId, button: trackBtn, statusEl }).catch((error) => {
+                    setResultActionMessage(statusEl, error.message || 'Could not track this application.', true);
+                });
+            });
+        }
+
         resultsGrid.appendChild(card);
     });
 };
@@ -625,6 +956,7 @@ const fetchResults = async () => {
 
     resultsMeta.textContent = 'Searching...';
     resultsTitle.textContent = 'Finding matches';
+    updateSearchAlertButtonVisibility();
 
     const params = new URLSearchParams({
         q: query,
@@ -658,10 +990,11 @@ const fetchResults = async () => {
         }
 
         const payload = await response.json();
-        const rawItems = Array.isArray(payload) ? payload : payload.results || payload.jobs || [];
+        const rawItems = Array.isArray(payload?.results) ? payload.results : [];
         renderGuidedResults(payload, currentGuidedMode);
-        renderAggregates(Array.isArray(payload) ? null : payload);
+        renderAggregates(payload);
         await renderResults(rawItems);
+        updateSearchAlertButtonVisibility();
         document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
     } catch (error) {
         resultsMeta.textContent = 'We could not reach the API. Is the backend running?';
@@ -669,6 +1002,7 @@ const fetchResults = async () => {
         resultsGrid.innerHTML = '';
         renderGuidedResults({ guided_results: null, mode_error: null }, 'jobs');
         if (resultsFilters) resultsFilters.hidden = true;
+        updateSearchAlertButtonVisibility();
         console.error(error);
     }
 };
@@ -767,6 +1101,21 @@ guidedModeButtons.forEach((button) => {
     button.addEventListener('click', () => {
         setGuidedMode(button.dataset.guidedMode || 'jobs');
     });
+});
+
+saveSearchAlertBtn?.addEventListener('click', () => {
+    const auth = getAuth();
+    if (!auth?.access_token) {
+        openAuthModal('signin');
+        setAuthError(signinError, 'Sign in to save job alerts.');
+        return;
+    }
+
+    populateJobAlertDraft();
+    setAccountTab('alerts');
+    setJobAlertStatus('');
+    accountSection.hidden = false;
+    accountSection.scrollIntoView({ behavior: 'smooth' });
 });
 
 authOpenButtons.forEach((button) => {
@@ -947,4 +1296,88 @@ dropdownTabs.forEach((button) => {
         accountSection.scrollIntoView({ behavior: 'smooth' });
         userDropdown.classList.remove('active');
     });
+});
+
+jobAlertForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const auth = getAuth();
+    if (!auth?.access_token) {
+        openAuthModal('signin');
+        setAuthError(signinError, 'Sign in to create job alerts.');
+        return;
+    }
+
+    const query = jobAlertQuery?.value.trim() || searchInput.value.trim();
+    const name = jobAlertName?.value.trim() || buildAlertNameFromSearch();
+    if (!query) {
+        setJobAlertStatus('Enter a search query before creating an alert.', true);
+        return;
+    }
+
+    setJobAlertStatus('');
+    const submitBtn = jobAlertForm.querySelector('button[type="submit"]');
+    const originalLabel = submitBtn?.textContent || 'Create alert';
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Saving...';
+    }
+
+    try {
+        await requestJson(`${apiBase}/users/job-alerts`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${auth.access_token}`,
+            },
+            body: JSON.stringify({
+                name,
+                query,
+                filters: currentSearchFilters(),
+                frequency: jobAlertFrequency?.value || 'daily',
+                delivery_methods: ['email'],
+            }),
+        });
+        setJobAlertStatus('Job alert created.');
+        await loadJobAlerts(auth.access_token);
+    } catch (error) {
+        setJobAlertStatus(error.message || 'Could not create alert.', true);
+    } finally {
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalLabel;
+        }
+    }
+});
+
+jobAlertsList?.addEventListener('click', async (event) => {
+    const button = event.target.closest('.js-delete-alert');
+    if (!button) return;
+
+    const auth = getAuth();
+    if (!auth?.access_token) {
+        openAuthModal('signin');
+        setAuthError(signinError, 'Sign in to manage job alerts.');
+        return;
+    }
+
+    const alertId = Number(button.dataset.alertId);
+    if (!alertId) return;
+
+    const originalLabel = button.textContent;
+    button.disabled = true;
+    button.textContent = 'Deleting...';
+    setJobAlertStatus('');
+
+    try {
+        await requestJson(`${apiBase}/users/job-alerts/${alertId}`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${auth.access_token}` },
+        });
+        setJobAlertStatus('Job alert deleted.');
+        await loadJobAlerts(auth.access_token);
+    } catch (error) {
+        button.disabled = false;
+        button.textContent = originalLabel;
+        setJobAlertStatus(error.message || 'Could not delete alert.', true);
+    }
 });

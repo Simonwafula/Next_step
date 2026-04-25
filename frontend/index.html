@@ -45,6 +45,7 @@
                     <div class="user-dropdown" id="userDropdown">
                         <button type="button" data-account-tab="profile">Profile</button>
                         <button type="button" data-account-tab="saved">Saved roles</button>
+                        <button type="button" data-account-tab="alerts">Job alerts</button>
                         <a class="dropdown-link" href="skills-gap-scan.html">Skills gap scan</a>
                         <a class="dropdown-link" href="career-pathways.html">Career pathways</a>
                         <a class="dropdown-link" id="dashboardMenuLink" href="dashboard.html">Dashboard</a>
@@ -145,7 +146,10 @@
                         <p class="eyebrow">Search results</p>
                         <h2 id="resultsTitle">Ready when you are</h2>
                     </div>
-                    <div class="results-meta" id="resultsMeta">Enter a query to see matches.</div>
+                    <div class="results-header-actions">
+                        <button type="button" class="ghost-btn" id="saveSearchAlertBtn" hidden>Save this search</button>
+                        <div class="results-meta" id="resultsMeta">Enter a query to see matches.</div>
+                    </div>
                 </div>
                 <div class="guided-results" id="guidedResults" hidden>
                     <p class="guided-mode-error" id="guidedModeError" hidden></p>
@@ -186,6 +190,7 @@
                 <div class="account-tabs">
                     <button type="button" class="active" data-account-tab="profile">Profile</button>
                     <button type="button" data-account-tab="saved">Saved roles</button>
+                    <button type="button" data-account-tab="alerts">Job alerts</button>
                 </div>
                 <div class="account-view active" id="accountProfile">
                     <div class="account-card">
@@ -215,6 +220,24 @@
                         <h3>Saved roles</h3>
                         <div class="saved-list" id="savedJobsList"></div>
                         <p class="auth-message" id="savedJobsEmpty">No saved roles yet.</p>
+                    </div>
+                </div>
+                <div class="account-view" id="accountAlerts">
+                    <div class="account-card">
+                        <h3>Job alerts</h3>
+                        <p class="panel-note">Save your current search and get notified when matching roles appear.</p>
+                        <form class="auth-form alert-form" id="jobAlertForm">
+                            <input type="text" id="jobAlertName" placeholder="Alert name" required>
+                            <input type="text" id="jobAlertQuery" placeholder="Search query" required>
+                            <select id="jobAlertFrequency">
+                                <option value="daily">Daily</option>
+                                <option value="weekly">Weekly</option>
+                            </select>
+                            <button class="solid-btn" type="submit">Create alert</button>
+                        </form>
+                        <p class="auth-message" id="jobAlertStatus"></p>
+                        <div class="alert-list" id="jobAlertsList"></div>
+                        <p class="auth-message" id="jobAlertsEmpty">No job alerts yet.</p>
                     </div>
                 </div>
             </div>

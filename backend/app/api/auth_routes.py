@@ -52,7 +52,7 @@ class UserResponse(BaseModel):
     is_verified: bool
     subscription_tier: str
     created_at: str
-    last_login: str = None
+    last_login: str | None = None
     is_admin: bool = False
 
 

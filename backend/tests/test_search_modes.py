@@ -46,7 +46,7 @@ def test_search_mode_requires_auth_for_guided_results(
     monkeypatch.setattr(
         "app.api.routes.search_jobs",
         lambda *args, **kwargs: {
-            "jobs": [{"id": 1, "title": "Data Analyst"}],
+            "results": [{"id": 1, "title": "Data Analyst"}],
             "title_clusters": [],
             "companies_hiring": [],
             "total": 1,
@@ -106,7 +106,8 @@ def test_search_mode_returns_guided_results_for_authenticated_user(
     assert payload["guided_results"] == [{"role_family": "data_analytics"}]
     assert payload["mode"] == "explore"
     assert payload["mode_error"] is None
-    assert payload["jobs"]
+    assert payload["results"] == [{"id": 1, "title": "Data Analyst"}]
+    assert payload["jobs"] == payload["results"]
     assert payload["title_clusters"]
     assert payload["companies_hiring"]
 
@@ -120,7 +121,7 @@ def test_search_mode_match_uses_profile_skills_when_skills_missing(
     monkeypatch.setattr(
         "app.api.routes.search_jobs",
         lambda *args, **kwargs: {
-            "jobs": [],
+            "results": [],
             "title_clusters": [],
             "companies_hiring": [],
             "total": 0,
@@ -189,3 +190,31 @@ def test_search_forwards_new_filter_params_to_service(
     assert observed["county"] == "Nairobi"
     assert observed["sector"] == "Technology"
     assert observed["high_confidence_only"] is True
+
+
+def test_search_normalizes_jobs_only_payload_into_results(
+    db_session_factory,
+    monkeypatch,
+):
+    app = _create_test_app(db_session_factory, current_user=None)
+
+    monkeypatch.setattr(
+        "app.api.routes.search_jobs",
+        lambda *args, **kwargs: {
+            "jobs": [{"id": 7, "title": "Analyst"}],
+            "title_clusters": [],
+            "companies_hiring": [],
+            "total": 1,
+            "limit": 20,
+            "offset": 0,
+            "has_more": False,
+        },
+    )
+
+    with TestClient(app) as client:
+        response = client.get("/api/search", params={"q": "analyst"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["results"] == [{"id": 7, "title": "Analyst"}]
+    assert payload["jobs"] == payload["results"]
