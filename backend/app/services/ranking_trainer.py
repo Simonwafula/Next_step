@@ -22,7 +22,13 @@ import numpy as np
 from sqlalchemy import select, and_, func
 from sqlalchemy.orm import Session
 
-from ..db.models import UserAnalytics, JobPost, SearchServingLog
+from ..db.models import (
+    ApplicationFunnelEvent,
+    EmployerCandidateRating,
+    UserAnalytics,
+    JobPost,
+    SearchServingLog,
+)
 from .ranking import (
     RankingModel,
     extract_ranking_features,
@@ -168,6 +174,71 @@ def _collect_fallback(
     return positive_features, neg_features
 
 
+def _collect_from_funnel_events(
+    db: Session,
+    cutoff: datetime,
+) -> tuple[list[np.ndarray], list[np.ndarray]]:
+    """Derive training examples from ApplicationFunnelEvent outcomes (T-DS-963).
+
+    Positive (strong):  stage in ("hired", "offered") — employer confirmed fit.
+    Negative (strong):  stage="rejected" with actor="employer" — employer-confirmed mismatch.
+    Also uses EmployerCandidateRating: strong_yes/yes → positive, no/strong_no → negative.
+    """
+    positive_features: list[np.ndarray] = []
+    negative_features: list[np.ndarray] = []
+
+    # --- Funnel events ---
+    events = (
+        db.execute(
+            select(ApplicationFunnelEvent).where(
+                ApplicationFunnelEvent.event_at > cutoff,
+                ApplicationFunnelEvent.stage.in_(["hired", "offered", "rejected"]),
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    for event in events:
+        job = db.execute(
+            select(JobPost).where(JobPost.id == event.job_post_id)
+        ).scalar_one_or_none()
+        if not job:
+            continue
+        result = _build_result_dict(job, score=0.0, query="")
+        feat = extract_ranking_features(result, "")
+        if event.stage in ("hired", "offered"):
+            positive_features.append(feat)
+        elif event.stage == "rejected" and event.actor == "employer":
+            negative_features.append(feat)
+
+    # --- Employer ratings ---
+    ratings = (
+        db.execute(
+            select(EmployerCandidateRating).where(
+                EmployerCandidateRating.rated_at > cutoff
+            )
+        )
+        .scalars()
+        .all()
+    )
+
+    for rating in ratings:
+        job = db.execute(
+            select(JobPost).where(JobPost.id == rating.job_post_id)
+        ).scalar_one_or_none()
+        if not job:
+            continue
+        result = _build_result_dict(job, score=0.0, query="")
+        feat = extract_ranking_features(result, "")
+        if rating.sentiment in ("strong_yes", "yes"):
+            positive_features.append(feat)
+        elif rating.sentiment in ("no", "strong_no"):
+            negative_features.append(feat)
+
+    return positive_features, negative_features
+
+
 def collect_training_data(
     db: Session, days_back: int = 30, min_positives: int = 10
 ) -> tuple[np.ndarray, np.ndarray] | None:
@@ -221,6 +292,16 @@ def collect_training_data(
         positive_features, negative_features = _collect_fallback(
             db, apply_events, cutoff
         )
+
+    # Augment with strong signals from hiring funnel outcomes + employer ratings (T-DS-963)
+    funnel_pos, funnel_neg = _collect_from_funnel_events(db, cutoff)
+    if funnel_pos:
+        logger.info(
+            f"Adding {len(funnel_pos)} funnel/rating positives, "
+            f"{len(funnel_neg)} negatives"
+        )
+        positive_features.extend(funnel_pos)
+        negative_features.extend(funnel_neg)
 
     if len(positive_features) < min_positives:
         logger.warning("Still insufficient positives after fallback")

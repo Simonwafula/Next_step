@@ -13,6 +13,8 @@ from typing import Any
 
 import numpy as np
 
+from ..ml.model_registry import FEATURE_DIM
+
 try:
     # Optional dependency: allow the app to run without scikit-learn installed.
     from sklearn.linear_model import LogisticRegression  # type: ignore
@@ -32,7 +34,8 @@ class RankingModel:
     def __init__(self):
         # Stored model may come from sklearn; keep type flexible for optional dependency.
         self.model: Any | None = None
-        self.features_dim = 8  # Number of features per result
+        # T-DS-982: dimension sourced from canonical feature contract
+        self.features_dim = FEATURE_DIM
 
     def load(self) -> bool:
         """Load trained model from disk. Returns True if loaded."""

@@ -45,6 +45,7 @@ from ..services.gov_processing_service import (
 from ..services.gov_quarantine_service import quarantine_government_nonjobs
 from ..services.post_ingestion_processing_service import process_job_posts
 from ..services.processing_quality import quality_snapshot
+from ..services.outcome_intelligence import get_outcome_summary
 from ..core.config import settings
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
@@ -663,6 +664,21 @@ def admin_lmi_scorecard(
         "date": datetime.utcnow().date().isoformat(),
         "metrics": metrics,
     }
+
+
+@router.get("/outcome-intelligence")
+def admin_outcome_intelligence(
+    days_back: int = Query(90, ge=7, le=365),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    """Return aggregated hiring outcome signals for LMI reports (T-DS-964).
+
+    Shows rejection patterns, hiring outcomes, and employer rating sentiment
+    broken down by role family over the requested look-back window.
+    """
+    del current_user
+    return get_outcome_summary(db, days_back=days_back)
 
 
 @router.get("/lmi-integrity")

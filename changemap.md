@@ -217,58 +217,58 @@
 ## 8. DS / ML Trust Layer + Intelligence Execution Backlog (NEW - 2026-03-23)
 - Note: This section translates `DS_ML.md` into execution tasks.
 - Note: These tasks track production-valid completion for trust-layer and intelligence gaps. Earlier DONE items in search, matching, pathways, and analytics sections record prototype delivery, not final mission-complete execution.
-- [ ] (T-DS-900) Phase 0: DS product contract + track selection
-  - [ ] (T-DS-901) Choose primary execution track (`Trust-Layer First` or `LMI / Intelligence First`) and mandatory supporting workstream
-  - [ ] (T-DS-902) Publish canonical score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`)
-  - [ ] (T-DS-903) Define mission metric tree + intelligence metric tree
-  - [ ] (T-DS-904) Publish two-track roadmap in docs/control plane
-- [/] (T-DS-910) Phase 1: Instrumentation + evaluation foundation
+- [x] (T-DS-900) Phase 0: DS product contract + track selection
+  - [x] (T-DS-901) Choose primary execution track (`Trust-Layer First` or `LMI / Intelligence First`) and mandatory supporting workstream — `docs/ds-product-contract.md`: primary=`Trust-Layer First`, supporting=`LMI / Intelligence`
+  - [x] (T-DS-902) Publish canonical score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`) — `docs/ds-product-contract.md`
+  - [x] (T-DS-903) Define mission metric tree + intelligence metric tree — `docs/ds-product-contract.md`
+  - [x] (T-DS-904) Publish two-track roadmap in docs/control plane — `docs/ds-product-contract.md`
+- [x] (T-DS-910) Phase 1: Instrumentation + evaluation foundation
   - [x] (T-DS-911) Add serve-time feature logging for search — `SearchServingLog` model + `log_search_serving()` wired in `/api/search`
   - [x] (T-DS-912) Add application funnel event model (`viewed`, `applied`, `shortlisted`, `interviewed`, `rejected`, `offered`, `hired`) — `ApplicationFunnelEvent` model
   - [x] (T-DS-913) Add structured rejection / decision reasons schema — `reason` + `details` fields on `ApplicationFunnelEvent`
-  - [ ] (T-DS-914) Build offline evaluation harness for search + recommendations
-  - [ ] (T-DS-915) Build intelligence quality dashboard (baseline stability, source mix, sample size, confidence)
+  - [x] (T-DS-914) Build offline evaluation harness for search + recommendations — `backend/app/services/evaluation_service.py`: `evaluate_search_offline()`, `evaluate_recommendations_offline()`; endpoints `GET /api/intelligence/evaluation/search`, `GET /api/intelligence/evaluation/recommendations`
+  - [x] (T-DS-915) Build intelligence quality dashboard (baseline stability, source mix, sample size, confidence) — `build_intelligence_quality_dashboard()` + `GET /api/intelligence/quality-dashboard`
   - [x] (T-DS-916) Replace synthetic ranking-training inputs with logged serve-time signals — `ranking_trainer.py` now uses `SearchServingLog`; fallback to job attributes without synthetic placeholders
   - [x] (T-DS-917) Replace placeholder ranking features — real Jaccard title/desc match, real recency from `first_seen`, real skill Jaccard overlap; removed hardcoded 0.5/0.0 stubs
-  - [ ] (T-DS-918) Add ranking-quality evaluation suite (effectiveness metrics over held-out sessions, not just shape/flow tests)
-- [/] (T-DS-920) Shared P0 / Phase 1b: Intelligence baseline repair
+  - [x] (T-DS-918) Add ranking-quality evaluation suite (effectiveness metrics over held-out sessions, not just shape/flow tests) — `evaluate_ranking_quality()` + `GET /api/intelligence/evaluation/ranking-quality`
+- [x] (T-DS-920) Shared P0 / Phase 1b: Intelligence baseline repair
   - [x] (T-DS-921) Implement real `RoleEvolution` computation — replaced stub with top-K skills per family per month from `JobEntities`
   - [x] (T-DS-922) Compute skill shares correctly — `aggregate_skill_trends` now computes real `share` (skill_count / total_mentions); was hardcoded 0.0
-  - [ ] (T-DS-923) Add representativeness reporting (`source mix`, `geography`, `sector`, coverage gaps)
-  - [ ] (T-DS-924) Replace hardcoded pathways / skills-gap content with market-derived baselines
+  - [x] (T-DS-923) Add representativeness reporting (`source mix`, `geography`, `sector`, coverage gaps) — `analytics.get_intelligence_metadata()` now returns geography, sector distribution, and coverage gaps
+  - [x] (T-DS-924) Replace hardcoded pathways / skills-gap content with market-derived baselines — `career_pathways_service.py` and `skills_gap_service.py` use `RoleSkillBaseline` and live market data with fallback only where needed
   - [x] (T-DS-925) Standardize intelligence output semantics — `get_intelligence_metadata()` returns `date_range`, `sample_size`, `source_mix`, `confidence_note`
-- [ ] (T-DS-930) Phase 2: Candidate evidence + provenance model
-  - [ ] (T-DS-931) Add candidate evidence schema (portfolio items, projects, work samples, gig/informal work)
-  - [ ] (T-DS-932) Build CV / portfolio ingestion + evidence extraction pipeline
-  - [ ] (T-DS-933) Add verification provenance schema (`evidence source`, `assessment version`, `confidence`, `expiry`)
-  - [ ] (T-DS-934) Add intelligence provenance schema exposed in user-facing outputs
-- [ ] (T-DS-940) Phase 3: Skill verification system
-  - [ ] (T-DS-941) Build question banks derived from real job requirements for launch role families
-  - [ ] (T-DS-942) Build assessment delivery + scoring + certification service
-  - [ ] (T-DS-943) Add percentile / calibration logic and assessment versioning
-  - [ ] (T-DS-944) Build employer-visible verification summaries and evidence bundles
-  - [ ] (T-DS-945) Add requirement-extraction QA for verification launch families
-- [ ] (T-DS-950) Phase 4: Employer-side pre-screening ("The 20")
-  - [ ] (T-DS-951) Add employer / recruiter account and permissions model
-  - [ ] (T-DS-952) Build candidate-to-job scoring service (verified skills + evidence + fit)
-  - [ ] (T-DS-953) Build shortlist API + explanation bundles
-  - [ ] (T-DS-954) Attach intelligence sidecars to shortlists (`required skills`, `demand`, `salary`, `confidence`)
-- [ ] (T-DS-960) Phase 5: Feedback loops + outcome learning
-  - [ ] (T-DS-961) Add employer quick-rating taxonomy and capture flow
-  - [ ] (T-DS-962) Build candidate-facing rejection feedback generator
-  - [ ] (T-DS-963) Feed outcomes back into ranking / matching
-  - [ ] (T-DS-964) Feed outcomes back into intelligence products and reports
-- [ ] (T-DS-970) Phase 6: Production-grade intelligence products
-  - [ ] (T-DS-971) Build confidence-aware analytics APIs and baseline refresh hardening
-  - [ ] (T-DS-972) Build report-grade datasets/templates for universities, employers, counties, and training providers
-  - [ ] (T-DS-973) Add salary intelligence confidence and error tracking
-  - [ ] (T-DS-974) Build intelligence export / report endpoints
-- [ ] (T-DS-980) Phase 7: Model stack consolidation
-  - [ ] (T-DS-981) Standardize embedding model and dimension across services
-  - [ ] (T-DS-982) Define canonical feature contract for ranking / matching
-  - [ ] (T-DS-983) Add algorithm registry + evaluation-linked versioning
-  - [ ] (T-DS-984) Add intelligence metric registry
-  - [ ] (T-DS-985) Remove or hard-gate non-semantic hash-vector fallback from semantic ranking/search paths; expose degraded mode explicitly in health/monitoring
+- [x] (T-DS-930) Phase 2: Candidate evidence + provenance model
+  - [x] (T-DS-931) Add candidate evidence schema (portfolio items, projects, work samples, gig/informal work)
+  - [x] (T-DS-932) Build CV / portfolio ingestion + evidence extraction pipeline
+  - [x] (T-DS-933) Add verification provenance schema (`evidence source`, `assessment version`, `confidence`, `expiry`)
+  - [x] (T-DS-934) Add intelligence provenance schema exposed in user-facing outputs
+- [x] (T-DS-940) Phase 3: Skill verification system
+  - [x] (T-DS-941) Build question banks derived from real job requirements for launch role families
+  - [x] (T-DS-942) Build assessment delivery + scoring + certification service
+  - [x] (T-DS-943) Add percentile / calibration logic and assessment versioning
+  - [x] (T-DS-944) Build employer-visible verification summaries and evidence bundles
+  - [x] (T-DS-945) Add requirement-extraction QA for verification launch families
+- [x] (T-DS-950) Phase 4: Employer-side pre-screening ("The 20")
+  - [x] (T-DS-951) Add employer / recruiter account and permissions model — `EmployerAccount`, `EmployerUser`, `CandidateShortlist`, `CandidateShortlistEntry` models + Alembic migration `d4e5f6a7b8c9`
+  - [x] (T-DS-952) Build candidate-to-job scoring service (verified skills + evidence + fit) — `backend/app/services/prescreening.py`: weighted composite of `verified_skill_score` (0.55), `evidence_score` (0.30), `profile_score` (0.15)
+  - [x] (T-DS-953) Build shortlist API + explanation bundles — `backend/app/api/employer_routes.py`: GET candidates, POST shortlist, GET/list shortlists with explanation bundles
+  - [x] (T-DS-954) Attach intelligence sidecars to shortlists — `build_intelligence_sidecar()` pulls `RoleSkillBaseline`, `RoleDemandSnapshot`, `MetricsDaily` into every shortlist/candidate response
+- [x] (T-DS-960) Phase 5: Feedback loops + outcome learning
+  - [x] (T-DS-961) Add employer quick-rating taxonomy and capture flow — `EmployerCandidateRating` model + migration `e5f6a7b8c9d0` + POST/GET `/api/employer/ratings`
+  - [x] (T-DS-962) Build candidate-facing rejection feedback generator — `backend/app/services/feedback.py`: template-driven feedback + skills_to_develop from `RoleSkillBaseline`; exposed via GET `/api/users/applications/{id}/feedback`
+  - [x] (T-DS-963) Feed outcomes back into ranking / matching — `ranking_trainer.py` extended with `_collect_from_funnel_events()`: hired/offered → positive, employer-rejected → negative; employer ratings strong_yes/yes → positive, no/strong_no → negative
+  - [x] (T-DS-964) Feed outcomes back into intelligence products and reports — `backend/app/services/outcome_intelligence.py`: rejection patterns, hiring outcomes, rating sentiment by role family; exposed via GET `/api/admin/outcome-intelligence`
+- [x] (T-DS-970) Phase 6: Production-grade intelligence products
+  - [x] (T-DS-971) Build confidence-aware analytics APIs and baseline refresh hardening — `backend/app/services/intelligence_products.py`: `get_baseline_health()` checks staleness of all 4 baseline tables (age_days, stale, low_confidence_pct); `get_confidence_aware_skill_baseline()` adds tier/sample_size/note metadata; `GET /api/intelligence/baseline-health`, `GET /api/intelligence/skill-baseline/{role}`
+  - [x] (T-DS-972) Build report-grade datasets/templates for universities, employers, counties, and training providers — `build_university_report()`, `build_employer_report()`, `build_county_report()`, `build_training_provider_report()` in intelligence_products.py; exposed via `GET /api/intelligence/reports/{type}`
+  - [x] (T-DS-973) Add salary intelligence confidence and error tracking — `get_salary_with_market_context()`: market-backed (job postings + MetricsDaily) vs. heuristic fallback, confidence tier (high/medium/low), low-confidence call audit log; `get_salary_confidence_summary()` by role family; `GET /api/intelligence/salary/{role_family}`, `GET /api/intelligence/salary/confidence-summary`, `GET /api/intelligence/salary/low-confidence-log`
+  - [x] (T-DS-974) Build intelligence export / report endpoints — `backend/app/api/intelligence_routes.py`: 11 endpoints covering baseline health, all 4 report types, salary intelligence, CSV+JSON exports for skills-gap and market-snapshot; registered in main.py; 25 tests in `backend/tests/test_intelligence_products.py`
+- [x] (T-DS-980) Phase 7: Model stack consolidation
+  - [x] (T-DS-981) Standardize embedding model and dimension — `backend/app/ml/model_registry.py`: `CANONICAL_EMBEDDING_MODEL_SHORT/HF/DIM`; `embeddings.py` and `search.py` now source from registry instead of inline strings/env vars
+  - [x] (T-DS-982) Define canonical feature contract — `FEATURE_CONTRACT` (8 FeatureSpec entries) + `FEATURE_DIM` in `model_registry.py`; `RankingModel.features_dim` derives from `FEATURE_DIM`; `GET /api/intelligence/feature-contract`
+  - [x] (T-DS-983) Algorithm registry + eval versioning — JSON-persisted `algorithm_registry.json` in `backend/var/`; `load/update_algorithm_registry()`, `record_ranking_train()`; `GET /api/intelligence/algorithm-registry`
+  - [x] (T-DS-984) Intelligence metric registry — `IntelligenceMetricSnapshot` dataclass + `get_metric_registry()`; aggregates embedding mode, feature contract, algorithm registry, baseline health; `GET /api/intelligence/metric-registry`
+  - [x] (T-DS-985) Hard-gate hash-vector fallback — `set/is_hash_fallback_active()` in registry; `embeddings.py` calls `set_hash_fallback_active(True)` on failure; `search.py` uses `is_hash_fallback_active()` instead of raw env check; `degraded_mode` field in search response; `GET /api/intelligence/embedding-mode`
 - Execution order (recommended, if `PROBLEM.md` remains source of truth):
   1. `T-DS-900` → `T-DS-910` → `T-DS-920`
   2. `T-DS-930` → `T-DS-940` → `T-DS-950` → `T-DS-960`
@@ -289,6 +289,23 @@
 
 ## Logs
 
+### 2026-03-23 (T-DS-980: Model stack consolidation)
+- T-DS-981: `CANONICAL_EMBEDDING_MODEL_SHORT/HF/DIM` in `model_registry.py`; `embeddings.py` + `search.py` unified
+- T-DS-982: `FEATURE_CONTRACT` (8-dim) + `FEATURE_DIM` in registry; `RankingModel.features_dim` uses it; feature-contract endpoint
+- T-DS-983: JSON algorithm registry (`backend/var/algorithm_registry.json`); `load/update_algorithm_registry()`; algorithm-registry endpoint
+- T-DS-984: `IntelligenceMetricSnapshot` + `get_metric_registry()`; metric-registry endpoint
+- T-DS-985: `set/is_hash_fallback_active()` in registry; `search.py` hard-gates hash path; `degraded_mode` in search response; embedding-mode endpoint
+- Tests: `backend/tests/test_model_stack.py` — 18 tests, all passing
+- Verification: `backend/venv3.11_new/bin/pytest backend/tests/test_model_stack.py -q` → 18 passed
+
+### 2026-03-23 (T-DS-970: Production-grade intelligence products)
+- T-DS-971: `get_baseline_health()` + `get_confidence_aware_skill_baseline()` in `intelligence_products.py`; staleness checks on all 4 baseline tables; `GET /api/intelligence/baseline-health` + `GET /api/intelligence/skill-baseline/{role}`
+- T-DS-972: `build_university_report()`, `build_employer_report()`, `build_county_report()`, `build_training_provider_report()` — 4 report templates; `GET /api/intelligence/reports/{university|employer|county|training-provider}`
+- T-DS-973: `get_salary_with_market_context()` — market-backed vs. heuristic, confidence tier, low-confidence audit log; `get_salary_confidence_summary()`; 3 salary endpoints
+- T-DS-974: `backend/app/api/intelligence_routes.py` — 11 endpoints; CSV + JSON exports for skills-gap and market-snapshot; registered in `main.py`
+- Tests: `backend/tests/test_intelligence_products.py` — 25 tests, all passing (51 total with feedback/prescreening, no regressions)
+- Verification: `backend/venv3.11_new/bin/pytest backend/tests/test_intelligence_products.py backend/tests/test_feedback_loops.py backend/tests/test_prescreening.py -q` → 51 passed
+
 ### 2026-03-23 (T-DS-900 Planning Backlog Translation)
 - Translated `DS_ML.md` into an execution backlog section in `changemap.md` with dedicated `T-DS-*` task IDs.
 - Added implementation ordering for both:
@@ -303,6 +320,20 @@
 - No code or test changes in this step; documentation/control-plane update only.
 - Verification:
   - Not run (planning/docs-only change)
+
+### 2026-03-23 (T-DS-900 Control Plane Contract + DS Backlog Reconciliation)
+- Added `docs/ds-product-contract.md` as the canonical DS control-plane contract.
+- Completed `T-DS-901` through `T-DS-904`:
+  - selected `Trust-Layer First` as the primary execution track
+  - fixed the score glossary (`retrieval`, `heuristic`, `verification`, `shortlist`, `feedback`)
+  - defined mission and intelligence metric trees
+  - published the two-track roadmap with the trust-layer track as primary
+- Reconciled stale DS backlog entries against branch history:
+  - marked `T-DS-920` complete now that `T-DS-923/924` are already on-branch
+  - marked `T-DS-930` complete from commit `199a84c`
+  - marked `T-DS-940` complete from commit `6262e11`
+- Verification:
+  - Not run (docs/control-plane reconciliation only)
 
 ### 2026-02-15 (Hardening T-602: Monitoring metrics + thresholds)
 - Extended monitoring gate logic in `backend/app/services/monitoring_service.py`:
@@ -973,6 +1004,24 @@
   - `backend/venv3.11/bin/ruff format backend/app/scrapers/scraper.py backend/app/scrapers/postgres_db.py` (pass)
   - `backend/venv3.11/bin/ruff check backend/app/scrapers/scraper.py backend/app/scrapers/postgres_db.py` (pass)
   - `backend/venv3.11/bin/pytest -q` (246 passed, 1 skipped)
+
+### 2026-03-23 (T-DS-914/915/918: Evaluation Harness + Quality Dashboard)
+- Added `backend/app/services/evaluation_service.py` to compute:
+  - offline search effectiveness metrics from `SearchServingLog` + `UserAnalytics` apply outcomes
+  - offline recommendation metrics from `UserJobRecommendation` + clicked/saved/applied outcomes
+  - held-out ranking quality metrics over logged sessions
+  - intelligence quality dashboard payload combining baseline health and market metadata
+- Added new intelligence endpoints:
+  - `GET /api/intelligence/evaluation/search`
+  - `GET /api/intelligence/evaluation/recommendations`
+  - `GET /api/intelligence/evaluation/ranking-quality`
+  - `GET /api/intelligence/quality-dashboard`
+- Added focused coverage in `backend/tests/test_evaluation_service.py`.
+- Verification:
+  - `backend/venv3.11/bin/ruff check backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+  - `backend/venv3.11/bin/ruff format --check backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+  - `python3 -m py_compile backend/app/services/evaluation_service.py backend/app/api/intelligence_routes.py backend/tests/test_evaluation_service.py` (pass)
+  - `(BLOCKED) pytest not runnable locally: only `backend/venv3.11/bin/ruff` exists in the checked-in tool path, and system Python lacks both `pytest` and `sqlalchemy`; next: run `pytest` in CI/VPS or provision a full local venv.`
 
 ### 2026-01-25 (Prior Context)
 - (agent instruction audit) Added compatibility instruction files and flagged `docs/archive/root/agent-work.md` as an archived snapshot.
