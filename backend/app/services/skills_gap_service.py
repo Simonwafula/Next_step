@@ -26,13 +26,41 @@ class SkillsGapService:
 
         # T-DS-924: market-derived core skills from RoleSkillBaseline
         skill_rows = db.execute(
-            select(RoleSkillBaseline.skill_name)
+            select(
+                RoleSkillBaseline.skill_name,
+                RoleSkillBaseline.updated_at,
+                RoleSkillBaseline.count_total_jobs_used,
+                RoleSkillBaseline.low_confidence,
+            )
             .where(func.lower(RoleSkillBaseline.role_family) == family)
             .where(RoleSkillBaseline.low_confidence.is_(False))
             .order_by(desc(RoleSkillBaseline.skill_share))
             .limit(8)
         ).all()
         required_skills = [row.skill_name for row in skill_rows]
+
+        # T-DS-934: intelligence provenance — surface baseline freshness + sample size
+        baseline_updated_at = (
+            max(row.updated_at for row in skill_rows if row.updated_at).isoformat()
+            if skill_rows
+            else None
+        )
+        baseline_sample_size = (
+            max(
+                row.count_total_jobs_used
+                for row in skill_rows
+                if row.count_total_jobs_used
+            )
+            if skill_rows
+            else 0
+        )
+        intelligence_provenance = {
+            "baseline_updated_at": baseline_updated_at,
+            "sample_size": baseline_sample_size,
+            "confidence_note": "market-derived"
+            if skill_rows
+            else "no baseline — generic guidance only",
+        }
 
         candidate_skills = {
             str(skill).strip().lower()
@@ -80,6 +108,8 @@ class SkillsGapService:
                 "60_days": "Ship at least one portfolio project demonstrating target-role capabilities.",
                 "90_days": "Apply to roles with tailored CV and track interview outcomes weekly.",
             },
+            # T-DS-934: intelligence provenance for user-facing transparency
+            "intelligence_provenance": intelligence_provenance,
         }
 
     def _best_fit_roles(self, candidate_skills: set[str], db: Session) -> list[str]:
