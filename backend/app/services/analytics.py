@@ -10,12 +10,12 @@ from ..db.models import (
     JobEntities,
     Location,
     Organization,
-    TitleNorm,
-    SkillTrendsMonthly,
     RoleEvolution,
-    TitleAdjacency,
-    JobSkill,
     Skill,
+    SkillTrendsMonthly,
+    TitleAdjacency,
+    TitleNorm,
+    JobSkill,
 )
 
 
@@ -345,6 +345,62 @@ def get_intelligence_metadata(
     else:
         confidence_note = "low — interpret with caution"
 
+    # T-DS-923: Geography distribution (top cities/regions)
+    geo_stmt = (
+        select(Location.city, Location.region, func.count(JobPost.id))
+        .join(Location, JobPost.location_id == Location.id)
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+        .group_by(Location.city, Location.region)
+        .order_by(desc(func.count(JobPost.id)))
+        .limit(10)
+    )
+    if role_family:
+        geo_stmt = geo_stmt.join(
+            TitleNorm, JobPost.title_norm_id == TitleNorm.id
+        ).where(TitleNorm.family == role_family)
+    geography = [
+        {"city": city, "region": region, "count": cnt}
+        for city, region, cnt in db.execute(geo_stmt).all()
+        if city or region
+    ]
+
+    # T-DS-923: Sector distribution (top org sectors)
+    sector_stmt = (
+        select(Organization.sector, func.count(JobPost.id))
+        .join(Organization, JobPost.org_id == Organization.id)
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+        .where(Organization.sector.is_not(None))
+        .group_by(Organization.sector)
+        .order_by(desc(func.count(JobPost.id)))
+        .limit(10)
+    )
+    if role_family:
+        sector_stmt = sector_stmt.join(
+            TitleNorm, JobPost.title_norm_id == TitleNorm.id
+        ).where(TitleNorm.family == role_family)
+    sector_distribution = [
+        {"sector": sec, "count": cnt}
+        for sec, cnt in db.execute(sector_stmt).all()
+    ]
+
+    # T-DS-923: Coverage gaps — role families with < 10 active jobs
+    gap_stmt = (
+        select(TitleNorm.family, func.count(JobPost.id).label("cnt"))
+        .join(TitleNorm, JobPost.title_norm_id == TitleNorm.id)
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+        .group_by(TitleNorm.family)
+        .having(func.count(JobPost.id) < 10)
+        .order_by(func.count(JobPost.id))
+        .limit(20)
+    )
+    coverage_gaps = [
+        {"role_family": fam, "job_count": cnt}
+        for fam, cnt in db.execute(gap_stmt).all()
+    ]
+
     return {
         "sample_size": total,
         "date_range": {
@@ -353,6 +409,9 @@ def get_intelligence_metadata(
             "window_days": window_days,
         },
         "source_mix": source_mix,
+        "geography": geography,
+        "sector_distribution": sector_distribution,
+        "coverage_gaps": coverage_gaps,
         "confidence_note": confidence_note,
         "role_family": role_family,
     }

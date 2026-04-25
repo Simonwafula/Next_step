@@ -176,6 +176,7 @@ async def activate_subscription(
 async def skills_gap_scan(
     request: SkillsGapScanRequest,
     current_user: User = Depends(require_subscription("professional")),
+    db: Session = Depends(get_db),
 ):
     """Run a premium skills gap scan for the authenticated user."""
     profile = current_user.profile
@@ -194,6 +195,7 @@ async def skills_gap_scan(
         target_role=request.target_role,
         experience_level=profile.experience_level,
         preferred_location=preferred_location,
+        db=db,
     )
 
 

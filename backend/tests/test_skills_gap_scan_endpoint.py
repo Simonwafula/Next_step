@@ -8,7 +8,7 @@ from sqlalchemy.orm import joinedload
 
 from app.api.user_routes import router as user_router
 from app.db.database import get_db
-from app.db.models import User, UserProfile
+from app.db.models import User, UserProfile, RoleSkillBaseline
 from app.services.auth_service import get_current_user
 
 
@@ -63,6 +63,25 @@ def professional_user_with_profile(db_session_factory):
         preferred_locations=["Nairobi"],
     )
     db.add(profile)
+
+    # Seed RoleSkillBaseline for "data scientist" so market-derived scan works
+    for skill, share in [
+        ("python", 0.90),
+        ("sql", 0.78),
+        ("machine learning", 0.75),
+        ("statistics", 0.60),
+        ("data visualization", 0.55),
+    ]:
+        db.add(
+            RoleSkillBaseline(
+                role_family="data scientist",
+                skill_name=skill,
+                skill_share=share,
+                low_confidence=False,
+                count_total_jobs_used=40,
+            )
+        )
+
     db.commit()
     user_id = user.id
     db.close()
