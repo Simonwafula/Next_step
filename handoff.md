@@ -1,5 +1,26 @@
 # Handoff
 
+## 2026-04-25 (T-MERGE: Main Branch Consolidation)
+
+Branch: `main`
+
+Commit: `pending`
+
+### Summary
+- Merged all remote branches not yet in `main`: search quality signals, market baselines, candidate evidence/provenance, skill verification, and seniority rollout.
+- Kept the current dirty feature worktree untouched by performing the merge in `/tmp/nextstep-main-clean`.
+- Preserved the frontend-downloadable analysis outputs at `frontend/assets/analysis_outputs/`.
+- Resolved merge fallout in analytics skill normalization, search degraded-mode response shape, archived logo file modes, and append-only handoff logs.
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format --check .` -> `253 files already formatted`
+- `backend/venv3.11/bin/ruff check .` -> `All checks passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q` -> `388 passed, 1 skipped, 7 warnings`
+
+### Remaining Next Step
+1. Push `main` after committing the merge-fix and verification log updates.
+2. The original `/home/nextstep.co.ke/public_html` worktree still has unrelated uncommitted local changes; review separately before any cleanup.
+
 ## 2026-04-18 (T-1A12 Action 2: Reviewed Seniority Audit Set)
 
 Branch: `feat/T-1A12-seniority-rollout`

@@ -46,7 +46,9 @@ def backfill_normalized_entities(
                 continue
 
             target = (
-                db.query(Organization).filter(Organization.name == normalized).one_or_none()
+                db.query(Organization)
+                .filter(Organization.name == normalized)
+                .one_or_none()
             )
             if target and target.id != org.id:
                 moved = (

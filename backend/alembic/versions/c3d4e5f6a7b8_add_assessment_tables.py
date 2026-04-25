@@ -67,9 +67,7 @@ def upgrade() -> None:
     op.create_table(
         "assessment_session",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column(
-            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
-        ),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
         sa.Column("role_family", sa.String(120), nullable=False),
         sa.Column(
             "status", sa.String(20), nullable=False, server_default="in_progress"
@@ -100,9 +98,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_assessment_session_role_family", "assessment_session", ["role_family"]
     )
-    op.create_index(
-        "ix_assessment_session_status", "assessment_session", ["status"]
-    )
+    op.create_index("ix_assessment_session_status", "assessment_session", ["status"])
     op.create_index(
         "idx_as_user_role", "assessment_session", ["user_id", "role_family"]
     )
@@ -132,12 +128,8 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
     )
-    op.create_index(
-        "ix_asa_session_id", "assessment_session_answer", ["session_id"]
-    )
-    op.create_index(
-        "ix_asa_question_id", "assessment_session_answer", ["question_id"]
-    )
+    op.create_index("ix_asa_session_id", "assessment_session_answer", ["session_id"])
+    op.create_index("ix_asa_question_id", "assessment_session_answer", ["question_id"])
 
 
 def downgrade() -> None:

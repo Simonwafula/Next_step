@@ -1,6 +1,5 @@
 """Tests for T-DS-980: Model stack consolidation."""
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -77,6 +76,7 @@ def test_ranking_model_uses_feature_dim():
     # Import here to avoid numpy at collection time in lean test venv
     import sys
     import types
+
     # Stub numpy so ranking.py can be imported without the real package
     if "numpy" not in sys.modules:
         np_stub = types.ModuleType("numpy")
@@ -86,6 +86,7 @@ def test_ranking_model_uses_feature_dim():
         np_stub.argsort = sorted
         sys.modules["numpy"] = np_stub
     from app.services.ranking import RankingModel  # noqa: PLC0415
+
     model = RankingModel()
     assert model.features_dim == FEATURE_DIM
 
@@ -144,7 +145,8 @@ def test_get_metric_registry_with_db(db_session_factory):
 # ---------------------------------------------------------------------------
 
 
-def test_set_hash_fallback_active_false():
+def test_set_hash_fallback_active_false(monkeypatch):
+    monkeypatch.delenv("NEXTSTEP_DISABLE_TRANSFORMERS", raising=False)
     set_hash_fallback_active(False)
     assert not is_hash_fallback_active()
 

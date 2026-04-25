@@ -235,7 +235,9 @@ class TestScoringService:
 
         result = score_candidate_for_job(candidate_user.id, job_with_entities.id, db)
         db.close()
-        assert result["score_breakdown"]["verified_skill_score"] == pytest.approx(0.85, abs=0.01)
+        assert result["score_breakdown"]["verified_skill_score"] == pytest.approx(
+            0.85, abs=0.01
+        )
         assert result["overall_score"] > 0.4
 
     def test_score_missing_job_entities_gives_zero(

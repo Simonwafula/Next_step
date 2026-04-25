@@ -185,7 +185,9 @@ def run_incremental_dedup(db, batch_size: int = 500) -> dict:
             break
 
         for job_id, text, title_raw, first_seen, org_name in rows:
-            composite_key = build_title_company_date_key(title_raw, org_name, first_seen)
+            composite_key = build_title_company_date_key(
+                title_raw, org_name, first_seen
+            )
             composite_match_id = (
                 seen_composite_keys.get(composite_key) if composite_key else None
             )

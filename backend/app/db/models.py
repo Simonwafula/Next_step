@@ -1039,7 +1039,9 @@ class EmployerCandidateRating(Base):
     # Funnel stage at the time of rating (e.g. "shortlisted", "interviewed")
     stage_at_rating: Mapped[str | None] = mapped_column(String(30), nullable=True)
 
-    rated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
+    rated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=datetime.utcnow, index=True
+    )
 
     __table_args__ = (
         Index(

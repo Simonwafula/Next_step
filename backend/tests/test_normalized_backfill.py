@@ -19,11 +19,18 @@ def test_backfill_normalized_entities_repoints_duplicate_organization_refs(
     db_session_factory,
 ):
     db = db_session_factory()
-    org_a = Organization(name="Jobs at Safaricom Kenya Ltd", verified=False, sector="Tech")
+    org_a = Organization(
+        name="Jobs at Safaricom Kenya Ltd", verified=False, sector="Tech"
+    )
     org_b = Organization(name="Safaricom Kenya", verified=False)
     db.add_all([org_a, org_b])
     db.flush()
-    job = JobPost(source="rss", url="https://example.com/job/1", title_raw="Analyst", org_id=org_a.id)
+    job = JobPost(
+        source="rss",
+        url="https://example.com/job/1",
+        title_raw="Analyst",
+        org_id=org_a.id,
+    )
     db.add(job)
     db.commit()
 

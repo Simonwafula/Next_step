@@ -8,7 +8,6 @@ This service provides advanced deduplication logic for job postings including:
 - Company + title + location composite matching
 """
 
-import re
 import hashlib
 from typing import Dict, List, Optional, Tuple
 from urllib.parse import urlparse, parse_qs, urlencode, urlunparse

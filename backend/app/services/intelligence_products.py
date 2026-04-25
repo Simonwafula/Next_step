@@ -790,9 +790,9 @@ def get_salary_confidence_summary(db: Session, window_days: int = 90) -> dict[st
         select(
             TitleNorm.family,
             func.count(JobPost.id).label("total"),
-            func.sum(
-                case((JobPost.salary_min.is_not(None), 1), else_=0)
-            ).label("with_salary"),
+            func.sum(case((JobPost.salary_min.is_not(None), 1), else_=0)).label(
+                "with_salary"
+            ),
         )
         .join(TitleNorm, JobPost.title_norm_id == TitleNorm.id, isouter=True)
         .where(JobPost.is_active.is_(True), JobPost.first_seen >= since)

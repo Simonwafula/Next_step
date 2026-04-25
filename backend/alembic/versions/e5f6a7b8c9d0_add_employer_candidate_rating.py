@@ -43,7 +43,9 @@ def upgrade() -> None:
         sa.Column("reason", sa.String(60), nullable=True),
         sa.Column("comment", sa.Text(), nullable=True),
         sa.Column("stage_at_rating", sa.String(30), nullable=True),
-        sa.Column("rated_at", sa.DateTime(), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "rated_at", sa.DateTime(), nullable=False, server_default=sa.func.now()
+        ),
     )
     op.create_index(
         "ix_ecr_employer_account_id",
@@ -60,15 +62,9 @@ def upgrade() -> None:
         "employer_candidate_rating",
         ["candidate_user_id"],
     )
-    op.create_index(
-        "ix_ecr_job_post_id", "employer_candidate_rating", ["job_post_id"]
-    )
-    op.create_index(
-        "ix_ecr_sentiment", "employer_candidate_rating", ["sentiment"]
-    )
-    op.create_index(
-        "ix_ecr_rated_at", "employer_candidate_rating", ["rated_at"]
-    )
+    op.create_index("ix_ecr_job_post_id", "employer_candidate_rating", ["job_post_id"])
+    op.create_index("ix_ecr_sentiment", "employer_candidate_rating", ["sentiment"])
+    op.create_index("ix_ecr_rated_at", "employer_candidate_rating", ["rated_at"])
     op.create_index(
         "idx_ecr_employer_candidate_job",
         "employer_candidate_rating",

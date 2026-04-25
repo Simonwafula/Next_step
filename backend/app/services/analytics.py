@@ -40,7 +40,9 @@ def aggregate_skill_trends(db: Session):
         month = dt.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
         # skills is stored as JSONB list
         for skill in skills or []:
-            data.append({"month": month, "family": family, "skill": skill})
+            name = skill.get("value", skill) if isinstance(skill, dict) else skill
+            if name:
+                data.append({"month": month, "family": family, "skill": str(name)})
 
     df = pd.DataFrame(data)
     if df.empty:
@@ -381,8 +383,7 @@ def get_intelligence_metadata(
             TitleNorm, JobPost.title_norm_id == TitleNorm.id
         ).where(TitleNorm.family == role_family)
     sector_distribution = [
-        {"sector": sec, "count": cnt}
-        for sec, cnt in db.execute(sector_stmt).all()
+        {"sector": sec, "count": cnt} for sec, cnt in db.execute(sector_stmt).all()
     ]
 
     # T-DS-923: Coverage gaps — role families with < 10 active jobs

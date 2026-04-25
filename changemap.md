@@ -1183,3 +1183,30 @@ Added to `main.css`:
 - Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_search_modes.py -q` -> `4 passed`
 - Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_guided_explore.py backend/tests/test_guided_advance.py backend/tests/test_guided_match.py backend/tests/test_public_apply_redirect.py -q` -> `7 passed`
 - Tests 2026-04-08: `/home/nextstep.co.ke/.venv/bin/pytest backend/tests/test_dashboard_endpoints.py backend/tests/test_career_pathways_endpoint.py backend/tests/test_subscription_paywall.py backend/tests/test_public_apply_redirect.py backend/tests/test_search_modes.py -q` -> `71 passed`
+
+## T-MERGE Main Branch Consolidation (2026-04-25) — DONE
+
+### What changed
+- Merged all remote feature branches that were not yet in `main`:
+  - `origin/feat/T-1A4-1A6-search-quality-signals`
+  - `origin/feat/T-DS-923-924-representativeness-market-baselines`
+  - `origin/feat/T-DS-930-934-candidate-evidence-provenance`
+  - `origin/feat/T-DS-940-945-skill-verification`
+  - `origin/feat/T-1A12-seniority-rollout`
+- Preserved the downloadable assignment/analysis outputs under `frontend/assets/analysis_outputs/`.
+- Resolved merge conflicts in archived logo file modes, append-only handoff logs, analytics imports, and the public search response contract.
+- Fixed post-merge regressions:
+  - normalized dict-shaped `JobEntities.skills` values before skill trend aggregation
+  - restored the missing `os` import for search confidence configuration
+  - removed unused imports surfaced by Ruff
+  - isolated the hash-fallback unit test from `NEXTSTEP_DISABLE_TRANSFORMERS` in the VPS environment
+
+### Verification
+- `backend/venv3.11/bin/ruff format --check .` -> `253 files already formatted`
+- `backend/venv3.11/bin/ruff check .` -> `All checks passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q` -> `388 passed, 1 skipped, 7 warnings`
+- Initial full pytest pass found 2 regressions; both were fixed and verified with focused tests before the clean full rerun.
+
+### Notes
+- Merge work was performed in `/tmp/nextstep-main-clean` to avoid touching the dirty `/home/nextstep.co.ke/public_html` feature worktree.
+- `.pilot/tasks/` is absent in this checkout, so status was recorded in `changemap.md` and handoff files.
