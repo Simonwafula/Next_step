@@ -288,6 +288,34 @@ class TestAnalyticsEndpoints:
         assert "title_b" in item
         assert "similarity" in item
 
+    def test_market_pulse_empty(self, client):
+        resp = client.get("/analytics/market-pulse")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sample"]["job_count"] == 0
+        assert data["top_skills"] == []
+        assert data["top_companies"] == []
+
+    def test_market_pulse_with_query(self, client, seeded_db):
+        resp = client.get(
+            "/analytics/market-pulse",
+            params={"query": "Software", "period": "monthly", "window_days": 180},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["query"] == "Software"
+        assert data["sample"]["job_count"] >= 1
+        assert data["series"][0]["job_count"] >= 1
+        assert data["top_skills"][0]["skill"] == "Python"
+        assert data["top_companies"][0]["company"] == "Acme Corp"
+
+    def test_market_pulse_caps_public_window(self, client):
+        resp = client.get(
+            "/analytics/market-pulse",
+            params={"window_days": 1095},
+        )
+        assert resp.status_code == 422
+
 
 # ---------------------------------------------------------------------------
 # Admin overview

@@ -3,6 +3,7 @@ from sqlalchemy.orm import Session
 
 from ..db.database import get_db
 from ..services.analytics import (
+    get_operations_intelligence_rollup,
     get_skill_trends,
     get_role_evolution,
     get_title_adjacency,
@@ -38,3 +39,30 @@ def title_adjacency(
     db: Session = Depends(get_db),
 ):
     return get_title_adjacency(db, title=title, limit=limit)
+
+
+@router.get("/market-pulse")
+def market_pulse(
+    query: str | None = Query(None, min_length=1, max_length=80),
+    period: str = Query("monthly", pattern="^(daily|monthly|quarterly|annual)$"),
+    window_days: int = Query(180, ge=30, le=365),
+    limit: int = Query(5, ge=1, le=8),
+    db: Session = Depends(get_db),
+):
+    rollup = get_operations_intelligence_rollup(
+        db,
+        query=query,
+        period=period,
+        window_days=window_days,
+        limit=limit,
+    )
+    return {
+        "query": rollup["query"],
+        "period": rollup["period"],
+        "window_days": rollup["window_days"],
+        "sample": rollup["sample"],
+        "series": rollup["series"][-6:],
+        "top_skills": rollup["top_skills"][:limit],
+        "top_companies": rollup["top_companies"][:limit],
+        "top_sectors": rollup["top_sectors"][:limit],
+    }

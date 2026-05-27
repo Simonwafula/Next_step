@@ -12,6 +12,13 @@ const guidedResults = document.getElementById('guidedResults');
 const guidedResultsGrid = document.getElementById('guidedResultsGrid');
 const guidedModeError = document.getElementById('guidedModeError');
 const resultsFilters = document.getElementById('resultsFilters');
+const marketPulse = document.getElementById('marketPulse');
+const marketPulseTitle = document.getElementById('marketPulseTitle');
+const marketPulseWindow = document.getElementById('marketPulseWindow');
+const marketPulseSummary = document.getElementById('marketPulseSummary');
+const marketPulseChart = document.getElementById('marketPulseChart');
+const marketPulseSkills = document.getElementById('marketPulseSkills');
+const marketPulseCompanies = document.getElementById('marketPulseCompanies');
 const roleFamilyClustersEl = document.getElementById('roleFamilyClusters');
 const seniorityClustersEl = document.getElementById('seniorityClusters');
 const countyClustersEl = document.getElementById('countyClusters');
@@ -725,6 +732,112 @@ const renderGuidedResults = (payload, mode) => {
     });
 };
 
+const renderMarketPulseList = (target, items = [], keyName, emptyMessage) => {
+    if (!target) return;
+    if (!items.length) {
+        target.innerHTML = `<p class="panel-note">${escapeHtml(emptyMessage)}</p>`;
+        return;
+    }
+    const maxCount = Math.max(...items.map((item) => Number(item.count || 0)), 1);
+    target.innerHTML = items
+        .slice(0, 5)
+        .map((item) => {
+            const count = Number(item.count || 0);
+            const share = Number(item.share_pct || 0).toFixed(1);
+            const width = Math.max((count / maxCount) * 100, 5).toFixed(1);
+            return `
+                <div class="market-pulse-row">
+                    <div>
+                        <strong>${escapeHtml(item[keyName] || 'Unknown')}</strong>
+                        <span>${escapeHtml(count)} · ${escapeHtml(share)}%</span>
+                    </div>
+                    <div class="market-pulse-track" aria-hidden="true">
+                        <span style="width: ${escapeHtml(width)}%"></span>
+                    </div>
+                </div>
+            `;
+        })
+        .join('');
+};
+
+const renderMarketPulseChart = (series = []) => {
+    if (!marketPulseChart) return;
+    if (!series.length) {
+        marketPulseChart.innerHTML = '<p class="panel-note">No signal yet.</p>';
+        return;
+    }
+    const maxCount = Math.max(...series.map((item) => Number(item.job_count || 0)), 1);
+    marketPulseChart.innerHTML = series
+        .map((item) => {
+            const count = Number(item.job_count || 0);
+            const height = Math.max((count / maxCount) * 100, 10).toFixed(1);
+            return `
+                <div class="market-pulse-column">
+                    <div class="market-pulse-column-track" aria-hidden="true">
+                        <span style="height: ${escapeHtml(height)}%"></span>
+                    </div>
+                    <strong>${escapeHtml(count)}</strong>
+                    <small>${escapeHtml(item.bucket || '--')}</small>
+                </div>
+            `;
+        })
+        .join('');
+};
+
+const renderMarketPulse = (payload) => {
+    if (!marketPulse) return;
+    const sample = payload?.sample || {};
+    const jobCount = Number(sample.job_count || 0);
+    const queryLabel = payload?.query || 'all active jobs';
+    if (marketPulseTitle) {
+        marketPulseTitle.textContent = payload?.query
+            ? `Hiring signal for ${payload.query}`
+            : 'Latest hiring signal';
+    }
+    if (marketPulseWindow) {
+        marketPulseWindow.textContent = payload
+            ? `${payload.period} · ${payload.window_days} days`
+            : 'Unavailable';
+    }
+    if (marketPulseSummary) {
+        marketPulseSummary.innerHTML = `
+            <div class="market-pulse-kpi">
+                <span>Matched jobs</span>
+                <strong>${escapeHtml(jobCount)}</strong>
+            </div>
+            <div class="market-pulse-kpi">
+                <span>Confidence</span>
+                <strong>${escapeHtml(sample.confidence_note || 'none')}</strong>
+            </div>
+            <div class="market-pulse-kpi">
+                <span>Scope</span>
+                <strong>${escapeHtml(queryLabel)}</strong>
+            </div>
+        `;
+    }
+    renderMarketPulseChart(payload?.series || []);
+    renderMarketPulseList(marketPulseSkills, payload?.top_skills || [], 'skill', 'No skill data yet.');
+    renderMarketPulseList(marketPulseCompanies, payload?.top_companies || [], 'company', 'No company data yet.');
+};
+
+const fetchMarketPulse = async (query = '') => {
+    if (!marketPulse) return;
+    const params = new URLSearchParams({
+        period: 'monthly',
+        window_days: '180',
+        limit: '5',
+    });
+    const cleanedQuery = query.trim();
+    if (cleanedQuery) params.set('query', cleanedQuery);
+    try {
+        const payload = await requestJson(`${apiBase}/analytics/market-pulse?${params.toString()}`);
+        renderMarketPulse(payload);
+    } catch (error) {
+        renderMarketPulse(null);
+        console.error('Failed to load market pulse:', error);
+    }
+};
+
 const fetchJobMatch = async (token, jobId) => {
     try {
         return await requestJson(`${apiBase}/users/job-match/${jobId}`, {
@@ -957,6 +1070,7 @@ const fetchResults = async () => {
     resultsMeta.textContent = 'Searching...';
     resultsTitle.textContent = 'Finding matches';
     updateSearchAlertButtonVisibility();
+    fetchMarketPulse(query);
 
     const params = new URLSearchParams({
         q: query,
@@ -1088,6 +1202,7 @@ const loadTrendingChips = async () => {
 
 // Load trending chips on page load
 loadTrendingChips();
+fetchMarketPulse();
 
 const chips = document.querySelectorAll('.chips .chip');
 chips.forEach((chip) => {

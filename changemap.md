@@ -22,6 +22,23 @@
 ### Notes
 - Repaired the active Ruff environment by installing `ruff==0.14.14` into `/home/nextstep.co.ke/.venv` because the repo wrapper `backend/venv3.11/bin/ruff` pointed there and initially failed with `No module named ruff`.
 
+## T-PUBLIC-INTEL-010 Public Market Pulse Widget (2026-05-27) — DONE
+
+### What changed
+- Added public `GET /api/analytics/market-pulse` as a limited, non-admin version of the operations-intelligence rollup.
+- The public endpoint accepts an optional job title/query and returns a capped market pulse: matched job count, confidence note, recent posting-volume buckets, top skills, top companies, and top sectors.
+- Added a compact homepage `Market pulse` panel in the search results area.
+- The widget loads a default hiring signal on page load and refreshes with the current search query.
+- Added responsive CSS for the public pulse summary, mini posting-volume chart, and top skills/companies bars.
+- Added public endpoint tests for empty data, query-filtered data, and the capped public window.
+
+### Verification
+- `backend/venv3.11/bin/ruff format --check .` -> `253 files already formatted`
+- `backend/venv3.11/bin/ruff check .` -> `All checks passed!`
+- `node --check frontend/js/main.js` -> pass
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py` -> `64 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q` -> `394 passed, 1 skipped`
+
 ## Phase-1: UI Rebrand & Views Implementation (2026-02-15)
 - [x] (T-UI-010) Logo asset: copied `docs/archive/assets/nextstep-logo-white.png` → `frontend/assets/nextstep-logo.png`
 - [x] (T-UI-020) Replace brand-mark spans with `<img class="brand-logo">` across all 10 HTML pages

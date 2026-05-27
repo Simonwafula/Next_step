@@ -1,5 +1,29 @@
 # Handoff
 
+## 2026-05-27 (T-PUBLIC-INTEL-010: Public Market Pulse Widget)
+
+Branch: `main`
+
+Commit: `pending`
+
+### Summary
+- Added public `GET /api/analytics/market-pulse` for a capped query/title-driven market pulse.
+- The public response includes matched job count, confidence note, recent posting-volume buckets, top skills, top companies, and top sectors.
+- Added a compact homepage `Market pulse` panel in the search results area.
+- The panel loads a default signal on page load and refreshes from the current search query.
+- Added focused tests for empty data, query-filtered output, and public window limits.
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format --check .` -> `253 files already formatted`
+- `backend/venv3.11/bin/ruff check .` -> `All checks passed!`
+- `node --check frontend/js/main.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py` -> `64 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q` -> `394 passed, 1 skipped`
+
+### Remaining Next Step
+1. Commit and push `[T-PUBLIC-INTEL-010] Add public market pulse widget`.
+2. Later, use the same response contract behind a cached materialized view if public traffic makes direct rollups expensive.
+
 ## 2026-05-27 (T-OPS-INTEL-010: Operations Intelligence Dashboard)
 
 Branch: `main`
