@@ -1145,6 +1145,39 @@ class TestAdminAnalytics:
         assert resp.status_code == 200
         assert "items" in resp.json()
 
+    def test_admin_operations_intelligence_empty(self, client):
+        resp = client.get("/api/admin/analytics/operations")
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["sample"]["job_count"] == 0
+        assert data["series"] == []
+        assert data["top_skills"] == []
+
+    def test_admin_operations_intelligence_with_query(self, client, seeded_db):
+        resp = client.get(
+            "/api/admin/analytics/operations",
+            params={"query": "Software", "period": "monthly", "window_days": 365},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["query"] == "Software"
+        assert data["period"] == "monthly"
+        assert data["sample"]["job_count"] >= 1
+        assert data["series"][0]["job_count"] >= 1
+        assert data["top_skills"][0]["skill"] == "Python"
+        assert data["top_companies"][0]["company"] == "Acme Corp"
+
+    def test_admin_operations_intelligence_filters_role_family(self, client, seeded_db):
+        resp = client.get(
+            "/api/admin/analytics/operations",
+            params={"role_family": "engineering", "period": "quarterly"},
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["role_family"] == "engineering"
+        assert data["period"] == "quarterly"
+        assert data["series"][0]["bucket"].endswith(("Q1", "Q2", "Q3", "Q4"))
+
 
 # ---------------------------------------------------------------------------
 # Admin monitoring / drift

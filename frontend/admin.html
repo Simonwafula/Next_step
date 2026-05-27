@@ -389,6 +389,63 @@
                 <div id="analyticsSection" class="admin-section">
                 <h2 class="section-heading">Analytics</h2>
                 <div class="dashboard-grid">
+                    <article class="panel operations-panel">
+                        <div class="panel-header">
+                            <h3>Operations intelligence</h3>
+                            <span class="panel-note" id="operationsIntelligenceNote">Latest window</span>
+                        </div>
+                        <form class="operations-controls" id="operationsIntelligenceForm">
+                            <label>
+                                <span>Job title or query</span>
+                                <input type="search" id="operationsQueryInput" placeholder="e.g. accountant, nurse, Python">
+                            </label>
+                            <label>
+                                <span>Period</span>
+                                <select id="operationsPeriodSelect">
+                                    <option value="daily">Daily</option>
+                                    <option value="monthly" selected>Monthly</option>
+                                    <option value="quarterly">Quarterly</option>
+                                    <option value="annual">Annual</option>
+                                </select>
+                            </label>
+                            <label>
+                                <span>Window</span>
+                                <select id="operationsWindowSelect">
+                                    <option value="30">30 days</option>
+                                    <option value="90">90 days</option>
+                                    <option value="365" selected>12 months</option>
+                                    <option value="1095">3 years</option>
+                                </select>
+                            </label>
+                            <button class="solid-btn" type="submit" id="operationsRefreshBtn">Refresh</button>
+                        </form>
+                        <div class="operations-summary" id="operationsIntelligenceSummary"></div>
+                    </article>
+                </div>
+                <div class="dashboard-grid three">
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Posting volume</h3>
+                            <span class="panel-note">By selected period</span>
+                        </div>
+                        <div class="ops-chart" id="operationsSeriesChart"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Top skills</h3>
+                            <span class="panel-note">Matched sample</span>
+                        </div>
+                        <div class="ops-bar-list" id="operationsSkillsChart"></div>
+                    </article>
+                    <article class="panel">
+                        <div class="panel-header">
+                            <h3>Top companies</h3>
+                            <span class="panel-note">Matched sample</span>
+                        </div>
+                        <div class="ops-bar-list" id="operationsCompaniesChart"></div>
+                    </article>
+                </div>
+                <div class="dashboard-grid">
                     <article class="panel">
                         <div class="panel-header">
                             <h3>Skill trends snapshot</h3>

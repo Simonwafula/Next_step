@@ -1,5 +1,29 @@
 # Handoff
 
+## 2026-05-27 (T-OPS-INTEL-010: Operations Intelligence Dashboard)
+
+Branch: `main`
+
+Commit: `pending`
+
+### Summary
+- Added a protected operations-intelligence rollup at `GET /api/admin/analytics/operations`.
+- The endpoint supports job-title/query filtering, optional role-family filtering, `daily`/`monthly`/`quarterly`/`annual` buckets, and configurable windows.
+- The response includes posting-volume series plus top skills, companies, titles, sectors, locations, source mix, salary medians, date range, and confidence metadata.
+- Added the Admin → Analytics UI panel with query/period/window controls and visual posting-volume, top-skills, and top-companies charts.
+- Repaired the active Ruff wrapper target by installing `ruff==0.14.14` into `/home/nextstep.co.ke/.venv`.
+
+### Tests Run
+- `backend/venv3.11/bin/ruff format --check .` -> `253 files already formatted`
+- `backend/venv3.11/bin/ruff check .` -> `All checks passed!`
+- `node --check frontend/js/admin.js`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py` -> `61 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q` -> `391 passed, 1 skipped`
+
+### Remaining Next Step
+1. Commit and push `[T-OPS-INTEL-010] Add operations intelligence dashboard`.
+2. If this dashboard becomes heavy on production data, promote the same response contract to a materialized analytics mart instead of changing the frontend.
+
 ## 2026-04-25 (T-MERGE: Main Branch Consolidation)
 
 Branch: `main`

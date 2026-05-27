@@ -29,6 +29,7 @@ from ..db.models import (
 from ..services.auth_service import require_admin
 from ..services.analytics import (
     get_representativeness_report,
+    get_operations_intelligence_rollup,
     get_skill_trends,
     get_role_evolution,
     get_title_adjacency,
@@ -1256,6 +1257,26 @@ def admin_title_adjacency(
     current_user: User = Depends(require_admin()),
 ):
     return get_title_adjacency(db, title=title, limit=limit)
+
+
+@router.get("/analytics/operations")
+def admin_operations_intelligence(
+    query: str | None = Query(None, min_length=1, max_length=120),
+    role_family: str | None = Query(None, max_length=120),
+    period: str = Query("monthly", pattern="^(daily|monthly|quarterly|annual)$"),
+    window_days: int = Query(365, ge=1, le=1825),
+    limit: int = Query(10, ge=1, le=25),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin()),
+):
+    return get_operations_intelligence_rollup(
+        db,
+        query=query,
+        role_family=role_family,
+        period=period,
+        window_days=window_days,
+        limit=limit,
+    )
 
 
 @router.get("/monitoring/drift")

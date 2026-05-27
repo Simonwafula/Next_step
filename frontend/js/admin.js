@@ -22,6 +22,15 @@ const adminRoleEvolution = document.getElementById('adminRoleEvolution');
 const adminSkillTrendsNote = document.getElementById('adminSkillTrendsNote');
 const adminDriftSummary = document.getElementById('adminDriftSummary');
 const adminLmiQuality = document.getElementById('adminLmiQuality');
+const operationsIntelligenceForm = document.getElementById('operationsIntelligenceForm');
+const operationsQueryInput = document.getElementById('operationsQueryInput');
+const operationsPeriodSelect = document.getElementById('operationsPeriodSelect');
+const operationsWindowSelect = document.getElementById('operationsWindowSelect');
+const operationsIntelligenceNote = document.getElementById('operationsIntelligenceNote');
+const operationsIntelligenceSummary = document.getElementById('operationsIntelligenceSummary');
+const operationsSeriesChart = document.getElementById('operationsSeriesChart');
+const operationsSkillsChart = document.getElementById('operationsSkillsChart');
+const operationsCompaniesChart = document.getElementById('operationsCompaniesChart');
 const summaryDimension = document.getElementById('summaryDimension');
 const summaryTableBody = document.getElementById('summaryTableBody');
 const summaryModal = document.getElementById('summaryModal');
@@ -329,6 +338,123 @@ const renderRoleEvolution = (payload) => {
     renderAnalyticsList(adminRoleEvolution, items, 'No role evolution data yet.');
 };
 
+const renderOpsBarList = (target, items = [], keyName, emptyMessage) => {
+    if (!target) {
+        return;
+    }
+    if (!items.length) {
+        target.innerHTML = `<p class="panel-note">${escapeHtml(emptyMessage)}</p>`;
+        return;
+    }
+    const maxCount = Math.max(...items.map((item) => Number(item.count || 0)), 1);
+    target.innerHTML = items
+        .slice(0, 8)
+        .map((item) => {
+            const label = escapeHtml(item[keyName] || 'Unknown');
+            const count = Number(item.count || 0);
+            const share = Number(item.share_pct || 0).toFixed(1);
+            const width = Math.max((count / maxCount) * 100, 4).toFixed(1);
+            return `
+                <div class="ops-bar-row">
+                    <div class="ops-bar-label">
+                        <strong>${label}</strong>
+                        <span>${escapeHtml(count)} · ${escapeHtml(share)}%</span>
+                    </div>
+                    <div class="ops-bar-track" aria-hidden="true">
+                        <span class="ops-bar-fill" style="width: ${escapeHtml(width)}%"></span>
+                    </div>
+                </div>
+            `;
+        })
+        .join('');
+};
+
+const renderOperationsSeries = (items = []) => {
+    if (!operationsSeriesChart) {
+        return;
+    }
+    if (!items.length) {
+        operationsSeriesChart.innerHTML = '<p class="panel-note">No matching postings yet.</p>';
+        return;
+    }
+    const maxCount = Math.max(...items.map((item) => Number(item.job_count || 0)), 1);
+    operationsSeriesChart.innerHTML = items
+        .slice(-12)
+        .map((item) => {
+            const count = Number(item.job_count || 0);
+            const height = Math.max((count / maxCount) * 100, 8).toFixed(1);
+            return `
+                <div class="ops-column">
+                    <div class="ops-column-track" aria-hidden="true">
+                        <span class="ops-column-fill" style="height: ${escapeHtml(height)}%"></span>
+                    </div>
+                    <strong>${escapeHtml(count)}</strong>
+                    <span>${escapeHtml(item.bucket || '--')}</span>
+                </div>
+            `;
+        })
+        .join('');
+};
+
+const renderOperationsIntelligence = (payload) => {
+    if (!operationsIntelligenceSummary) {
+        return;
+    }
+    if (!payload || payload.error) {
+        operationsIntelligenceSummary.innerHTML = '<p class="panel-note">No operations intelligence data available.</p>';
+        renderOperationsSeries([]);
+        renderOpsBarList(operationsSkillsChart, [], 'skill', 'No skill data yet.');
+        renderOpsBarList(operationsCompaniesChart, [], 'company', 'No company data yet.');
+        return;
+    }
+
+    const sample = payload.sample || {};
+    const dateRange = sample.date_range || {};
+    const salary = payload.salary || {};
+    const minSalary = salary.min_salary || {};
+    const maxSalary = salary.max_salary || {};
+    const queryLabel = payload.query || payload.role_family || 'all active jobs';
+    const rangeLabel = dateRange.from && dateRange.to
+        ? `${dateRange.from} to ${dateRange.to}`
+        : 'No date range';
+    const salaryLabel = minSalary.median || maxSalary.median
+        ? `${minSalary.median || '--'} - ${maxSalary.median || '--'}`
+        : 'n/a';
+
+    if (operationsIntelligenceNote) {
+        operationsIntelligenceNote.textContent = `${payload.period} · ${payload.window_days} days`;
+    }
+
+    operationsIntelligenceSummary.innerHTML = `
+        <div class="ops-kpi-grid">
+            <div class="kpi-mini">
+                <p class="kpi-mini-label">Matched jobs</p>
+                <p class="kpi-mini-value">${escapeHtml(sample.job_count ?? 0)}</p>
+                <p class="panel-note">${escapeHtml(queryLabel)}</p>
+            </div>
+            <div class="kpi-mini">
+                <p class="kpi-mini-label">Buckets</p>
+                <p class="kpi-mini-value">${escapeHtml(sample.bucket_count ?? 0)}</p>
+                <p class="panel-note">${escapeHtml(rangeLabel)}</p>
+            </div>
+            <div class="kpi-mini">
+                <p class="kpi-mini-label">Salary band</p>
+                <p class="kpi-mini-value">${escapeHtml(salaryLabel)}</p>
+                <p class="panel-note">median min-max</p>
+            </div>
+            <div class="kpi-mini">
+                <p class="kpi-mini-label">Confidence</p>
+                <p class="kpi-mini-value">${escapeHtml(sample.confidence_note || 'none')}</p>
+                <p class="panel-note">${escapeHtml((payload.source_mix || [])[0]?.source || 'no dominant source')}</p>
+            </div>
+        </div>
+    `;
+
+    renderOperationsSeries(payload.series || []);
+    renderOpsBarList(operationsSkillsChart, payload.top_skills || [], 'skill', 'No skill data yet.');
+    renderOpsBarList(operationsCompaniesChart, payload.top_companies || [], 'company', 'No company data yet.');
+};
+
 const renderDriftSummary = (payload) => {
     if (!adminDriftSummary) {
         return;
@@ -537,6 +663,40 @@ const renderLmiQuality = (payload) => {
             </div>
         </div>
     `;
+};
+
+const fetchOperationsIntelligence = async (token) => {
+    if (!operationsIntelligenceSummary) {
+        return null;
+    }
+    const params = new URLSearchParams({
+        period: operationsPeriodSelect ? operationsPeriodSelect.value : 'monthly',
+        window_days: operationsWindowSelect ? operationsWindowSelect.value : '365',
+        limit: '10',
+    });
+    const query = operationsQueryInput ? operationsQueryInput.value.trim() : '';
+    if (query) {
+        params.set('query', query);
+    }
+    const payload = await requestJson(`${apiBase}/admin/analytics/operations?${params.toString()}`, {
+        headers: { Authorization: `Bearer ${token}` },
+    });
+    renderOperationsIntelligence(payload);
+    return payload;
+};
+
+const wireOperationsIntelligenceForm = (token) => {
+    if (!operationsIntelligenceForm) {
+        return;
+    }
+    operationsIntelligenceForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        try {
+            await fetchOperationsIntelligence(token);
+        } catch (error) {
+            renderOperationsIntelligence({ error });
+        }
+    });
 };
 
 const fetchAnalyticsSnapshot = async (token) => {
@@ -1301,6 +1461,12 @@ const boot = async () => {
 
         if (adminSkillTrends || adminRoleEvolution || adminDriftSummary) {
             await fetchAnalyticsSnapshot(auth.access_token);
+        }
+        if (operationsIntelligenceSummary) {
+            await fetchOperationsIntelligence(auth.access_token).catch((error) => {
+                renderOperationsIntelligence({ error });
+            });
+            wireOperationsIntelligenceForm(auth.access_token);
         }
 
         if (summaryDimension) {

@@ -3,6 +3,25 @@
 ## Legend
 - TODO, IN_PROGRESS, BLOCKED, DONE
 
+## T-OPS-INTEL-010 Operations Intelligence Dashboard (2026-05-27) — DONE
+
+### What changed
+- Added protected `GET /api/admin/analytics/operations` for visual-ready labor-market rollups by free-text job query, role family, period, and time window.
+- The endpoint summarizes matched active jobs into `daily`, `monthly`, `quarterly`, or `annual` buckets with posting volume, skill mentions, top skills, top companies, titles, sectors, locations, source mix, salary medians, date range, and confidence note.
+- Added an Admin → Analytics operations intelligence panel with query, period, and window controls plus visual posting-volume, top-skills, and top-companies charts.
+- Added responsive CSS for the new operations dashboard controls and charts.
+- Added regression tests covering empty data, query-filtered rollups, and role-family quarterly buckets.
+
+### Verification
+- `backend/venv3.11/bin/ruff format --check .` -> `253 files already formatted`
+- `backend/venv3.11/bin/ruff check .` -> `All checks passed!`
+- `node --check frontend/js/admin.js` -> pass
+- `/home/nextstep.co.ke/.venv/bin/pytest -q backend/tests/test_dashboard_endpoints.py` -> `61 passed`
+- `/home/nextstep.co.ke/.venv/bin/pytest -q` -> `391 passed, 1 skipped`
+
+### Notes
+- Repaired the active Ruff environment by installing `ruff==0.14.14` into `/home/nextstep.co.ke/.venv` because the repo wrapper `backend/venv3.11/bin/ruff` pointed there and initially failed with `No module named ruff`.
+
 ## Phase-1: UI Rebrand & Views Implementation (2026-02-15)
 - [x] (T-UI-010) Logo asset: copied `docs/archive/assets/nextstep-logo-white.png` → `frontend/assets/nextstep-logo.png`
 - [x] (T-UI-020) Replace brand-mark spans with `<img class="brand-logo">` across all 10 HTML pages

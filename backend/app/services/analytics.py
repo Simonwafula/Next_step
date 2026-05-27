@@ -2,7 +2,7 @@ from collections import Counter
 from datetime import datetime, timedelta
 
 import pandas as pd
-from sqlalchemy import select, func, desc, text
+from sqlalchemy import select, func, desc, text, or_
 from sqlalchemy.orm import Session
 
 from ..db.models import (
@@ -218,6 +218,265 @@ def get_title_adjacency(db: Session, title: str | None = None, limit: int = 25) 
             }
             for row in rows
         ],
+    }
+
+
+def _bucket_label(value: datetime, period: str) -> str:
+    if period == "daily":
+        return value.strftime("%Y-%m-%d")
+    if period == "quarterly":
+        quarter = ((value.month - 1) // 3) + 1
+        return f"{value.year}-Q{quarter}"
+    if period == "annual":
+        return value.strftime("%Y")
+    return value.strftime("%Y-%m")
+
+
+def _counter_items(
+    counts: Counter,
+    *,
+    total: int,
+    key_name: str,
+    limit: int,
+) -> list[dict]:
+    if total <= 0:
+        total = sum(counts.values())
+    return [
+        {
+            key_name: key,
+            "count": int(count),
+            "share_pct": round((int(count) / total) * 100, 1) if total else 0.0,
+        }
+        for key, count in counts.most_common(limit)
+    ]
+
+
+def _salary_summary(values: list[float]) -> dict:
+    return {
+        "count": len(values),
+        "median": _median(values),
+        "minimum": min(values) if values else None,
+        "maximum": max(values) if values else None,
+    }
+
+
+def _sample_confidence(sample_size: int) -> str:
+    if sample_size >= 100:
+        return "high"
+    if sample_size >= 30:
+        return "medium"
+    if sample_size > 0:
+        return "low"
+    return "none"
+
+
+def get_operations_intelligence_rollup(
+    db: Session,
+    *,
+    query: str | None = None,
+    role_family: str | None = None,
+    period: str = "monthly",
+    window_days: int = 365,
+    limit: int = 10,
+) -> dict:
+    """Visual-ready labor-market rollup for admin operations dashboards."""
+    allowed_periods = {"daily", "monthly", "quarterly", "annual"}
+    if period not in allowed_periods:
+        period = "monthly"
+
+    since = datetime.utcnow() - timedelta(days=max(window_days, 1))
+    stmt = (
+        select(
+            JobPost.id,
+            JobPost.first_seen,
+            JobPost.title_raw,
+            JobPost.source,
+            JobPost.salary_min,
+            JobPost.salary_max,
+            TitleNorm.family,
+            TitleNorm.canonical_title,
+            Organization.name,
+            Organization.sector,
+            Location.city,
+            Location.region,
+            Location.raw,
+        )
+        .select_from(JobPost)
+        .outerjoin(TitleNorm, TitleNorm.id == JobPost.title_norm_id)
+        .outerjoin(Organization, Organization.id == JobPost.org_id)
+        .outerjoin(Location, Location.id == JobPost.location_id)
+        .where(JobPost.is_active.is_(True))
+        .where(JobPost.first_seen >= since)
+    )
+
+    clean_query = query.strip() if query else None
+    if clean_query:
+        pattern = f"%{clean_query}%"
+        stmt = stmt.where(
+            or_(
+                JobPost.title_raw.ilike(pattern),
+                JobPost.description_raw.ilike(pattern),
+                JobPost.requirements_raw.ilike(pattern),
+                TitleNorm.family.ilike(pattern),
+                TitleNorm.canonical_title.ilike(pattern),
+                Organization.name.ilike(pattern),
+            )
+        )
+    if role_family:
+        stmt = stmt.where(TitleNorm.family == role_family)
+
+    rows = db.execute(stmt.order_by(JobPost.first_seen)).all()
+    job_ids = [row.id for row in rows]
+
+    job_bucket: dict[int, str] = {}
+    bucket_counts: dict[str, dict[str, Counter]] = {}
+    overall_skills: Counter = Counter()
+    overall_companies: Counter = Counter()
+    overall_titles: Counter = Counter()
+    overall_sectors: Counter = Counter()
+    overall_locations: Counter = Counter()
+    source_mix: Counter = Counter()
+    salary_min_values: list[float] = []
+    salary_max_values: list[float] = []
+
+    oldest_seen = None
+    newest_seen = None
+
+    for row in rows:
+        first_seen = row.first_seen
+        if not first_seen:
+            continue
+        bucket = _bucket_label(first_seen, period)
+        job_bucket[row.id] = bucket
+        if bucket not in bucket_counts:
+            bucket_counts[bucket] = {
+                "jobs": Counter(),
+                "skills": Counter(),
+                "companies": Counter(),
+            }
+        bucket_counts[bucket]["jobs"]["count"] += 1
+
+        oldest_seen = (
+            first_seen if oldest_seen is None else min(oldest_seen, first_seen)
+        )
+        newest_seen = (
+            first_seen if newest_seen is None else max(newest_seen, first_seen)
+        )
+
+        if row.name:
+            company = str(row.name)
+            overall_companies[company] += 1
+            bucket_counts[bucket]["companies"][company] += 1
+        if row.canonical_title or row.title_raw:
+            overall_titles[str(row.canonical_title or row.title_raw)] += 1
+        if row.sector:
+            overall_sectors[str(row.sector)] += 1
+        location = row.city or row.region or row.raw
+        if location:
+            overall_locations[str(location)] += 1
+        source_mix[str(row.source or "unknown")] += 1
+        if row.salary_min is not None:
+            salary_min_values.append(float(row.salary_min))
+        if row.salary_max is not None:
+            salary_max_values.append(float(row.salary_max))
+
+    if job_ids:
+        skill_rows = db.execute(
+            select(JobSkill.job_post_id, Skill.name)
+            .join(Skill, Skill.id == JobSkill.skill_id)
+            .where(JobSkill.job_post_id.in_(job_ids))
+        ).all()
+        for job_id, skill_name in skill_rows:
+            if not skill_name:
+                continue
+            bucket = job_bucket.get(job_id)
+            if not bucket:
+                continue
+            skill = str(skill_name)
+            overall_skills[skill] += 1
+            bucket_counts[bucket]["skills"][skill] += 1
+
+    series = []
+    for bucket in sorted(bucket_counts):
+        counts = bucket_counts[bucket]
+        job_count = counts["jobs"]["count"]
+        skill_mentions = sum(counts["skills"].values())
+        series.append(
+            {
+                "bucket": bucket,
+                "job_count": int(job_count),
+                "skill_mentions": int(skill_mentions),
+                "top_skills": _counter_items(
+                    counts["skills"],
+                    total=skill_mentions,
+                    key_name="skill",
+                    limit=5,
+                ),
+                "top_companies": _counter_items(
+                    counts["companies"],
+                    total=job_count,
+                    key_name="company",
+                    limit=3,
+                ),
+            }
+        )
+
+    sample_size = len(job_bucket)
+    return {
+        "query": clean_query,
+        "role_family": role_family,
+        "period": period,
+        "window_days": window_days,
+        "sample": {
+            "job_count": sample_size,
+            "bucket_count": len(series),
+            "date_range": {
+                "from": oldest_seen.date().isoformat() if oldest_seen else None,
+                "to": newest_seen.date().isoformat() if newest_seen else None,
+            },
+            "confidence_note": _sample_confidence(sample_size),
+        },
+        "series": series,
+        "top_skills": _counter_items(
+            overall_skills,
+            total=sum(overall_skills.values()),
+            key_name="skill",
+            limit=limit,
+        ),
+        "top_companies": _counter_items(
+            overall_companies,
+            total=sample_size,
+            key_name="company",
+            limit=limit,
+        ),
+        "top_titles": _counter_items(
+            overall_titles,
+            total=sample_size,
+            key_name="title",
+            limit=limit,
+        ),
+        "top_sectors": _counter_items(
+            overall_sectors,
+            total=sample_size,
+            key_name="sector",
+            limit=limit,
+        ),
+        "top_locations": _counter_items(
+            overall_locations,
+            total=sample_size,
+            key_name="location",
+            limit=limit,
+        ),
+        "source_mix": _counter_items(
+            source_mix,
+            total=sample_size,
+            key_name="source",
+            limit=limit,
+        ),
+        "salary": {
+            "min_salary": _salary_summary(salary_min_values),
+            "max_salary": _salary_summary(salary_max_values),
+        },
     }
 
 
